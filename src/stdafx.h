@@ -19,11 +19,7 @@
 
 extern "C" {
 #include <GL/gl.h>
-#ifdef WIN32
 #include <GL/glu.h>
-#else
-#include <GL/glu.h>
-#endif
 }
 
 #include "HeeksCNC.h"

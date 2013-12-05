@@ -94,11 +94,11 @@ class SetAllActive: public Tool{
 			if(COperations::IsAnOperation(object->GetType()))
 			{
 				((COp*)object)->m_active = true;
+				heeksCAD->Changed();
 			}
 		}
-		heeksCAD->Changed();
 	}
-	wxString BitmapPath(){ return _T("setactive");}
+	wxString BitmapPath(){ return theApp.GetResFolder() + _T("/bitmaps/setactive.png"); }
 };
 
 static SetAllActive set_all_active;
@@ -113,11 +113,11 @@ class SetAllInactive: public Tool{
 			if(COperations::IsAnOperation(object->GetType()))
 			{
 				((COp*)object)->m_active = false;
+				heeksCAD->Changed();
 			}
 		}
-		heeksCAD->Changed();
 	}
-	wxString BitmapPath(){ return _T("setinactive");}
+	wxString BitmapPath(){ return theApp.GetResFolder() + _T("/bitmaps/setinactive.png"); }
 };
 
 static SetAllInactive set_all_inactive;
@@ -130,6 +130,28 @@ void COperations::GetTools(std::list<Tool*>* t_list, const wxPoint* p)
 	t_list->push_back(&set_all_inactive);
 
 	ObjList::GetTools(t_list, p);
+}
+
+void COperations::OnChangeUnits(const double units)
+{
+    for(HeeksObj* object = GetFirstChild(); object != NULL; object = GetNextChild())
+    {
+        switch (((COp *)object)->m_operation_type)
+        {
+           case ProbeCentreType:
+                ((CProbe_Centre *)object)->OnChangeUnits(units);
+                break;
+
+           case ProbeEdgeType:
+                ((CProbe_Grid *)object)->OnChangeUnits(units);
+                break;
+
+           case ProbeGridType:
+                ((CProbe_Grid *)object)->OnChangeUnits(units);
+                break;
+        }
+    }
+    heeksCAD->Changed();
 }
 
 //static

@@ -17,6 +17,7 @@
 #include "tinyxml/tinyxml.h"
 #include "CTool.h"
 #include "Profile.h"
+#include "Fixture.h"
 #include "Drilling.h"
 #include "MachineState.h"
 
@@ -118,7 +119,11 @@ Python CPositioning::AppendTextToProgram( CMachineState *pMachineState )
 		location.SetZ( location.Z() + m_params.m_standoff );
 
 		// Rotate the point to align it with the fixture
+#ifdef STABLE_OPS_ONLY
 		CNCPoint point( location );
+#else
+		CNCPoint point( pMachineState->Fixture().Adjustment( location ) );
+#endif
 
 		python << _T("rapid(")
 			<< _T("x=") << point.X(true) << _T(", ")

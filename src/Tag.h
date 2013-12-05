@@ -41,5 +41,4 @@ public:
 	void ReadDefaultValues();
 
 	static wxString ConfigScope() { return(_T("Tag")); }
-	static void PickPosition(CTag* tag);
 };

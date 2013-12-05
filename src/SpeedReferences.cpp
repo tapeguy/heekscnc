@@ -28,7 +28,7 @@ class ExportSpeedReferences: public Tool{
 	const wxChar* GetTitle(){return _("Export");}
 	void Run()
 	{
-		wxStandardPaths standard_paths;
+		wxStandardPaths& standard_paths = wxStandardPaths::Get();
 		if (previous_path.Length() == 0) previous_path = _T("default.speeds");
 
 		// Prompt the user to select a file to import.
@@ -38,7 +38,7 @@ class ExportSpeedReferences: public Tool{
 					+ _T("*.speed;*.SPEED;*.Speed;")
 					+ _T("*.feed;*.FEED;*.Feed;")
 					+ _T("*.feedsnspeeds;*.FEEDSNSPEEDS;"),
-					wxSAVE | wxOVERWRITE_PROMPT );
+					wxFD_SAVE | wxFD_OVERWRITE_PROMPT );
 
 		fd.SetFilterIndex(1);
 		if (fd.ShowModal() == wxID_CANCEL) return;
@@ -53,7 +53,7 @@ class ExportSpeedReferences: public Tool{
 
 		heeksCAD->SaveXMLFile( speed_references, previous_path.c_str(), false );
 	}
-	wxString BitmapPath(){ return _T("export");}
+	wxString BitmapPath(){ return theApp.GetResFolder() + _T("/bitmaps/export.png"); }
 	wxString previous_path;
 };
 
@@ -87,7 +87,7 @@ class ImportSpeedReferences: public Tool{
 	const wxChar* GetTitle(){return _("Import");}
 	void Run()
 	{
-		wxStandardPaths standard_paths;
+		wxStandardPaths& standard_paths = wxStandardPaths::Get();
 		if (previous_path.Length() == 0) previous_path = _T("default.speeds");
 
 		// Prompt the user to select a file to import.
@@ -97,14 +97,14 @@ class ImportSpeedReferences: public Tool{
 					+ _T("*.speed;*.SPEED;*.Speed;")
 					+ _T("*.feed;*.FEED;*.Feed;")
 					+ _T("*.feedsnspeeds;*.FEEDSNSPEEDS;"),
-					wxOPEN | wxFILE_MUST_EXIST );
+					wxFD_OPEN | wxFD_FILE_MUST_EXIST );
 		fd.SetFilterIndex(1);
 		if (fd.ShowModal() == wxID_CANCEL) return;
 		previous_path = fd.GetPath().c_str();
 
         ImportSpeedReferencesFile( previous_path.c_str() );
 	}
-	wxString BitmapPath(){ return _T("import");}
+	wxString BitmapPath(){ return theApp.GetResFolder() + _T("/bitmaps/import.png"); }
 	wxString previous_path;
 };
 

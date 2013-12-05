@@ -77,29 +77,23 @@ void CTag::GetProperties(std::list<Property *> *list)
 
 static CTag* object_for_tools = NULL;
 
-class PickPos2: public Tool{
-public:
+class PickPos: public Tool{
 	// Tool's virtual functions
 	const wxChar* GetTitle(){return _("Pick position");}
 	void Run(){
 		heeksCAD->CreateUndoPoint();
-		double pos[3];
-		if(heeksCAD->PickPosition(_("Pick position"), pos))
-		{
-			object_for_tools->m_pos[0] = pos[0];
-			object_for_tools->m_pos[1] = pos[1];
-		}
+		heeksCAD->PickPosition(_("Pick position"), object_for_tools->m_pos);
 		heeksCAD->Changed();
 	}
-	wxString BitmapPath(){ return _T("tagpos");}
+	wxString BitmapPath(){ return theApp.GetResFolder() + _T("/bitmaps/tagpos.png"); }
 };
 
-static PickPos2 pick_pos2;
+static PickPos pick_pos;
 
 void CTag::GetTools(std::list<Tool*>* t_list, const wxPoint* p)
 {
 	object_for_tools = this;
-	t_list->push_back(&pick_pos2);
+	t_list->push_back(&pick_pos);
 
 }
 
@@ -153,10 +147,4 @@ bool CTag::operator==( const CTag & rhs ) const
 	if (m_height != rhs.m_width) return(false);
 	// return(HeeksObj::operator==(rhs));
 	return(true);
-}
-
-void CTag::PickPosition(CTag* tag)
-{
-	object_for_tools = tag;
-	pick_pos2.Run();
 }

@@ -57,7 +57,6 @@
 
 #include <BRepPrimAPI_MakePrism.hxx>
 #include <BRepPrimAPI_MakeCylinder.hxx>
-#include <BRepPrimAPI_MakeBox.hxx>
 #include <BRepPrimAPI_MakeRevolution.hxx>
 #include <BRepPrimAPI_MakeCone.hxx>
 #include <BRepPrimAPI_MakeSphere.hxx>
@@ -277,8 +276,6 @@ void CToolParams::set_initial_values()
 	// The following are ONLY for tapping tools
 	config.Read(_T("m_direction"), &m_direction, 0);  // default to right-hand tap
 	config.Read(_T("m_pitch"), &m_pitch, 1.0);        // mm/rev, this would be for an M6 tap
-
-	config.Read(_T("drag_distance"), &m_drag_knife_distance, 1.0);
 	}
 
 void CToolParams::write_values_to_config()
@@ -325,8 +322,6 @@ void CToolParams::write_values_to_config()
 	// The following are ONLY for tapping tools
 	config.Write(_T("m_direction"), m_direction);
 	config.Write(_T("m_pitch"), m_pitch);
-
-	config.Write(_T("drag_distance"), m_drag_knife_distance);
 }
 
 void CTool::SetDiameter( const double diameter )
@@ -341,7 +336,7 @@ void CTool::SetDiameter( const double diameter )
             // and the cutting angle.
 
             double opposite = (m_params.m_diameter / 2.0) - m_params.m_flat_radius;
-            double angle = m_params.m_cutting_edge_angle / 360.0 * 2 * M_PI;
+            double angle = m_params.m_cutting_edge_angle / 360.0 * 2 * PI;
 
             m_params.m_cutting_edge_height = opposite / tan(angle);
 	    }
@@ -377,13 +372,6 @@ static void on_set_direction(int value, HeeksObj* object)
 static void on_set_pitch(double value, HeeksObj* object)
 {
 	((CTool*)object)->m_params.m_pitch = value;
-	object->KillGLLists();
-	heeksCAD->Repaint();
-}
-
-static void on_set_drag_knife_distance(double value, HeeksObj* object)
-{
-	((CTool*)object)->m_params.m_drag_knife_distance = value;
 	object->KillGLLists();
 	heeksCAD->Repaint();
 }
@@ -473,7 +461,6 @@ static void on_set_type(int zero_based_choice, HeeksObj* object)
 
 	((CTool*)object)->m_params.m_type = tool_types_for_on_set_type[zero_based_choice].first;
 	((CTool*)object)->ResetParametersToReasonableValues();
-	((CTool*)object)->ResetTitle();
 	heeksCAD->RefreshProperties();
 	object->KillGLLists();
 	heeksCAD->Repaint();
@@ -498,7 +485,7 @@ static void on_set_gradient(double value, HeeksObj* object)
 
 static double degrees_to_radians( const double degrees )
 {
-	return( (degrees / 360) * 2 * M_PI );
+	return( (degrees / 360) * 2 * PI );
 } // End degrees_to_radians() routine
 
 
@@ -531,7 +518,6 @@ double CToolParams::ReasonableGradient( const eToolType type ) const
 				return(0.0);
 
 		case CToolParams::eEngravingTool:
-		case CToolParams::eDragKnife:
 				return(0.0);
 
         default:
@@ -556,6 +542,7 @@ void CTool::ResetParametersToReasonableValues()
 				m_params.m_flat_radius = 0;
 				m_params.m_cutting_edge_angle = 59;
 				m_params.m_cutting_edge_height = m_params.m_diameter * 3.0;
+				ResetTitle();
 				break;
 
 		case CToolParams::eCentreDrill:
@@ -563,6 +550,7 @@ void CTool::ResetParametersToReasonableValues()
 				m_params.m_flat_radius = 0;
 				m_params.m_cutting_edge_angle = 59;
 				m_params.m_cutting_edge_height = m_params.m_diameter * 1.0;
+				ResetTitle();
 				break;
 
 		case CToolParams::eEndmill:
@@ -570,6 +558,7 @@ void CTool::ResetParametersToReasonableValues()
 				m_params.m_flat_radius = m_params.m_diameter / 2;
 				m_params.m_cutting_edge_angle = 0;
 				m_params.m_cutting_edge_height = m_params.m_diameter * 3.0;
+				ResetTitle();
 				break;
 
 		case CToolParams::eSlotCutter:
@@ -577,6 +566,7 @@ void CTool::ResetParametersToReasonableValues()
 				m_params.m_flat_radius = m_params.m_diameter / 2;
 				m_params.m_cutting_edge_angle = 0;
 				m_params.m_cutting_edge_height = m_params.m_diameter * 3.0;
+				ResetTitle();
 				break;
 
 		case CToolParams::eBallEndMill:
@@ -584,20 +574,24 @@ void CTool::ResetParametersToReasonableValues()
 				m_params.m_flat_radius = 0;
 				m_params.m_cutting_edge_angle = 0;
 				m_params.m_cutting_edge_height = m_params.m_diameter * 3.0;
+				ResetTitle();
 				break;
 
 		case CToolParams::eTouchProbe:
 				m_params.m_corner_radius = (m_params.m_diameter / 2);
 				m_params.m_flat_radius = 0;
+				ResetTitle();
 				break;
 
 		case CToolParams::eExtrusion:
 				m_params.m_corner_radius = (m_params.m_diameter / 2);
 				m_params.m_flat_radius = 0;
+				ResetTitle();
 				break;
 
 		case CToolParams::eToolLengthSwitch:
 				m_params.m_corner_radius = (m_params.m_diameter / 2);
+				ResetTitle();
 				break;
 
 		case CToolParams::eChamfer:
@@ -607,10 +601,12 @@ void CTool::ResetParametersToReasonableValues()
 				m_params.m_cutting_edge_angle = (m_params.m_type == CToolParams::eChamfer) ? 45.0 : 30.0;
 				height = (m_params.m_diameter / 2.0) * tan( degrees_to_radians(90.0 - m_params.m_cutting_edge_angle));
 				m_params.m_cutting_edge_height = height;
+				ResetTitle();
 				break;
 
 		case CToolParams::eTurningTool:
 				// No special constraints for this.
+				ResetTitle();
 				break;
 
 		case CToolParams::eTapTool:
@@ -620,9 +616,7 @@ void CTool::ResetParametersToReasonableValues()
 				m_params.m_direction = 0;
 				m_params.m_pitch = 1.0;
 				m_params.m_cutting_edge_height = m_params.m_diameter * 3.0;
-				break;
-
-		case CToolParams::eDragKnife:
+				ResetTitle();
 				break;
 
 		default:
@@ -655,7 +649,7 @@ static void on_set_flat_radius(double value, HeeksObj* object)
 		// and the cutting angle.
 
 		double opposite = ((CTool*)object)->m_params.m_diameter - ((CTool*)object)->m_params.m_flat_radius;
-		double angle = ((CTool*)object)->m_params.m_cutting_edge_angle / 360.0 * 2 * M_PI;
+		double angle = ((CTool*)object)->m_params.m_cutting_edge_angle / 360.0 * 2 * PI;
 
 		((CTool*)object)->m_params.m_cutting_edge_height = opposite / tan(angle);
 	}
@@ -679,7 +673,7 @@ static void on_set_cutting_edge_angle(double value, HeeksObj* object)
 		// and the cutting angle.
 
 		double opposite = ((CTool*)object)->m_params.m_diameter - ((CTool*)object)->m_params.m_flat_radius;
-		double angle = ((CTool*)object)->m_params.m_cutting_edge_angle / 360.0 * 2 * M_PI;
+		double angle = ((CTool*)object)->m_params.m_cutting_edge_angle / 360.0 * 2 * PI;
 
 		((CTool*)object)->m_params.m_cutting_edge_height = opposite / tan(angle);
 	}
@@ -880,7 +874,7 @@ void CToolParams::GetProperties(CTool* parent, std::list<Property *> *list)
 		list->push_back(new PropertyChoice(_("Type"), choices, choice, parent, on_set_type));
 	}
 
-	if ((m_type != eTouchProbe) && (m_type != eToolLengthSwitch) && (m_type != eExtrusion) && (m_type != eDragKnife))
+	if ((m_type != eTouchProbe) && (m_type != eToolLengthSwitch) && (m_type != eExtrusion))
 	{
 		list->push_back(new PropertyLength(_("max_advance_per_revolution"), m_max_advance_per_revolution, parent, on_set_max_advance_per_revolution));
 	} // End if - then
@@ -910,9 +904,6 @@ void CToolParams::GetProperties(CTool* parent, std::list<Property *> *list)
 			list->push_back(new PropertyChoice(_("orientation"), choices, choice, parent, on_set_orientation));
 		}
 	} // End if - then
-	else if (m_type == eDragKnife)
-	{
-	}
 	else
 	{
 		// We're using milling/drilling tools
@@ -983,11 +974,6 @@ void CToolParams::GetProperties(CTool* parent, std::list<Property *> *list)
 			list->push_back(new PropertyChoice(_("Select TAP from standard sizes"), choices, choice, parent, on_select_tap_from_standard_sizes));
 		}
 	}
-	if (m_type == eDragKnife)
-	{
-		// The following are ONLY for drag knife tools
-		list->push_back(new PropertyLength(_("tip distance"), m_drag_knife_distance, parent, on_set_drag_knife_distance));
-	}
 
 }
 
@@ -1031,7 +1017,6 @@ void CToolParams::WriteXMLAttributes(TiXmlNode *root)
 
 	element->SetDoubleAttribute( "pitch", m_pitch);
 	element->SetAttribute( "direction", m_direction);
-	element->SetAttribute( "drag_distance", m_drag_knife_distance);
 }
 
 void CToolParams::ReadParametersFromXMLElement(TiXmlElement* pElem)
@@ -1083,7 +1068,6 @@ void CToolParams::ReadParametersFromXMLElement(TiXmlElement* pElem)
 	}
 	if (pElem->Attribute("direction")) pElem->Attribute("direction", &m_direction);
 	if (pElem->Attribute("pitch")) pElem->Attribute("pitch", &m_pitch);
-	if (pElem->Attribute("drag_distance")) pElem->Attribute("drag_distance", &m_drag_knife_distance);
 }
 
 CTool::~CTool()
@@ -1131,7 +1115,7 @@ Python CTool::AppendTextToProgram()
 
 	if (m_params.m_diameter > 0)
 	{
-		python << _T("radius=") << m_params.m_diameter / 2 /heeksCAD->GetViewUnits() << _T(", ");
+		python << _T("radius=") << m_params.m_diameter / 2 /PROGRAM->m_units << _T(", ");
 	} // End if - then
 	else
 	{
@@ -1140,7 +1124,7 @@ Python CTool::AppendTextToProgram()
 
 	if (m_params.m_tool_length_offset > 0)
 	{
-		python << _T("length=") << m_params.m_tool_length_offset /heeksCAD->GetViewUnits() << _T(", ");
+		python << _T("length=") << m_params.m_tool_length_offset /PROGRAM->m_units << _T(", ");
 	} // End if - then
 	else
 	{
@@ -1292,12 +1276,6 @@ const wxBitmap &CTool::GetIcon()
 				if(engraverIcon == NULL)engraverIcon = new wxBitmap(wxImage(theApp.GetResFolder() + _T("/icons/engraver.png")));
 				return *engraverIcon;
 			}
-		case CToolParams::eDragKnife:
-			{
-				static wxBitmap* knifeIcon = NULL;
-				if(knifeIcon == NULL)knifeIcon = new wxBitmap(wxImage(theApp.GetResFolder() + _T("/icons/knife.png")));
-				return *knifeIcon;
-			}
 		default:
 			{
 				static wxBitmap* toolIcon = NULL;
@@ -1403,30 +1381,6 @@ int CTool::FindTool( const int tool_number )
 
 } // End FindTool() method
 
-//static
-CToolParams::eToolType CTool::FindToolType( const int tool_number )
-{
-	CTool* pTool = Find(tool_number);
-	if(pTool)return pTool->m_params.m_type;
-	return CToolParams::eUndefinedToolType;
-}
-
-// static
-bool CTool::IsMillingToolType( CToolParams::eToolType type )
-{
-	switch(type)
-	{
-	case CToolParams::eEndmill:
-	case CToolParams::eSlotCutter:
-	case CToolParams::eBallEndMill:
-	case CToolParams::eDrill:
-	case CToolParams::eCentreDrill:
-	case CToolParams::eChamfer:
-		return true;
-	default:
-		return false;
-	}
-}
 
 std::vector< std::pair< int, wxString > > CTool::FindAllTools()
 {
@@ -1506,7 +1460,7 @@ std::vector< std::pair< int, wxString > > CTool::FindAllTools()
  * idea is to produce a m_title value that is representative of the tool.  This will
  * make selection in the program list easier.
  */
-wxString CTool::GetMeaningfulName(double units) const
+wxString CTool::GenerateMeaningfulName() const
 {
 #ifdef UNICODE
 	std::wostringstream l_ossName;
@@ -1518,16 +1472,16 @@ wxString CTool::GetMeaningfulName(double units) const
 		(m_params.m_type != CToolParams::eTouchProbe) &&
 		(m_params.m_type != CToolParams::eToolLengthSwitch))
 	{
-		if (units == 1.0)
+		if (PROGRAM->m_units == 1)
 		{
 			// We're using metric.  Leave the diameter as a floating point number.  It just looks more natural.
-			l_ossName << m_params.m_diameter / units << " mm ";
+			l_ossName << m_params.m_diameter / PROGRAM->m_units << " mm ";
 		} // End if - then
 		else
 		{
 			// We're using inches.  Find a fractional representation if one matches.
-			wxString fraction = FractionalRepresentation(m_params.m_diameter / units);
-			wxString guage = GuageNumberRepresentation( m_params.m_diameter / units, units );
+			wxString fraction = FractionalRepresentation(m_params.m_diameter / PROGRAM->m_units);
+			wxString guage = GuageNumberRepresentation( m_params.m_diameter / PROGRAM->m_units, PROGRAM->m_units );
 
 			if (fraction.Len() > 0)
 			{
@@ -1543,13 +1497,13 @@ wxString CTool::GetMeaningfulName(double units) const
                     {
                         if (TOOLS->m_title_format == CTools::eIncludeGuageAndSize)
                         {
-                            l_ossName << "(" << m_params.m_diameter / units << " inch) ";
+                            l_ossName << "(" << m_params.m_diameter / PROGRAM->m_units << " inch) ";
                         }
                     }
 			    }
 			    else
 			    {
-			        l_ossName << m_params.m_diameter / units << " inch ";
+			        l_ossName << m_params.m_diameter / PROGRAM->m_units << " inch ";
 			    }
 			}
 		} // End if - else
@@ -1579,6 +1533,8 @@ wxString CTool::GetMeaningfulName(double units) const
 								break;
 		} // End switch
 	} // End if - then
+
+
 
 	switch (m_params.m_type)
 	{
@@ -1627,7 +1583,7 @@ wxString CTool::GetMeaningfulName(double units) const
                                 l_ossName.str(_T(""));  // Replace what came before.
                                 wxString description = metric_tap_sizes[i].description;
                                 description.Replace(_T("  "),_T(" "),true);
-                                l_ossName << description.utf8_str();
+                                l_ossName << description;
                                 found = true;
                             }
                     }
@@ -1640,7 +1596,7 @@ wxString CTool::GetMeaningfulName(double units) const
                                 l_ossName.str(_T(""));  // Replace what came before.
                                 wxString description = unified_thread_standard_tap_sizes[i].description;
                                 description.Replace(_T("  "),_T(" "),true);
-                                l_ossName << description.utf8_str();
+                                l_ossName << description;
                                 found = true;
                             }
                     }
@@ -1653,7 +1609,7 @@ wxString CTool::GetMeaningfulName(double units) const
                                 l_ossName.str(_T(""));  // Replace what came before.
                                 wxString description = british_standard_whitworth_tap_sizes[i].description;
                                 description.Replace(_T("  "),_T(" "),true);
-                                l_ossName << description.utf8_str();
+                                l_ossName << description;
                                 found = true;
                             }
                     }
@@ -1670,17 +1626,11 @@ wxString CTool::GetMeaningfulName(double units) const
 							break;
 
 
-                case CToolParams::eDragKnife:	l_ossName.str(_T(""));	// Remove all that we've already prepared.
-							l_ossName << m_params.m_drag_knife_distance << (_T(" "));
-                					l_ossName << (_("Drag Knife"));
-							break;
-
-
 		default:				break;
 	} // End switch
 
 	return( l_ossName.str().c_str() );
-} // End GetMeaningfulName() method
+} // End GenerateMeaningfulName() method
 
 
 /**
@@ -1695,7 +1645,7 @@ wxString CTool::ResetTitle()
 	if (m_params.m_automatically_generate_title)
 	{
 		// It has the default title.  Give it a name that makes sense.
-		m_title = GetMeaningfulName(heeksCAD->GetViewUnits());
+		m_title = GenerateMeaningfulName();
 		heeksCAD->Changed();
 
 #ifdef UNICODE
@@ -1861,7 +1811,7 @@ TopoDS_Shape CTool::GetShape() const
 			BRepPrimAPI_MakeCylinder shaft( shaft_position_and_orientation, (diameter / 2) * ((m_params.m_type == CToolParams::eEngravingTool) ? 1.0 : 0.5), shaft_length );
 
 			// And a cone for the tip.
-			// double cutting_edge_angle_in_radians = ((m_params.m_cutting_edge_angle / 2) / 360) * (2 * M_PI);
+			// double cutting_edge_angle_in_radians = ((m_params.m_cutting_edge_angle / 2) / 360) * (2 * PI);
 			gp_Ax2 tip_position_and_orientation( shaft_start_location, gp_Dir(0,0,-1) );
 
 			BRepPrimAPI_MakeCone tool_tip( tip_position_and_orientation,
@@ -2030,12 +1980,6 @@ TopoDS_Shape CTool::GetShape() const
 			return(tool_shape);
 		}
 
-		case CToolParams::eDragKnife:
-			{
-				BRepPrimAPI_MakeBox knife(gp_Ax2(gp_Pnt(0, 0, 0), gp_Dir(0, 0, 1), gp_Dir(1, 0, 0)), this->m_params.m_drag_knife_distance, 0.1, 10.0);
-				return knife.Shape();
-			}
-
 		case CToolParams::eEndmill:
 		case CToolParams::eSlotCutter:
 		case CToolParams::eExtrusion:
@@ -2082,7 +2026,7 @@ Python CTool::OCLDefinition(CAttachOp* attach_op) const
 
 		case CToolParams::eChamfer:
 		case CToolParams::eEngravingTool:
-			python << _T("ocl.CylConeCutter(float(") << m_params.m_flat_radius * 2 + attach_op->m_material_allowance << _T("), float(") << m_params.m_diameter + attach_op->m_material_allowance * 2 << _T("), float(") << m_params.m_cutting_edge_angle * M_PI/360 << _T("))\n");
+			python << _T("ocl.CylConeCutter(float(") << m_params.m_flat_radius * 2 + attach_op->m_material_allowance << _T("), float(") << m_params.m_diameter + attach_op->m_material_allowance * 2 << _T("), float(") << m_params.m_cutting_edge_angle * PI/360 << _T("))\n");
 			break;
 
 		default:
@@ -2186,7 +2130,7 @@ TopoDS_Face CTool::GetSideProfile() const
 	use this method to make all these adjustments based on the tool's
 	geometry and return a reasonable value.
 
-	If express_in_program_units is true then we need to divide by the program
+	If express_in_drawing_units is true then we need to divide by the drawing
 	units value.  We use metric (mm) internally and convert to inches only
 	if we need to and only as the last step in the process.  By default, return
 	the value in internal (metric) units.
@@ -2195,13 +2139,14 @@ TopoDS_Face CTool::GetSideProfile() const
 	for the corresponding depth (from the bottom-most tip of the tool).  This is
 	only relevant for chamfering (angled) bits.
  */
-double CTool::CuttingRadius( const bool express_in_program_units /* = false */, const double depth /* = -1 */ ) const
+double CTool::CuttingRadius( const bool express_in_drawing_units /* = false */, const double depth /* = -1 */ ) const
 {
 	double radius;
 
 	switch (m_params.m_type)
 	{
 		case CToolParams::eChamfer:
+		case CToolParams::eEngravingTool:
 			{
 			    if (depth < 0.0)
 			    {
@@ -2217,19 +2162,13 @@ double CTool::CuttingRadius( const bool express_in_program_units /* = false */, 
 			    }
 			    else
 			    {
-			        radius = m_params.m_flat_radius + (depth * tan((m_params.m_cutting_edge_angle / 360.0 * 2 * M_PI)));
+			        radius = m_params.m_flat_radius + (depth * tan((m_params.m_cutting_edge_angle / 360.0 * 2 * PI)));
 			        if (radius > (m_params.m_diameter / 2.0))
 			        {
 			            // The angle and depth would have us cutting larger than our largest diameter.
 			            radius = (m_params.m_diameter / 2.0);
 			        }
 			    }
-			}
-			break;
-
-		case CToolParams::eEngravingTool:
-			{
-	            radius = m_params.m_flat_radius;
 			}
 			break;
 
@@ -2247,7 +2186,7 @@ double CTool::CuttingRadius( const bool express_in_program_units /* = false */, 
 			radius = m_params.m_diameter/2;
 	} // End switch
 
-	if (express_in_program_units) return(radius / PROGRAM->m_units);
+	if (express_in_drawing_units) return(radius / PROGRAM->m_units);
 	else return(radius);
 
 } // End CuttingRadius() method
@@ -2292,12 +2231,12 @@ public:
 		wxFileDialog fd(heeksCAD->GetMainFrame(), _T("Select a file to import"), _T("."), _T(""),
 				wxString(_("Known Files")) + _T(" |*.xml;*.XML;")
 					+ _T("*.Xml;"),
-					wxOPEN | wxFILE_MUST_EXIST );
+					wxFD_OPEN | wxFD_FILE_MUST_EXIST );
 		fd.SetFilterIndex(1);
 		if (fd.ShowModal() == wxID_CANCEL) return;
 		m_pThis->ImportProbeCalibrationData( fd.GetPath().c_str() );
 	}
-	wxString BitmapPath(){ return _T("import");}
+	wxString BitmapPath(){ return theApp.GetResFolder() + _T("/bitmaps/import.png"); }
 	wxString previous_path;
 	void Set( CTool *pThis ) { m_pThis = pThis; }
 };
@@ -2339,9 +2278,9 @@ void CTool::ImportProbeCalibrationData( const wxString & probed_points_xml_file_
 					double number = 0.0;
 					if (value.ToDouble(&number))
 					{
-					    if (name == "X") { point.SetX( number / heeksCAD->GetViewUnits() ); }
-                        if (name == "Y") { point.SetY( number / heeksCAD->GetViewUnits() ); }
-                        if (name == "Z") { point.SetZ( number / heeksCAD->GetViewUnits() ); }
+					    if (name == "X") { point.SetX( number / PROGRAM->m_units ); }
+                        if (name == "Y") { point.SetY( number / PROGRAM->m_units ); }
+                        if (name == "Z") { point.SetZ( number / PROGRAM->m_units ); }
 					}
 				} // End for
 
@@ -2490,7 +2429,6 @@ Python CTool::OpenCamLibDefinition(const unsigned int indent /* = 0 */ )
     case CToolParams::eExtrusion:
     case CToolParams::eTapTool:
     case CToolParams::eEngravingTool:
-    case CToolParams::eDragKnife:
     case CToolParams::eUndefinedToolType:
         return(python); // Avoid the compiler warnings.
 	} // End switch
@@ -2512,7 +2450,7 @@ static bool OnEdit(HeeksObj* object)
 
 void CTool::GetOnEdit(bool(**callback)(HeeksObj*))
 {
-#if 0
+#ifndef STABLE_OPS_ONLY
 	*callback = OnEdit;
 #else
 	*callback = NULL;
@@ -2568,7 +2506,4 @@ std::list<wxString> CTool::DesignRulesAdjustment(const bool apply_changes)
 
 } // End DesignRulesAdjustment() method
 
-void CTool::OnChangeViewUnits(const double units)
-{
-	if (m_params.m_automatically_generate_title)m_title = GetMeaningfulName(heeksCAD->GetViewUnits());
-}
+

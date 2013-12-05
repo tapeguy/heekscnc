@@ -168,7 +168,7 @@ public:
 					wxString path(theApp.GetDllFolder() +_T("/"));
 				#else
 					#ifdef CMAKE_UNIX
-						wxString path(_T("/usr/lib/heekscnc/"));
+						wxString path(_T("/usr/local/lib/heekscnc/"));
 					#else
 						wxString path(theApp.GetDllFolder() + _T("/../heekscnc/"));
 					#endif
@@ -228,7 +228,7 @@ public:
 	void Do(void)
 	{
 		wxBusyCursor wait; // show an hour glass until the end of this function
-		wxStandardPaths standard_paths;
+		wxStandardPaths& standard_paths = wxStandardPaths::Get();
 		wxFileName path( standard_paths.GetTempDir().c_str(), _T("post.py"));
 
 #ifdef WIN32
@@ -268,7 +268,7 @@ bool HeeksPyPostProcess(const CProgram* program, const wxString &filepath, const
 		theApp.m_output_canvas->m_textCtrl->Clear(); // clear the output window
 
 		// write the python file
-		wxStandardPaths standard_paths;
+		wxStandardPaths& standard_paths = wxStandardPaths::Get();
 		wxFileName file_str( standard_paths.GetTempDir().c_str(), _T("post.py"));
 
 		if(!write_python_file(file_str.GetFullPath()))
@@ -337,7 +337,7 @@ void CSendToMachine::SendGCode(const wxChar *gcode)
 		wxBusyCursor wait; // show an hour glass until the end of this function
 
 		// write the ngc file
-		wxStandardPaths standard_paths;
+		wxStandardPaths& standard_paths = wxStandardPaths::Get();
 		wxFileName ngcpath( standard_paths.GetTempDir().c_str(), wxString::Format(_T("heekscnc-%d.ngc"), m_serial));
 		m_serial++;
 		{

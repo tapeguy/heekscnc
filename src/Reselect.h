@@ -13,7 +13,7 @@ public:
 	// Tool's virtual functions
 	const wxChar* GetTitle(){return _("Re-select sketches");}
 	void Run();
-	wxString BitmapPath(){ return _T("selsketch");}
+	wxString BitmapPath(){ return theApp.GetResFolder() + _T("/bitmaps/selsketch.png"); }
 };
 
 class ReselectSolids: public Tool{
@@ -25,7 +25,7 @@ public:
 	// Tool's virtual functions
 	const wxChar* GetTitle(){return _("Re-select solids");}
 	void Run();
-	wxString BitmapPath(){ return _T("selsolid");}
+	wxString BitmapPath(){ return theApp.GetResFolder() + _T("/bitmaps/selsolid.png"); }
 };
 
 #ifdef OP_SKETCHES_AS_CHILDREN

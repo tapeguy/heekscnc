@@ -137,7 +137,7 @@ void CSpeedOpParams::ResetSpeeds(const int tool_number)
 			{
                 if (pTool->m_params.m_diameter > 0)
                 {
-                    m_spindle_speed = (surface_speed * 1000.0) / (M_PI * pTool->m_params.m_diameter);
+                    m_spindle_speed = (surface_speed * 1000.0) / (PI * pTool->m_params.m_diameter);
                     m_spindle_speed = floor(m_spindle_speed);	// Round down to integer
                 } // End if - then
 			} // End if - then
@@ -183,12 +183,9 @@ static void on_set_spindle_speed(double value, HeeksObj* object)
 
 void CSpeedOpParams::GetProperties(CSpeedOp* parent, std::list<Property *> *list)
 {
-	if(CTool::IsMillingToolType(CTool::FindToolType(parent->m_tool_number)))
-	{
-		list->push_back(new PropertyLength(_("horizontal feed rate"), m_horizontal_feed_rate, parent, on_set_horizontal_feed_rate));
-		list->push_back(new PropertyLength(_("vertical feed rate"), m_vertical_feed_rate, parent, on_set_vertical_feed_rate));
-		list->push_back(new PropertyDouble(_("spindle speed"), m_spindle_speed, parent, on_set_spindle_speed));
-	}
+	list->push_back(new PropertyLength(_("horizontal feed rate"), m_horizontal_feed_rate, parent, on_set_horizontal_feed_rate));
+	list->push_back(new PropertyLength(_("vertical feed rate"), m_vertical_feed_rate, parent, on_set_vertical_feed_rate));
+	list->push_back(new PropertyDouble(_("spindle speed"), m_spindle_speed, parent, on_set_spindle_speed));
 }
 
 void CSpeedOpParams::WriteXMLAttributes(TiXmlNode* pElem)
@@ -338,7 +335,7 @@ public:
      	m_pThis->m_speed_op_params.ResetSpeeds( m_pThis->m_tool_number);	// NOTE: The speed MUST be set BEFORE the feedrates
 		m_pThis->m_speed_op_params.ResetFeeds( m_pThis->m_tool_number);
 	}
-	wxString BitmapPath(){ return _T("import");}
+	wxString BitmapPath(){ return theApp.GetResFolder() + _T("/bitmaps/import.png"); }
 	wxString previous_path;
 
 private:

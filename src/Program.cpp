@@ -18,12 +18,21 @@
 #include "interface/Tool.h"
 #include "Profile.h"
 #include "Pocket.h"
+#include "ZigZag.h"
+#include "Waterline.h"
 #include "Drilling.h"
 #include "CTool.h"
 #include "Op.h"
 #include "CNCConfig.h"
+#include "CounterBore.h"
+#ifndef STABLE_OPS_ONLY
+#include "Fixture.h"
+#endif
 #include "SpeedOp.h"
 #include "Operations.h"
+#ifndef STABLE_OPS_ONLY
+#include "Fixtures.h"
+#endif
 #include "Tools.h"
 #include "interface/strconv.h"
 #include "MachineState.h"
@@ -41,16 +50,20 @@ using namespace std;
 wxString CProgram::alternative_machines_file = _T("");
 
 CProgram::CProgram():m_nc_code(NULL), m_operations(NULL), m_tools(NULL), m_speed_references(NULL)
+#ifndef STABLE_OPS_ONLY
+, m_fixtures(NULL)
+, m_active_machine_state(NULL)
+#endif
 , m_script_edited(false)
 {
 	CNCConfig config(ConfigScope());
 	wxString machine_file_name;
-	config.Read(_T("ProgramMachine"), &machine_file_name, _T("emc2b"));
+	config.Read(_T("ProgramMachine"), &machine_file_name, _T("iso"));
 	m_machine = CProgram::GetMachine(machine_file_name);
 
 	config.Read(_T("OutputFileNameFollowsDataFileName"), &m_output_file_name_follows_data_file_name, true);
 
-    wxStandardPaths standard_paths;
+    wxStandardPaths& standard_paths = wxStandardPaths::Get();
     wxFileName default_path( standard_paths.GetTempDir().c_str(), _T("test.tap"));
 
 	config.Read(_T("ProgramOutputFile"), &m_output_file, default_path.GetFullPath().c_str());
@@ -82,6 +95,9 @@ CProgram::CProgram( const CProgram & rhs ) : ObjList(rhs)
     m_operations = NULL;
     m_tools = NULL;
     m_speed_references = NULL;
+#ifndef STABLE_OPS_ONLY
+    m_fixtures = NULL;
+#endif
     m_script_edited = false;
 
     m_raw_material = rhs.m_raw_material;
@@ -105,6 +121,9 @@ CProgram::CProgram( const CProgram & rhs ) : ObjList(rhs)
     if ((m_operations != NULL) && (rhs.m_operations != NULL)) *m_operations = *(rhs.m_operations);
     if ((m_tools != NULL) && (rhs.m_tools != NULL)) *m_tools = *(rhs.m_tools);
     if ((m_speed_references != NULL) && (rhs.m_speed_references != NULL)) *m_speed_references = *(rhs.m_speed_references);
+ #ifndef STABLE_OPS_ONLY
+   if ((m_fixtures != NULL) && (rhs.m_fixtures != NULL)) *m_fixtures = *(rhs.m_fixtures);
+#endif
 }
 
 CProgram::~CProgram()
@@ -133,6 +152,9 @@ void CProgram::CopyFrom(const HeeksObj* object)
 		if ((m_operations != NULL) && (rhs->m_operations != NULL)) m_operations->CopyFrom( rhs->m_operations );
 		if ((m_tools != NULL) && (rhs->m_tools != NULL)) m_tools->CopyFrom( rhs->m_tools );
 		if ((m_speed_references != NULL) && (rhs->m_speed_references != NULL)) m_speed_references->CopyFrom(rhs->m_speed_references);
+#ifndef STABLE_OPS_ONLY
+		if ((m_fixtures != NULL) && (rhs->m_fixtures != NULL)) m_fixtures->CopyFrom(rhs->m_fixtures);
+#endif
 
 		m_raw_material = rhs->m_raw_material;
 		m_machine = rhs->m_machine;
@@ -161,6 +183,9 @@ CProgram & CProgram::operator= ( const CProgram & rhs )
 		if ((m_operations != NULL) && (rhs.m_operations != NULL)) *m_operations = *(rhs.m_operations);
 		if ((m_tools != NULL) && (rhs.m_tools != NULL)) *m_tools = *(rhs.m_tools);
 		if ((m_speed_references != NULL) && (rhs.m_speed_references != NULL)) *m_speed_references = *(rhs.m_speed_references);
+#ifndef STABLE_OPS_ONLY
+		if ((m_fixtures != NULL) && (rhs.m_fixtures != NULL)) *m_fixtures = *(rhs.m_fixtures);
+#endif
 
 		m_raw_material = rhs.m_raw_material;
 		m_machine = rhs.m_machine;
@@ -233,7 +258,7 @@ static void on_set_output_file(const wxChar* value, HeeksObj* object)
 
 static void on_set_units(int value, HeeksObj* object)
 {
-	((CProgram*)object)->m_units = ((value == 0) ? 1.0:25.4);
+	((CProgram*)object)->ChangeUnits((value == 0) ? 1.0:25.4);
 
 	CNCConfig config(CProgram::ConfigScope());
 	config.Write(_T("ProgramUnits"), ((CProgram*)object)->m_units);
@@ -433,6 +458,9 @@ bool CProgram::CanAdd(HeeksObj* object)
 		object->GetType() == OperationsType ||
 		object->GetType() == ToolsType ||
 		object->GetType() == SpeedReferencesType
+#ifndef STABLE_OPS_ONLY
+		|| object->GetType() == FixturesType
+#endif
 		;
 }
 
@@ -445,11 +473,15 @@ void CProgram::SetClickMarkPoint(MarkedObject* marked_object, const double* ray_
 {
 	if(marked_object->m_map.size() > 0)
 	{
-			HeeksObj* object = marked_object->m_map.begin()->first;
+		MarkedObject* sub_marked_object = marked_object->m_map.begin()->second;
+		if(sub_marked_object)
+		{
+			HeeksObj* object = sub_marked_object->m_map.begin()->first;
 			if(object && object->GetType() == NCCodeType)
 			{
-				((CNCCode*)object)->SetClickMarkPoint(marked_object, ray_start, ray_direction);
+				((CNCCode*)object)->SetClickMarkPoint(sub_marked_object, ray_start, ray_direction);
 			}
+		}
 	}
 }
 
@@ -494,6 +526,11 @@ bool CProgram::Add(HeeksObj* object, HeeksObj* prev_object)
 		m_speed_references = (CSpeedReferences*)object;
 		break;
 
+#ifndef STABLE_OPS_ONLY
+	case FixturesType:
+		m_fixtures = (CFixtures*)object;
+		break;
+#endif
 	}
 
 	return ObjList::Add(object, prev_object);
@@ -514,6 +551,9 @@ void CProgram::Remove(HeeksObj* object)
 	else if(object == m_operations)m_operations = NULL;
 	else if(object == m_tools)m_tools = NULL;
 	else if(object == m_speed_references)m_speed_references = NULL;
+#ifndef STABLE_OPS_ONLY
+	else if(object == m_fixtures)m_fixtures = NULL;
+#endif
 
 	ObjList::Remove(object);
 }
@@ -579,6 +619,10 @@ Python CProgram::RewritePythonProgram()
 	Python python;
 
 	theApp.m_program_canvas->m_textCtrl->Clear();
+#ifndef STABLE_OPS_ONLY
+	CZigZag::number_for_stl_file = 1;
+	CWaterline::number_for_stl_file = 1;
+#endif
 	CAttachOp::number_for_stl_file = 1;
 
 	// call any OnRewritePython functions from other plugins
@@ -589,12 +633,11 @@ Python CProgram::RewritePythonProgram()
 	}
 
 	bool kurve_funcs_needed = false;
-	bool area_module_needed = true;  // area module could be used anywhere
+	bool area_module_needed = false;
 	bool area_funcs_needed = false;
 	bool ocl_module_needed = false;
 	bool ocl_funcs_needed = false;
 	bool nc_attach_needed = false;
-	bool actp_funcs_needed = false;
 	bool turning_module_needed = false;
 
 	typedef std::vector< COp * > OperationsMap_t;
@@ -617,12 +660,13 @@ Python CProgram::RewritePythonProgram()
 			switch(object->GetType())
 			{
 			case ProfileType:
+				area_module_needed = true;
 				kurve_funcs_needed = true;
 				break;
 
 			case PocketType:
-			case RaftType:
 			case InlayType:
+				area_module_needed = true;
 				area_funcs_needed = true;
 				break;
 
@@ -636,11 +680,8 @@ Python CProgram::RewritePythonProgram()
 				ocl_funcs_needed = true;
 				break;
 
-			case AdaptiveType:
-				actp_funcs_needed = true;
-				break;
-
 			case TurnRoughType:
+				area_module_needed = true;
 				turning_module_needed = true;
 			}
 		}
@@ -768,25 +809,12 @@ Python CProgram::RewritePythonProgram()
 		python << _T("import ocl_funcs\n");
 	}
 
-	// actp
-	if(actp_funcs_needed)
-	{
-		python << _T("import actp_funcs\n");
-		python << _T("import actp\n");
-		python << _T("\n");
-	}
-
 	if(turning_module_needed)
 	{
 		python << _T("import turning\n");
 		python << _T("\n");
 	}
 
-	if(CTool::FindFirstByType(CToolParams::eDragKnife) != -1)
-	{
-		python << _T("import nc.drag_knife\n");
-		python << _T("\n");
-	}
 
 	// machine general stuff
 	python << _T("from nc.nc import *\n");
@@ -842,6 +870,7 @@ Python CProgram::RewritePythonProgram()
 	} // End if - then
 
 	// copied operations ( with same id ) were not being done, so I've removed fixtures completely for the Windows installation
+#ifdef STABLE_OPS_ONLY
 	// Write all the operations
     CMachineState machine;
 	for (OperationsMap_t::const_iterator l_itOperation = operations.begin(); l_itOperation != operations.end(); l_itOperation++)
@@ -857,7 +886,61 @@ Python CProgram::RewritePythonProgram()
 			}
 		}
 	} // End for - operation
+#else
+	// Write all the operations once for each fixture.
+	std::list<CFixture *> fixtures;
+	std::auto_ptr<CFixture> default_fixture = std::auto_ptr<CFixture>(new CFixture( NULL, CFixture::G54, false, 0.0 ) );
 
+    for (HeeksObj *publicFixture = theApp.m_program->Fixtures()->GetFirstChild(); publicFixture != NULL;
+        publicFixture = theApp.m_program->Fixtures()->GetNextChild())
+	{
+			fixtures.push_back( ((CFixture *) publicFixture) );
+	} // End for
+
+	if (fixtures.size() == 0)
+	{
+		// We need at least one fixture definition to generate any GCode.  Generate one
+		// that provides no rotation at all.
+
+		fixtures.push_back( default_fixture.get() );
+	} // End if - then
+
+    CMachineState machine;
+	for (std::list<CFixture *>::const_iterator l_itFixture = fixtures.begin(); l_itFixture != fixtures.end(); l_itFixture++)
+	{
+        // And then all the rest of the operations.
+		for (OperationsMap_t::const_iterator l_itOperation = operations.begin(); l_itOperation != operations.end(); l_itOperation++)
+		{
+			HeeksObj *object = (HeeksObj *) *l_itOperation;
+			if (object == NULL) continue;
+
+			if(COperations::IsAnOperation(object->GetType()))
+			{
+			    bool already_processed = false;
+			    std::list<CFixture> private_fixtures = ((COp *) object)->PrivateFixtures();
+			    for (std::list<CFixture>::iterator itFix = private_fixtures.begin();
+                        itFix != private_fixtures.end(); itFix++)
+                {
+                    if (machine.AlreadyProcessed(object->GetType(), object->m_id, *itFix)) already_processed = true;
+                }
+
+                if (private_fixtures.size() == 0)
+                {
+                    // Make sure the public fixture is in place.
+                    python << machine.Fixture(*(*l_itFixture));
+                }
+
+				if ((! already_processed) &&
+                    (((COp*)object)->m_active) &&
+                    (! machine.AlreadyProcessed(object->GetType(), object->m_id, *(*l_itFixture))))
+				{
+					python << ((COp*)object)->AppendTextToProgram( &machine );
+					machine.MarkAsProcessed(object->GetType(), object->m_id, machine.Fixture());
+				}
+			}
+		} // End for - operation
+	} // End for - fixture
+#endif
 	python << _T("program_end()\n");
 	m_python_program = python;
 	theApp.m_program_canvas->m_textCtrl->AppendText(python);
@@ -867,8 +950,7 @@ Python CProgram::RewritePythonProgram()
 		// length of the text control objects changes depending on the operating system (and its
 		// implementation of wxWidgets).  Rather than showing the truncated program, tell the
 		// user that it has been truncated and where to find it.
-
-		wxStandardPaths standard_paths;
+		wxStandardPaths& standard_paths = wxStandardPaths::Get();
 		wxFileName file_str( standard_paths.GetTempDir().c_str(), _T("post.py"));
 
 		theApp.m_program_canvas->m_textCtrl->Clear();
@@ -916,7 +998,7 @@ void CProgram::GetMachines(std::vector<CMachine> &machines)
 	#ifdef RUNINPLACE
 		if(machines_file.Len() == 0)machines_file = theApp.GetResFolder() + _T("/nc/machines.txt");
 	#else
-		if(machines_file.Len() == 0)machines_file = _T("/usr/lib/heekscnc/nc/machines.txt");
+		if(machines_file.Len() == 0)machines_file = _T("/usr/local/lib/heekscnc/nc/machines.txt");
 	#endif
 #else
 	if(machines_file.Len() == 0)machines_file = theApp.GetResFolder() + _T("/nc/machines.txt");
@@ -1041,8 +1123,8 @@ wxString CProgram::GetOutputFileName() const
 
 wxString CProgram::GetBackplotFilePath() const
 {
-	// The xml file is created in the temporary folder
-	wxStandardPaths standard_paths;
+	// The creation of a ".nc.xml" file, in the users own folder, is not good.
+	wxStandardPaths& standard_paths = wxStandardPaths::Get();
 	wxFileName file_str( standard_paths.GetTempDir().c_str(), _T("backplot.xml"));
 	return file_str.GetFullPath();
 }
@@ -1071,11 +1153,22 @@ CSpeedReferences *CProgram::SpeedReferences()
     return m_speed_references;
 }
 
+#ifndef STABLE_OPS_ONLY
+CFixtures *CProgram::Fixtures()
+{
+    if (m_fixtures == NULL) ReloadPointers();
+    return m_fixtures;
+}
+#endif
+
 void CProgram::ReloadPointers()
 {
     for (HeeksObj *child = GetFirstChild(); child != NULL; child = GetNextChild())
 	{
 	    if (child->GetType() == ToolsType) m_tools = (CTools *) child;
+#ifndef STABLE_OPS_ONLY
+	    if (child->GetType() == FixturesType) m_fixtures = (CFixtures *) child;
+#endif
 	    if (child->GetType() == OperationsType) m_operations = (COperations *) child;
 	    if (child->GetType() == SpeedReferencesType) m_speed_references = (CSpeedReferences *) child;
 	    if (child->GetType() == NCCodeType) m_nc_code = (CNCCode *) child;
@@ -1089,11 +1182,20 @@ void CProgram::AddMissingChildren()
 
 	// make sure tools, operations, fixtures, etc. exist
 	if(m_tools == NULL){m_tools = new CTools; Add( m_tools, NULL );}
+#ifndef STABLE_OPS_ONLY
+	if(m_fixtures == NULL){m_fixtures = new CFixtures; Add( m_fixtures, NULL );}
+#endif
 	if(m_operations == NULL){m_operations = new COperations; Add( m_operations, NULL );}
 	if(m_speed_references == NULL){m_speed_references = new CSpeedReferences; Add( m_speed_references, NULL );}
 	if(m_nc_code == NULL){m_nc_code = new CNCCode; Add( m_nc_code, NULL );}
 }
 
+void CProgram::ChangeUnits( const double units )
+{
+    m_units = units;
+    Tools()->OnChangeUnits(units);
+    Operations()->OnChangeUnits(units);
+}
 bool CProgram::operator==( const CProgram & rhs ) const
 {
 	if (m_raw_material != rhs.m_raw_material) return(false);
@@ -1119,5 +1221,6 @@ bool CMachine::operator==( const CMachine & rhs ) const
 
 	return(true);
 }
+
 
 

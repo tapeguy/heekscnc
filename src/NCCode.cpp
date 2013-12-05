@@ -156,7 +156,7 @@ bool PathArc::IsIncluded(gp_Pnt pnt,const PathObject* prev_po)
 		return true;
 
 	double the_angle = atan2(pnt.Y(),pnt.X());
-	double the_angle2 = the_angle + 2*M_PI;
+	double the_angle2 = the_angle + 2*PI;
 	return (the_angle >= start_angle && the_angle <= end_angle) || (the_angle2 >= start_angle && the_angle2 <= end_angle);
 }
 
@@ -275,7 +275,7 @@ std::list<gp_Pnt> PathArc::Interpolate( const PathObject *prev_po, const unsigne
 	if (start_angle == end_angle)
 	{
 		// It's a full circle.
-		angle_step = (2 * M_PI) / number_of_points;
+		angle_step = (2 * PI) / number_of_points;
 		if (m_dir == -1)
 		{
 			angle_step = -angle_step; // fix preview of full cw arcs
@@ -535,9 +535,9 @@ void CNCCodeBlock::AppendText(wxString& str)
 	str.append(_T("\n"));
 }
 
-void CNCCodeBlock::FormatText(wxTextCtrl *textCtrl, bool highlighted, bool force_format)
+void CNCCodeBlock::FormatText(wxTextCtrl *textCtrl)
 {
-	if (m_formatted && !force_format) return;
+	if (m_formatted) return;
 	int i = m_from_pos;
 	for(std::list<ColouredText>::iterator It = m_text.begin(); It != m_text.end(); It++)
 	{
@@ -549,8 +549,6 @@ void CNCCodeBlock::FormatText(wxTextCtrl *textCtrl, bool highlighted, bool force
 		wxFont font(10, wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_NORMAL, false, _T("Lucida Console"), wxFONTENCODING_SYSTEM);
 		wxTextAttr ta(c);
 		ta.SetFont(font);
-		if(highlighted)ta.SetBackgroundColour(wxColour(218, 242, 142));
-		else ta.SetBackgroundColour(wxColour(255, 255, 255));
 		textCtrl->SetStyle(i, i+len, ta);
 		i += len;
 	}
@@ -914,7 +912,7 @@ class ApplyNCCode: public Tool{
 			wxMessageBox(_T("Unexpected exception thrown during shape operations\n"));
 		}
 	}
-	wxString BitmapPath(){ return _T("setinactive");}
+	wxString BitmapPath(){ return theApp.GetResFolder() + _T("/bitmaps/setinactive.png"); }
 };
 
 static ApplyNCCode apply_nc_code;
@@ -970,7 +968,7 @@ void CNCCode::SetClickMarkPoint(MarkedObject* marked_object, const double* ray_s
 				HeeksObj* object = sub_marked_object->m_map.begin()->first;
 				if(object && object->GetType() == NCCodeBlockType)
 				{
-					SetHighlightedBlock((CNCCodeBlock*)object);
+					m_highlighted_block = (CNCCodeBlock*)object;
 					int from_pos = m_highlighted_block->m_from_pos;
 					int to_pos = m_highlighted_block->m_to_pos;
 					DestroyGLLists();
@@ -1047,7 +1045,7 @@ void CNCCode::SetTextCtrl(wxTextCtrl *textCtrl)
 	for(std::list<CNCCodeBlock*>::iterator It = m_blocks.begin(); It != m_blocks.end(); It++)
 	{
 		CNCCodeBlock* block = *It;
-		block->FormatText(textCtrl, block == m_highlighted_block, false);
+		block->FormatText(textCtrl);
 	}
 #endif
 
@@ -1061,21 +1059,21 @@ void CNCCode::FormatBlocks(wxTextCtrl *textCtrl, int i0, int i1)
 	{
 		CNCCodeBlock* block = *It;
 		if (i0 <= block->m_from_pos && block->m_from_pos <= i1)
-			block->FormatText(textCtrl, block == m_highlighted_block, false);
+			block->FormatText(textCtrl);
 	}
 	textCtrl->Thaw();
 }
 
 void CNCCode::HighlightBlock(long pos)
 {
-	SetHighlightedBlock(NULL);
+	m_highlighted_block = NULL;
 
 	for(std::list<CNCCodeBlock*>::iterator It = m_blocks.begin(); It != m_blocks.end(); It++)
 	{
 		CNCCodeBlock* block = *It;
 		if(pos < block->m_to_pos)
 		{
-			SetHighlightedBlock(block);
+			m_highlighted_block = block;
 			break;
 		}
 	}
@@ -1181,9 +1179,5 @@ std::list< std::pair<PathObject *, CTool *> > CNCCode::GetPaths() const
 	return(paths);
 } // End GetPaths() method
 
-void CNCCode::SetHighlightedBlock(CNCCodeBlock* block)
-{
-	if(m_highlighted_block)m_highlighted_block->FormatText(theApp.m_output_canvas->m_textCtrl, false, true);
-	m_highlighted_block = block;
-	if(m_highlighted_block)m_highlighted_block->FormatText(theApp.m_output_canvas->m_textCtrl, true, true);
-}
+
+

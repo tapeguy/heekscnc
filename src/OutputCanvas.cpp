@@ -71,12 +71,6 @@ COutputCanvas::COutputCanvas(wxWindow* parent)
                            wxHSCROLL | wxVSCROLL | wxNO_FULL_REPAINT_ON_RESIZE)
 {
 	m_textCtrl = new COutputTextCtrl( this, 100, _T(""),	wxPoint(180,170), wxSize(200,70), wxTE_MULTILINE | wxTE_DONTWRAP | wxTE_RICH | wxTE_RICH2);
-
-	// Ensure the wxTextCtrl object can accept the maximum 
-	// text length allowable for this operating system.
-	// (64kb on Win32) (32kb without this call on Win32)
-	m_textCtrl->SetMaxLength( 0 );	
-	Resize();
 }
 
 

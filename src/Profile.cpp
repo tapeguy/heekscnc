@@ -135,9 +135,7 @@ static void on_set_finish_step_down(double value, HeeksObj* object)
 
 void CProfileParams::GetProperties(CProfile* parent, std::list<Property *> *list)
 {
-	CToolParams::eToolType tool_type = CTool::FindToolType(parent->m_tool_number);
-
-	if(CTool::IsMillingToolType(tool_type)){
+	{
 		std::list< wxString > choices;
 
 		SketchOrderType order = SketchOrderTypeUnknown;
@@ -191,7 +189,7 @@ void CProfileParams::GetProperties(CProfile* parent, std::list<Property *> *list
 		list->push_back(new PropertyChoice(_("tool on side"), choices, choice, parent, on_set_tool_on_side));
 	}
 
-	if(CTool::IsMillingToolType(tool_type)){
+	{
 		std::list< wxString > choices;
 		choices.push_back(_("Conventional"));
 		choices.push_back(_("Climb"));
@@ -236,22 +234,19 @@ void CProfileParams::GetProperties(CProfile* parent, std::list<Property *> *list
     list->push_back(new PropertyLength(_("lead out line length"), m_lead_out_line_len, parent, on_set_lead_out_line_len));
 
 	list->push_back(new PropertyLength(_("offset_extra"), m_offset_extra, parent, on_set_offset_extra));
-	if(CTool::IsMillingToolType(tool_type))
+	list->push_back(new PropertyCheck(_("do finishing pass"), m_do_finishing_pass, parent, on_set_do_finishing_pass));
+	if(m_do_finishing_pass)
 	{
-		list->push_back(new PropertyCheck(_("do finishing pass"), m_do_finishing_pass, parent, on_set_do_finishing_pass));
-		if(m_do_finishing_pass)
-		{
-			list->push_back(new PropertyCheck(_("only finishing pass"), m_only_finishing_pass, parent, on_set_only_finishing_pass));
-			list->push_back(new PropertyLength(_("finishing feed rate"), m_finishing_h_feed_rate, parent, on_set_finishing_h_feed_rate));
+		list->push_back(new PropertyCheck(_("only finishing pass"), m_only_finishing_pass, parent, on_set_only_finishing_pass));
+		list->push_back(new PropertyLength(_("finishing feed rate"), m_finishing_h_feed_rate, parent, on_set_finishing_h_feed_rate));
 
-			{
-				std::list< wxString > choices;
-				choices.push_back(_("Conventional"));
-				choices.push_back(_("Climb"));
-				list->push_back(new PropertyChoice(_("finish cut mode"), choices, m_finishing_cut_mode, parent, on_set_finish_cut_mode));
-			}
-			list->push_back(new PropertyLength(_("finishing step down"), m_finishing_step_down, parent, on_set_finish_step_down));
+		{
+			std::list< wxString > choices;
+			choices.push_back(_("Conventional"));
+			choices.push_back(_("Climb"));
+			list->push_back(new PropertyChoice(_("finish cut mode"), choices, m_finishing_cut_mode, parent, on_set_finish_cut_mode));
 		}
+		list->push_back(new PropertyLength(_("finishing step down"), m_finishing_step_down, parent, on_set_finish_step_down));
 	}
 }
 
@@ -316,7 +311,7 @@ void CProfileParams::WriteXMLAttributes(TiXmlNode *root)
 void CProfileParams::ReadFromXMLElement(TiXmlElement* pElem)
 {
 	int int_for_bool;
-	int int_for_enum;
+	int int_for_enum;;
 
 	if(pElem->Attribute("side", &int_for_enum))m_tool_on_side = (eSide)int_for_enum;
 	if(pElem->Attribute("cut_mode", &int_for_enum))m_cut_mode = (eCutMode)int_for_enum;
@@ -482,7 +477,11 @@ Python CProfile::WriteSketchDefn(HeeksObj* sketch, CMachineState *pMachineState,
 				{
 					if(reversed)span_object->GetEndPoint(s);
 					else span_object->GetStartPoint(s);
+#ifdef STABLE_OPS_ONLY
 					CNCPoint start(s);
+#else
+					CNCPoint start(pMachineState->Fixture().Adjustment(s));
+#endif
 
 					python << _T("curve.append(area.Point(");
 					python << start.X(true);
@@ -493,7 +492,11 @@ Python CProfile::WriteSketchDefn(HeeksObj* sketch, CMachineState *pMachineState,
 				}
 				if(reversed)span_object->GetStartPoint(e);
 				else span_object->GetEndPoint(e);
+#ifdef STABLE_OPS_ONLY
 				CNCPoint end(e);
+#else
+				CNCPoint end(pMachineState->Fixture().Adjustment( e ));
+#endif
 
 				if(type == LineType)
 				{
@@ -506,7 +509,11 @@ Python CProfile::WriteSketchDefn(HeeksObj* sketch, CMachineState *pMachineState,
 				else if(type == ArcType)
 				{
 					span_object->GetCentrePoint(c);
+#ifdef STABLE_OPS_ONLY
 					CNCPoint centre(c);
+#else
+					CNCPoint centre(pMachineState->Fixture().Adjustment(c));
+#endif
 
 					double pos[3];
 					heeksCAD->GetArcAxis(span_object, pos);
@@ -551,11 +558,18 @@ Python CProfile::WriteSketchDefn(HeeksObj* sketch, CMachineState *pMachineState,
 						points.push_back( std::make_pair(-1, gp_Pnt( c[0], c[1] + radius, c[2] )) ); // north
 					}
 
+#ifndef STABLE_OPS_ONLY
+					pMachineState->Fixture().Adjustment(c);
+#endif
 					CNCPoint centre(c);
 
 					for (std::list< std::pair<int, gp_Pnt > >::iterator l_itPoint = points.begin(); l_itPoint != points.end(); l_itPoint++)
 					{
+#ifdef STABLE_OPS_ONLY
 						CNCPoint pnt( l_itPoint->second );
+#else
+						CNCPoint pnt = pMachineState->Fixture().Adjustment( l_itPoint->second );
+#endif
 
 						python << (_T("curve.append(area.Vertex("));
 						python << l_itPoint->first << _T(", area.Point(");
@@ -599,6 +613,10 @@ Python CProfile::WriteSketchDefn(HeeksObj* sketch, CMachineState *pMachineState,
 					m_profile_params.m_start[1] / theApp.m_program->m_units,
 					0.0 );
 
+#ifndef STABLE_OPS_ONLY
+			starting = pMachineState->Fixture().Adjustment( starting );
+#endif
+
 			startx = starting.X();
 			starty = starting.Y();
 
@@ -622,6 +640,10 @@ Python CProfile::WriteSketchDefn(HeeksObj* sketch, CMachineState *pMachineState,
 			gp_Pnt finish(m_profile_params.m_end[0] / theApp.m_program->m_units,
 					m_profile_params.m_end[1] / theApp.m_program->m_units,
 					0.0 );
+
+#ifndef STABLE_OPS_ONLY
+			finish = pMachineState->Fixture().Adjustment( finish );
+#endif
 
 			finishx = finish.X();
 			finishy = finish.Y();
@@ -734,7 +756,7 @@ Python CProfile::AppendTextForOneSketch(HeeksObj* object, CMachineState *pMachin
 		{
 			if(!tags_cleared)python << _T("kurve_funcs.clear_tags()\n");
 			tags_cleared = true;
-			python << _T("kurve_funcs.add_tag(area.Point(") << tag->m_pos[0] / theApp.m_program->m_units << _T(", ") << tag->m_pos[1] / theApp.m_program->m_units << _T("), ") << tag->m_width / theApp.m_program->m_units << _T(", ") << tag->m_angle * M_PI/180 << _T(", ") << tag->m_height / theApp.m_program->m_units << _T(")\n");
+			python << _T("kurve_funcs.add_tag(area.Point(") << tag->m_pos[0] / theApp.m_program->m_units << _T(", ") << tag->m_pos[1] / theApp.m_program->m_units << _T("), ") << tag->m_width / theApp.m_program->m_units << _T(", ") << tag->m_angle * PI/180 << _T(", ") << tag->m_height / theApp.m_program->m_units << _T(")\n");
 		}
         //extend_at_start, extend_at_end
         python << _T("extend_at_start= ") << m_profile_params.m_extend_at_start / theApp.m_program->m_units << _T("\n");
@@ -808,12 +830,6 @@ Python CProfile::AppendTextToProgram(CMachineState *pMachineState)
 {
 	Python python;
 
-	// only do finish pass for non milling cutters
-	if(!CTool::IsMillingToolType(CTool::FindToolType(m_tool_number)))
-	{
-		this->m_profile_params.m_only_finishing_pass = true;
-	}
-
 	// roughing pass
 	if(!this->m_profile_params.m_do_finishing_pass || !this->m_profile_params.m_only_finishing_pass)
 	{
@@ -840,18 +856,6 @@ Python CProfile::AppendTextToProgram(CMachineState *pMachineState, bool finishin
 		return(python);
 	} // End if - then
 
-	if(!finishing_pass || m_profile_params.m_only_finishing_pass)
-	{
-		python << CDepthOp::AppendTextToProgram(pMachineState);
-
-		if(m_profile_params.m_auto_roll_on || m_profile_params.m_auto_roll_off)
-		{
-			python << _T("roll_radius = float(");
-			python << m_profile_params.m_auto_roll_radius / theApp.m_program->m_units;
-			python << _T(")\n");
-		}
-	}
-
 	if(finishing_pass)
 	{
 		python << _T("feedrate_hv(") << m_profile_params.m_finishing_h_feed_rate / theApp.m_program->m_units << _T(", ");
@@ -862,6 +866,15 @@ Python CProfile::AppendTextToProgram(CMachineState *pMachineState, bool finishin
 	}
 	else
 	{
+		python << CDepthOp::AppendTextToProgram(pMachineState);
+
+		if(m_profile_params.m_auto_roll_on || m_profile_params.m_auto_roll_off)
+		{
+			python << _T("roll_radius = float(");
+			python << m_profile_params.m_auto_roll_radius / theApp.m_program->m_units;
+			python << _T(")\n");
+		}
+
 		python << _T("offset_extra = ") << m_profile_params.m_offset_extra / theApp.m_program->m_units << _T("\n");
 	}
 
@@ -985,7 +998,7 @@ class PickStart: public Tool{
 	// Tool's virtual functions
 	const wxChar* GetTitle(){return _("Pick Start");}
 	void Run(){if(heeksCAD->PickPosition(_("Pick new start point"), object_for_tools->m_profile_params.m_start))object_for_tools->m_profile_params.m_start_given = true; heeksCAD->RefreshProperties();}
-	wxString BitmapPath(){ return _T("pickstart");}
+	wxString BitmapPath(){ return theApp.GetResFolder() + _T("/bitmaps/pickstart.png"); }
 };
 
 static PickStart pick_start;
@@ -994,7 +1007,7 @@ class PickEnd: public Tool{
 	// Tool's virtual functions
 	const wxChar* GetTitle(){return _("Pick End");}
 	void Run(){if(heeksCAD->PickPosition(_("Pick new end point"), object_for_tools->m_profile_params.m_end))object_for_tools->m_profile_params.m_end_given = true; heeksCAD->RefreshProperties();}
-	wxString BitmapPath(){ return _T("pickend");}
+	wxString BitmapPath(){ return theApp.GetResFolder() + _T("/bitmaps/pickend.png"); }
 };
 
 static PickEnd pick_end;
@@ -1003,7 +1016,7 @@ class PickRollOn: public Tool{
 	// Tool's virtual functions
 	const wxChar* GetTitle(){return _("Pick roll on point");}
 	void Run(){if(heeksCAD->PickPosition(_("Pick roll on point"), object_for_tools->m_profile_params.m_roll_on_point))object_for_tools->m_profile_params.m_auto_roll_on = false;}
-	wxString BitmapPath(){ return _T("rollon");}
+	wxString BitmapPath(){ return theApp.GetResFolder() + _T("/bitmaps/rollon.png"); }
 };
 
 static PickRollOn pick_roll_on;
@@ -1012,7 +1025,7 @@ class PickRollOff: public Tool{
 	// Tool's virtual functions
 	const wxChar* GetTitle(){return _("Pick roll off point");}
 	void Run(){if(heeksCAD->PickPosition(_("Pick roll off point"), object_for_tools->m_profile_params.m_roll_off_point))object_for_tools->m_profile_params.m_auto_roll_off = false;}
-	wxString BitmapPath(){ return _T("rolloff");}
+	wxString BitmapPath(){ return theApp.GetResFolder() + _T("/bitmaps/rolloff.png"); }
 };
 
 static PickRollOff pick_roll_off;
@@ -1029,17 +1042,13 @@ public:
 	{
 		heeksCAD->CreateUndoPoint();
 		CTag* new_object = new CTag();
-	       	CTags* temp = object_for_tools->Tags();
-		temp->Add(new_object, NULL);
+		object_for_tools->Tags()->Add(new_object, NULL);
 		heeksCAD->Changed();
 		heeksCAD->ClearMarkedList();
 		heeksCAD->Mark(new_object);
-
-		// go straight into tag position picking
-		CTag::PickPosition(new_object);
 	}
 	bool CallChangedOnRun(){return false;}
-	wxString BitmapPath(){ return _T("addtag");}
+	wxString BitmapPath(){ return theApp.GetResFolder() + _T("/bitmaps/addtag.png"); }
 };
 
 static AddTagTool add_tag_tool;

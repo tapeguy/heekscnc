@@ -13,7 +13,6 @@ enum{
 	ProfileType,
 	PocketType,
 	ZigZagType,
-	AdaptiveType,
 	DrillingType,
 	ToolType,
 	ToolsType,
@@ -39,7 +38,10 @@ enum{
 	AttachOpType,
 	UnattachOpType,
 	WaterlineType,
-	RaftType,
 	TappingType,
 	HeeksCNCMaximumType
 };
+
+#ifndef PI
+#define PI 3.14159265358979323846
+#endif

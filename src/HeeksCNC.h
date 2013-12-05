@@ -25,7 +25,7 @@ public:
 	CProgramCanvas* m_program_canvas;
 	COutputCanvas* m_output_canvas;
 	bool m_run_program_on_new_line;
-	wxToolBarBase* m_machiningBar;
+	wxAuiToolBar* m_machiningBar;
 	wxMenu *m_menuMachining;
 	bool m_machining_hidden;
 	wxString m_dll_path;
@@ -46,6 +46,7 @@ public:
 	void OnFrameDelete();
 	wxString GetDllFolder();
 	wxString GetResFolder();
+	wxString GetBitmapPath(const wxString& name);
 	void RunPythonScript();
 
 	typedef int SymbolType_t;

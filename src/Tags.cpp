@@ -54,7 +54,7 @@ public:
       }
 	}
 	bool CallChangedOnRun(){return false;}
-	wxString BitmapPath(){ return _T("addtag");}
+	wxString BitmapPath(){ return theApp.GetResFolder() + _T("/bitmaps/addtag.png"); }
 };
 
 static AddTagTool add_tag_tool;

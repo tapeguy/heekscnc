@@ -11,7 +11,7 @@ set( BUILD_STARTED_IN_RIGHT_DIR "true" )  #used in src/CMakeLists.txt to print a
 
 add_definitions ( -Wall -DOP_SKETCHES_AS_CHILDREN  )
 
-find_package( wxWidgets REQUIRED COMPONENTS base core gl )
+find_package( wxWidgets REQUIRED COMPONENTS base core gl aui )
 find_package( PythonInterp REQUIRED )
 
 #find OCE or OpenCASCADE
@@ -31,12 +31,20 @@ else() #look for OpenCASCADE
   find_package ( OpenCASCADE REQUIRED COMPONENTS ${CASCADE_LIBS} )
 endif()
 
-include(${wxWidgets_USE_FILE})
+if( APPLE )
+  # Apple includes two different openGL implementations, for Carbon and X11.  We want X11
+  set( OSX_INCLUDE_DIRS /usr/X11R6/include )
+  set( OSX_LIBS -L/usr/X11R6/lib -lGL -lX11 -lGLU -lglut )
+endif( APPLE )
+
+INCLUDE(${wxWidgets_USE_FILE})
 include_directories (
-	${CMAKE_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR}
-	${wxWidgets_INCLUDE_DIRS}
-	${OpenCASCADE_INCLUDE_DIR}
-	)
+        ${CMAKE_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR}
+        ${wxWidgets_INCLUDE_DIRS} ${OpenCASCADE_INCLUDE_DIR}
+        ${OSX_INCLUDE_DIRS}
+        )
+
+find_path( HeeksCadDir interface/HeeksObj.h ~/HeeksCAD .. c:/heekscad )
 
 file( GLOB hcnc_py "${CMAKE_CURRENT_SOURCE_DIR}/*.py" "${CMAKE_CURRENT_SOURCE_DIR}/pycnc/*.py")
 list( REMOVE_ITEM hcnc_py

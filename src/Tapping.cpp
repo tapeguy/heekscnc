@@ -18,6 +18,7 @@
 #include "Operations.h"
 #include "CTool.h"
 #include "Profile.h"
+#include "Fixture.h"
 #include "CNCPoint.h"
 #include "MachineState.h"
 #include "Program.h"
@@ -166,11 +167,11 @@ Python CTapping::AppendTextToProgram( CMachineState *pMachineState )
 
 	if (m_tool_number > 0)
 	  {
-            CTool *Tool = (CTool *) CTool::Find( m_tool_number );
+	    HeeksObj* Tool = heeksCAD->GetIDObject( ToolType, m_tool_number );
 	    if (Tool != NULL)
 	      {
-		pitch = Tool->m_params.m_pitch;
-		direction = Tool->m_params.m_direction;
+		pitch = ((CTool *) Tool)->m_params.m_pitch;
+		direction = ((CTool *) Tool)->m_params.m_direction;
 	      } // End if - then
 	  } // End if - then
 
@@ -179,7 +180,11 @@ Python CTapping::AppendTextToProgram( CMachineState *pMachineState )
 	std::vector<CNCPoint> locations = CDrilling::FindAllLocations(this, pMachineState->Location(), m_params.m_sort_tapping_locations != 0, NULL);
 	for (std::vector<CNCPoint>::const_iterator l_itLocation = locations.begin(); l_itLocation != locations.end(); l_itLocation++)
 	{
+#ifdef STABLE_OPS_ONLY
 		gp_Pnt point( *l_itLocation );
+#else
+		gp_Pnt point = pMachineState->Fixture().Adjustment( *l_itLocation );
+#endif
 
 		python << _T("tap(")
 		       << _T("x=") << point.X()/theApp.m_program->m_units << _T(", ")
@@ -320,10 +325,10 @@ void CTapping::glCommands(bool select, bool marked, bool no_color)
 
 		if (m_tool_number > 0)
 		{
-			CTool *Tool = (CTool *) CTool::Find( m_tool_number );
+			HeeksObj* Tool = heeksCAD->GetIDObject( ToolType, m_tool_number );
 			if (Tool != NULL)
 			{
-				l_dHoleDiameter = Tool->m_params.m_diameter;
+                		l_dHoleDiameter = ((CTool *) Tool)->m_params.m_diameter;
 			} // End if - then
 		} // End if - then
 

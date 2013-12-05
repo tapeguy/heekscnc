@@ -28,23 +28,36 @@
 #include "NCCode.h"
 #include "Profile.h"
 #include "Pocket.h"
+#include "ZigZag.h"
+#include "Waterline.h"
 #include "Drilling.h"
 #include "Tapping.h"
 #include "Positioning.h"
 #include "CTool.h"
+#include "CounterBore.h"
+#ifndef STABLE_OPS_ONLY
+#include "TurnRough.h"
+#endif
+#include "Fixture.h"
 #include "SpeedReference.h"
 #include "CuttingRate.h"
 #include "Operations.h"
+#include "Fixtures.h"
 #include "Tools.h"
 #include "interface/strconv.h"
 #include "CNCPoint.h"
+#include "BOM.h"
 #include "Probing.h"
 #include "Excellon.h"
+#include "Chamfer.h"
+#include "Contour.h"
+#ifndef STABLE_OPS_ONLY
+#include "Inlay.h"
+#endif
 #include "Tags.h"
 #include "Tag.h"
 #include "ScriptOp.h"
 #include "AttachOp.h"
-#include "Simulate.h"
 
 #include <sstream>
 
@@ -52,6 +65,9 @@ CHeeksCADInterface* heeksCAD = NULL;
 
 CHeeksCNCApp theApp;
 
+#ifndef STABLE_OPS_ONLY
+extern void ImportFixturesFile( const wxChar *file_path );
+#endif
 extern void ImportToolsFile( const wxChar *file_path );
 extern void ImportSpeedReferencesFile( const wxChar *file_path );
 
@@ -145,7 +161,7 @@ static bool GetSketches(std::list<int>& sketches, std::list<int> &tools )
 	for(std::list<HeeksObj*>::const_iterator It = list.begin(); It != list.end(); It++)
 	{
 		HeeksObj* object = *It;
-		if(object->GetIDGroupType() == SketchType)
+		if(object->GetType() == SketchType)
 		{
 			sketches.push_back(object->m_id);
 		} // End if - then
@@ -247,6 +263,82 @@ static void NewPocketOpMenuCallback(wxCommandEvent &event)
 			delete new_object;
 	}
 }
+
+#ifndef STABLE_OPS_ONLY
+
+static void NewZigZagOpMenuCallback(wxCommandEvent &event)
+{
+	// check for at least one solid selected
+	std::list<int> solids;
+
+	const std::list<HeeksObj*>& list = heeksCAD->GetMarkedList();
+	for(std::list<HeeksObj*>::const_iterator It = list.begin(); It != list.end(); It++)
+	{
+		HeeksObj* object = *It;
+		if(object->GetType() == SolidType || object->GetType() == StlSolidType)solids.push_back(object->m_id);
+	}
+
+	// if no selected solids,
+	if(solids.size() == 0)
+	{
+		// use all the solids in the drawing
+		for(HeeksObj* object = heeksCAD->GetFirstObject();object; object = heeksCAD->GetNextObject())
+		{
+			if(object->GetType() == SolidType || object->GetType() == StlSolidType)solids.push_back(object->m_id);
+		}
+	}
+
+	if(solids.size() == 0)
+	{
+		wxMessageBox(_("There are no solids!"));
+		return;
+	}
+
+	heeksCAD->CreateUndoPoint();
+	CZigZag *new_object = new CZigZag(solids);
+	theApp.m_program->Operations()->Add(new_object, NULL);
+	heeksCAD->ClearMarkedList();
+	heeksCAD->Mark(new_object);
+	heeksCAD->Changed();
+}
+
+static void NewWaterlineOpMenuCallback(wxCommandEvent &event)
+{
+	// check for at least one solid selected
+	std::list<int> solids;
+
+	const std::list<HeeksObj*>& list = heeksCAD->GetMarkedList();
+	for(std::list<HeeksObj*>::const_iterator It = list.begin(); It != list.end(); It++)
+	{
+		HeeksObj* object = *It;
+		if(object->GetType() == SolidType || object->GetType() == StlSolidType)solids.push_back(object->m_id);
+	}
+
+	// if no selected solids,
+	if(solids.size() == 0)
+	{
+		// use all the solids in the drawing
+		for(HeeksObj* object = heeksCAD->GetFirstObject();object; object = heeksCAD->GetNextObject())
+		{
+			if(object->GetType() == SolidType || object->GetType() == StlSolidType)solids.push_back(object->m_id);
+		}
+	}
+
+	if(solids.size() == 0)
+	{
+		wxMessageBox(_("There are no solids!"));
+		return;
+	}
+
+	heeksCAD->CreateUndoPoint();
+	CWaterline *new_object = new CWaterline(solids);
+	theApp.m_program->Operations()->Add(new_object, NULL);
+	heeksCAD->ClearMarkedList();
+	heeksCAD->Mark(new_object);
+	heeksCAD->Changed();
+}
+#endif
+
 
 static void NewDrillingOpMenuCallback(wxCommandEvent &event)
 {
@@ -372,6 +464,43 @@ static void NewTappingOpMenuCallback(wxCommandEvent &event)
 	heeksCAD->Changed();
 }
 
+#ifndef STABLE_OPS_ONLY
+static void NewChamferOpMenuCallback(wxCommandEvent &event)
+{
+	CDrilling::Symbols_t symbols;
+	CDrilling::Symbols_t Tools;
+	int tool_number = 0;
+
+	const std::list<HeeksObj*>& list = heeksCAD->GetMarkedList();
+	for(std::list<HeeksObj*>::const_iterator It = list.begin(); It != list.end(); It++)
+	{
+		HeeksObj* object = *It;
+		if (object->GetType() == ToolType)
+		{
+			Tools.push_back( CDrilling::Symbol_t( object->GetType(), object->m_id ) );
+			tool_number = ((CTool *)object)->m_tool_number;
+		} // End if - then
+		else
+		{
+			symbols.push_back( CChamfer::Symbol_t( object->GetType(), object->m_id ) );
+		} // End if - else
+	} // End for
+
+	if(Tools.size() > 1)
+	{
+		wxMessageBox(_("You may only select a single tool for each chamfer operation.!"));
+		return;
+	}
+
+	heeksCAD->CreateUndoPoint();
+	CChamfer *new_object = new CChamfer( symbols, tool_number );
+	theApp.m_program->Operations()->Add(new_object, NULL);
+	heeksCAD->ClearMarkedList();
+	heeksCAD->Mark(new_object);
+	heeksCAD->Changed();
+}
+#endif
+
 static void NewAttachOpMenuCallback(wxCommandEvent &event)
 {
 	// check for at least one solid selected
@@ -381,7 +510,7 @@ static void NewAttachOpMenuCallback(wxCommandEvent &event)
 	for(std::list<HeeksObj*>::const_iterator It = list.begin(); It != list.end(); It++)
 	{
 		HeeksObj* object = *It;
-		if(object->GetIDGroupType() == SolidType)solids.push_back(object->m_id);
+		if(object->GetType() == SolidType || object->GetType() == StlSolidType)solids.push_back(object->m_id);
 	}
 
 	// if no selected solids,
@@ -390,7 +519,7 @@ static void NewAttachOpMenuCallback(wxCommandEvent &event)
 		// use all the solids in the drawing
 		for(HeeksObj* object = heeksCAD->GetFirstObject();object; object = heeksCAD->GetNextObject())
 		{
-			if(object->GetIDGroupType() == SolidType)solids.push_back(object->m_id);
+			if(object->GetType() == SolidType || object->GetType() == StlSolidType)solids.push_back(object->m_id);
 		}
 	}
 
@@ -532,6 +661,28 @@ static void NewProbe_Edge_MenuCallback(wxCommandEvent &event)
 	heeksCAD->Changed();
 }
 
+#ifndef STABLE_OPS_ONLY
+
+static void NewFixtureMenuCallback(wxCommandEvent &event)
+{
+	if (theApp.m_program->Fixtures()->GetNextFixture() > 0)
+	{
+		CFixture::eCoordinateSystemNumber_t coordinate_system_number = CFixture::eCoordinateSystemNumber_t(theApp.m_program->Fixtures()->GetNextFixture());
+
+		heeksCAD->CreateUndoPoint();
+		CFixture *new_object = new CFixture( NULL, coordinate_system_number, theApp.m_program->m_machine.m_safety_height_defined, theApp.m_program->m_machine.m_safety_height );
+		theApp.m_program->Fixtures()->Add(new_object, NULL);
+		heeksCAD->ClearMarkedList();
+		heeksCAD->Mark(new_object);
+		heeksCAD->Changed();
+	} // End if - then
+	else
+	{
+		wxMessageBox(_T("There are no more coordinate systems available"));
+	} // End if - else
+}
+#endif
+
 static void DesignRulesAdjustment(const bool apply_changes)
 {
 	std::list<wxString> changes;
@@ -574,6 +725,128 @@ static void DesignRulesCheckMenuCallback(wxCommandEvent &event)
 	DesignRulesAdjustment(false);
 } // End DesignRulesCheckMenuCallback() routine
 
+#ifndef STABLE_OPS_ONLY
+static void NewCounterBoreOpMenuCallback(wxCommandEvent &event)
+{
+	std::vector<CNCPoint> intersections;
+	CCounterBore::Symbols_t symbols;
+	CCounterBore::Symbols_t Tools;
+	int tool_number = 0;
+
+	const std::list<HeeksObj*>& list = heeksCAD->GetMarkedList();
+	for(std::list<HeeksObj*>::const_iterator It = list.begin(); It != list.end(); It++)
+	{
+		HeeksObj* object = *It;
+		if (object->GetType() == ToolType)
+		{
+			Tools.push_back( CCounterBore::Symbol_t( object->GetType(), object->m_id ) );
+			tool_number = ((CTool *)object)->m_tool_number;
+		} // End if - then
+		else
+		{
+		    if (CCounterBore::ValidType( object->GetType() ))
+		    {
+                symbols.push_back( CCounterBore::Symbol_t( object->GetType(), object->m_id ) );
+		    }
+		} // End if - else
+	} // End for
+
+	CCounterBore::Symbols_t ToolsThatMatchCircles;
+	CCounterBore counterbore( symbols, -1 );
+	intersections = CDrilling::FindAllLocations( &counterbore );
+
+	if ((Tools.size() == 0) && (ToolsThatMatchCircles.size() > 0))
+	{
+		// The operator didn't point to a tool object and one of the circles that they
+		// did point to happenned to match the diameter of an existing tool.  Use that
+		// one as our default.  The operator can always overwrite it later on.
+
+		std::copy( ToolsThatMatchCircles.begin(), ToolsThatMatchCircles.end(),
+				std::inserter( Tools, Tools.begin() ));
+	} // End if - then
+
+	if (intersections.size() == 0)
+	{
+		wxMessageBox(_("You must select some points, circles or other intersecting elements first!"));
+		return;
+	}
+
+	if(Tools.size() > 1)
+	{
+		wxMessageBox(_("You may only select a single tool for each drilling operation.!"));
+		return;
+	}
+
+	heeksCAD->CreateUndoPoint();
+	CCounterBore *new_object = new CCounterBore( symbols, tool_number );
+	theApp.m_program->Operations()->Add(new_object, NULL);
+	heeksCAD->ClearMarkedList();
+	heeksCAD->Mark(new_object);
+	heeksCAD->Changed();
+}
+
+static void NewContourOpMenuCallback(wxCommandEvent &event)
+{
+	CContour::Symbols_t symbols;
+	CContour::Symbols_t Tools;
+	int tool_number = 0;
+
+	const std::list<HeeksObj*>& list = heeksCAD->GetMarkedList();
+	for(std::list<HeeksObj*>::const_iterator It = list.begin(); It != list.end(); It++)
+	{
+		HeeksObj* object = *It;
+		if (object == NULL) continue;
+
+		if (object->GetType() == ToolType)
+		{
+			Tools.push_back( CContour::Symbol_t( object->GetType(), object->m_id ) );
+			tool_number = ((CTool *)object)->m_tool_number;
+		} // End if - then
+		else
+		{
+		    symbols.push_back( CContour::Symbol_t( object->GetType(), object->m_id ) );
+		} // End if - else
+	} // End for
+
+	heeksCAD->CreateUndoPoint();
+	CContour *new_object = new CContour( symbols, tool_number );
+	theApp.m_program->Operations()->Add(new_object, NULL);
+	heeksCAD->ClearMarkedList();
+	heeksCAD->Mark(new_object);
+	heeksCAD->Changed();
+}
+
+static void NewInlayOpMenuCallback(wxCommandEvent &event)
+{
+	CInlay::Symbols_t symbols;
+	CInlay::Symbols_t Tools;
+	int tool_number = 0;
+
+	const std::list<HeeksObj*>& list = heeksCAD->GetMarkedList();
+	for(std::list<HeeksObj*>::const_iterator It = list.begin(); It != list.end(); It++)
+	{
+		HeeksObj* object = *It;
+		if (object->GetType() == ToolType)
+		{
+			Tools.push_back( CInlay::Symbol_t( object->GetType(), object->m_id ) );
+			tool_number = ((CTool *)object)->m_tool_number;
+		} // End if - then
+		else
+		{
+		    symbols.push_back( CInlay::Symbol_t( object->GetType(), object->m_id ) );
+		} // End if - else
+	} // End for
+
+	heeksCAD->CreateUndoPoint();
+	CInlay *new_object = new CInlay( symbols, tool_number );
+	theApp.m_program->Operations()->Add(new_object, NULL);
+	heeksCAD->ClearMarkedList();
+	heeksCAD->Mark(new_object);
+	heeksCAD->Changed();
+}
+
+#endif
+
 static void NewSpeedReferenceMenuCallback(wxCommandEvent &event)
 {
 	heeksCAD->CreateUndoPoint();
@@ -593,6 +866,25 @@ static void NewCuttingRateMenuCallback(wxCommandEvent &event)
 	heeksCAD->Mark(new_object);
 	heeksCAD->Changed();
 }
+
+#ifndef STABLE_OPS_ONLY
+
+static void NewRoughTurnOpMenuCallback(wxCommandEvent &event)
+{
+	std::list<int> tools;
+	std::list<int> sketches;
+	if(GetSketches(sketches, tools))
+	{
+		heeksCAD->CreateUndoPoint();
+		CTurnRough *new_object = new CTurnRough(sketches, (tools.size()>0)?(*tools.begin()):-1 );
+		theApp.m_program->Operations()->Add(new_object, NULL);
+		heeksCAD->ClearMarkedList();
+		heeksCAD->Mark(new_object);
+		heeksCAD->Changed();
+	}
+}
+
+#endif
 
 static void NewScriptOpMenuCallback(wxCommandEvent &event)
 {
@@ -757,6 +1049,13 @@ static void NewChamferMenuCallback(wxCommandEvent &event)
 	AddNewTool(CToolParams::eChamfer);
 }
 
+#ifndef STABLE_OPS_ONLY
+static void NewTurningToolMenuCallback(wxCommandEvent &event)
+{
+	AddNewTool(CToolParams::eTurningTool);
+}
+#endif
+
 static void NewTouchProbeMenuCallback(wxCommandEvent &event)
 {
 	AddNewTool(CToolParams::eTouchProbe);
@@ -767,10 +1066,12 @@ static void NewToolLengthSwitchMenuCallback(wxCommandEvent &event)
 	AddNewTool(CToolParams::eToolLengthSwitch);
 }
 
-static void NewDragKnifeMenuCallback(wxCommandEvent &event)
+#ifndef STABLE_OPS_ONLY
+static void NewExtrusionMenuCallback(wxCommandEvent &event)
 {
-	AddNewTool(CToolParams::eDragKnife);
+	AddNewTool(CToolParams::eExtrusion);
 }
+#endif
 
 static void MakeScriptMenuCallback(wxCommandEvent &event)
 {
@@ -783,6 +1084,12 @@ void CHeeksCNCApp::RunPythonScript()
 	{
 		// clear the output file
 		wxFile f(m_program->GetOutputFileName().c_str(), wxFile::write);
+		if(f.IsOpened())f.Write(_T("\n"));
+	}
+	{
+		// clear the backplot file
+		wxString backplot_path = m_program->GetOutputFileName() + _T(".nc.xml");
+		wxFile f(backplot_path.c_str(), wxFile::write);
 		if(f.IsOpened())f.Write(_T("\n"));
 	}
 
@@ -824,13 +1131,6 @@ static void CancelMenuCallback(wxCommandEvent &event)
 	HeeksPyCancel();
 }
 
-#ifdef WIN32
-static void SimulateCallback(wxCommandEvent &event)
-{
-	RunVoxelcutSimulation();
-}
-#endif
-
 static void OpenNcFileMenuCallback(wxCommandEvent& event)
 {
 	wxString ext_str(_T("*.*")); // to do, use the machine's NC extension
@@ -853,16 +1153,36 @@ static void SendToMachineMenuCallback(wxCommandEvent& event)
 	HeeksSendToMachine(theApp.m_output_canvas->m_textCtrl->GetValue());
 }
 
+
+static void OpenBOMFileMenuCallback(wxCommandEvent& event)
+{
+	wxString ext_str(_T("*.*")); // to do, use the machine's NC extension
+	wxString wildcard_string = wxString(_("BOM files")) + _T(" |") + ext_str;
+    wxFileDialog dialog(theApp.m_output_canvas, _("Open BOM file"), wxEmptyString, wxEmptyString, wildcard_string);
+    dialog.CentreOnParent();
+
+    if (dialog.ShowModal() == wxID_OK)
+    {
+#ifdef MULTIPLE_OWNERS
+		theApp.m_program->Owner()->Add(new CBOM(dialog.GetPath()),NULL);
+#else
+		theApp.m_program->m_owner->Add(new CBOM(dialog.GetPath()),NULL);
+#endif
+	}
+}
+
+
 static void SaveNcFileMenuCallback(wxCommandEvent& event)
-{   wxStandardPaths sp;
-    wxString user_docs =sp.GetDocumentsDir();
+{
+    wxStandardPaths& sp = wxStandardPaths::Get();
+    wxString user_docs = sp.GetDocumentsDir();
     wxString ncdir;
     //ncdir =  user_docs + _T("/nc");
     ncdir =  user_docs; //I was getting tired of having to start out at the root directory in linux
 	wxString ext_str(_T("*.*")); // to do, use the machine's NC extension
 	wxString wildcard_string = wxString(_("NC files")) + _T(" |") + ext_str;
     wxString defaultDir = ncdir;
-	wxFileDialog fd(theApp.m_output_canvas, _("Save NC file"), defaultDir, wxEmptyString, wildcard_string, wxSAVE|wxOVERWRITE_PROMPT);
+	wxFileDialog fd(theApp.m_output_canvas, _("Save NC file"), defaultDir, wxEmptyString, wildcard_string, wxFD_SAVE|wxFD_OVERWRITE_PROMPT);
 	fd.SetFilterIndex(1);
 	if (fd.ShowModal() == wxID_OK)
 	{           
@@ -910,7 +1230,7 @@ public:
 		wxCommandEvent dummy_evt;
 		(*m_callback)(dummy_evt);
 	}
-	wxString BitmapPath(){ return m_bitmap_path;}
+	wxString BitmapPath(){ return theApp.GetBitmapPath(m_bitmap_path); }
 };
 
 static CCallbackTool new_drill_tool(_("New Drill..."), _T("drill"), NewDrillMenuCallback);
@@ -919,11 +1239,16 @@ static CCallbackTool new_endmill_tool(_("New End Mill..."), _T("endmill"), NewEn
 static CCallbackTool new_slotdrill_tool(_("New Slot Drill..."), _T("slotdrill"), NewSlotCutterMenuCallback);
 static CCallbackTool new_ball_end_mill_tool(_("New Ball End Mill..."), _T("ballmill"), NewBallEndMillMenuCallback);
 static CCallbackTool new_chamfer_mill_tool(_("New Chamfer Mill..."), _T("chamfmill"), NewChamferMenuCallback);
+#ifndef STABLE_OPS_ONLY
+static CCallbackTool new_turn_tool(_("New Turning Tool..."), _T("turntool"), NewTurningToolMenuCallback);
+#endif
 static CCallbackTool new_touch_probe(_("New Touch Probe..."), _T("probe"), NewTouchProbeMenuCallback);
+#ifndef STABLE_OPS_ONLY
+static CCallbackTool new_extrusion(_("New Extrusion..."), _T("extrusion"), NewExtrusionMenuCallback);
+#endif
 static CCallbackTool new_tool_length_switch(_("New Tool Length Switch..."), _T("probe"), NewToolLengthSwitchMenuCallback);
 static CCallbackTool new_tap_tool(_("New Tap Tool..."), _T("tap"), NewTapToolMenuCallback);
 static CCallbackTool new_engraver_tool(_("New Engraver Tool..."), _T("engraver"), NewEngraverToolMenuCallback);
-static CCallbackTool new_drag_knife(_("New Drag Knife..."), _T("knife"), NewDragKnifeMenuCallback);
 
 void CHeeksCNCApp::GetNewToolTools(std::list<Tool*>* t_list)
 {
@@ -933,11 +1258,17 @@ void CHeeksCNCApp::GetNewToolTools(std::list<Tool*>* t_list)
 	t_list->push_back(&new_slotdrill_tool);
 	t_list->push_back(&new_ball_end_mill_tool);
 	t_list->push_back(&new_chamfer_mill_tool);
+	// t_list->push_back(&new_chamfer_mill_tool);
+#ifndef STABLE_OPS_ONLY
+	t_list->push_back(&new_turn_tool);
+#endif
 	t_list->push_back(&new_touch_probe);
+#ifndef STABLE_OPS_ONLY
+	t_list->push_back(&new_extrusion);
+#endif
 	t_list->push_back(&new_tool_length_switch);
 	t_list->push_back(&new_tap_tool);
 	t_list->push_back(&new_engraver_tool);
-	t_list->push_back(&new_drag_knife);
 }
 
 static void AddToolBars()
@@ -946,56 +1277,71 @@ static void AddToolBars()
 	{
 		wxFrame* frame = heeksCAD->GetMainFrame();
 		wxAuiManager* aui_manager = heeksCAD->GetAuiManager();
-		if(theApp.m_machiningBar)delete theApp.m_machiningBar;
-		theApp.m_machiningBar = new wxToolBar(frame, -1, wxDefaultPosition, wxDefaultSize, wxTB_NODIVIDER | wxTB_FLAT);
+		if(theApp.m_machiningBar) {
+			aui_manager->DetachPane(theApp.m_machiningBar);
+			heeksCAD->RemoveToolBar(theApp.m_machiningBar);
+			delete theApp.m_machiningBar;
+		}
+		theApp.m_machiningBar = new wxAuiToolBar(frame, -1, wxDefaultPosition, wxDefaultSize, wxAUI_TB_DEFAULT_STYLE);
 		theApp.m_machiningBar->SetToolBitmapSize(wxSize(ToolImage::GetBitmapSize(), ToolImage::GetBitmapSize()));
 
 		heeksCAD->StartToolBarFlyout(_("Milling operations"));
-		heeksCAD->AddFlyoutButton(_("Profile"), ToolImage(_T("opprofile")), _("New Profile Operation..."), NewProfileOpMenuCallback);
-		heeksCAD->AddFlyoutButton(_("Pocket"), ToolImage(_T("pocket")), _("New Pocket Operation..."), NewPocketOpMenuCallback);
-		heeksCAD->AddFlyoutButton(_("Drill"), ToolImage(_T("drilling")), _("New Drill Cycle Operation..."), NewDrillingOpMenuCallback);
-		heeksCAD->AddFlyoutButton(_("Tap"), ToolImage(_T("optap")), _("New Tapping Operation..."), NewTappingOpMenuCallback);
-		heeksCAD->EndToolBarFlyout((wxToolBar*)(theApp.m_machiningBar));
+		heeksCAD->AddFlyoutButton(_("Profile"), ToolImage(theApp.GetBitmapPath(_T("opprofile")), true), _("New Profile Operation..."), NewProfileOpMenuCallback);
+		heeksCAD->AddFlyoutButton(_("Pocket"), ToolImage(theApp.GetBitmapPath(_T("pocket")), true), _("New Pocket Operation..."), NewPocketOpMenuCallback);
+		heeksCAD->AddFlyoutButton(_("Drill"), ToolImage(theApp.GetBitmapPath(_T("drilling")), true), _("New Drill Cycle Operation..."), NewDrillingOpMenuCallback);
+#ifndef STABLE_OPS_ONLY
+		heeksCAD->AddFlyoutButton(_("CounterBore"), ToolImage(theApp.GetBitmapPath(_T("counterbore")), true), _("New CounterBore Cycle Operation..."), NewCounterBoreOpMenuCallback);
+		heeksCAD->AddFlyoutButton(_("Contour"), ToolImage(theApp.GetBitmapPath(_T("opcontour")), true), _("New Contour Operation..."), NewContourOpMenuCallback);
+		heeksCAD->AddFlyoutButton(_("Inlay"), ToolImage(theApp.GetBitmapPath(_T("opinlay")), true), _("New Inlay Operation..."), NewInlayOpMenuCallback);
+		heeksCAD->AddFlyoutButton(_("Chamfer"), ToolImage(theApp.GetBitmapPath(_T("opchamfer")), true), _("New Chamfer Operation..."), NewChamferOpMenuCallback);
+#endif
+		heeksCAD->AddFlyoutButton(_("Tap"), ToolImage(theApp.GetBitmapPath(_T("optap")), true), _("New Tapping Operation..."), NewTappingOpMenuCallback);
+		heeksCAD->EndToolBarFlyout(theApp.m_machiningBar);
 
 		heeksCAD->StartToolBarFlyout(_("3D Milling operations"));
-		heeksCAD->AddFlyoutButton(_("Attach"), ToolImage(_T("attach")), _("New Attach Operation..."), NewAttachOpMenuCallback);
-		heeksCAD->AddFlyoutButton(_("Unattach"), ToolImage(_T("unattach")), _("New Unattach Operation..."), NewUnattachOpMenuCallback);
-		heeksCAD->EndToolBarFlyout((wxToolBar*)(theApp.m_machiningBar));
+#ifndef STABLE_OPS_ONLY
+		heeksCAD->AddFlyoutButton(_("ZigZag"), ToolImage(theApp.GetBitmapPath(_T("zigzag")), true), _("New ZigZag Operation..."), NewZigZagOpMenuCallback);
+		heeksCAD->AddFlyoutButton(_("Waterline"), ToolImage(theApp.GetBitmapPath(_T("waterline")), true), _("New Waterline Operation..."), NewWaterlineOpMenuCallback);
+#endif
+		heeksCAD->AddFlyoutButton(_("Attach"), ToolImage(theApp.GetBitmapPath(_T("attach")), true), _("New Attach Operation..."), NewAttachOpMenuCallback);
+		heeksCAD->AddFlyoutButton(_("Unattach"), ToolImage(theApp.GetBitmapPath(_T("unattach")), true), _("New Unattach Operation..."), NewUnattachOpMenuCallback);
+		heeksCAD->EndToolBarFlyout(theApp.m_machiningBar);
 
 		heeksCAD->StartToolBarFlyout(_("Other operations"));
-		heeksCAD->AddFlyoutButton(_("Positioning"), ToolImage(_T("locating")), _("New Positioning Operation..."), NewPositioningOpMenuCallback);
-		heeksCAD->AddFlyoutButton(_("Probing"), ToolImage(_T("probe")), _("New Probe Centre Operation..."), NewProbe_Centre_MenuCallback);
-		heeksCAD->AddFlyoutButton(_("Probing"), ToolImage(_T("probe")), _("New Probe Edge Operation..."), NewProbe_Edge_MenuCallback);
-		heeksCAD->AddFlyoutButton(_("Probing"), ToolImage(_T("probe")), _("New Probe Grid Operation..."), NewProbe_Grid_MenuCallback);
-		heeksCAD->AddFlyoutButton(_("ScriptOp"), ToolImage(_T("scriptop")), _("New Script Operation..."), NewScriptOpMenuCallback);
-		heeksCAD->EndToolBarFlyout((wxToolBar*)(theApp.m_machiningBar));
+		heeksCAD->AddFlyoutButton(_("Positioning"), ToolImage(theApp.GetBitmapPath(_T("locating")), true), _("New Positioning Operation..."), NewPositioningOpMenuCallback);
+		heeksCAD->AddFlyoutButton(_("Probing"), ToolImage(theApp.GetBitmapPath(_T("probe")), true), _("New Probe Centre Operation..."), NewProbe_Centre_MenuCallback);
+		heeksCAD->AddFlyoutButton(_("Probing"), ToolImage(theApp.GetBitmapPath(_T("probe")), true), _("New Probe Edge Operation..."), NewProbe_Edge_MenuCallback);
+		heeksCAD->AddFlyoutButton(_("Probing"), ToolImage(theApp.GetBitmapPath(_T("probe")), true), _("New Probe Grid Operation..."), NewProbe_Grid_MenuCallback);
+		heeksCAD->AddFlyoutButton(_("ScriptOp"), ToolImage(theApp.GetBitmapPath(_T("scriptop")), true), _("New Script Operation..."), NewScriptOpMenuCallback);
+		heeksCAD->EndToolBarFlyout(theApp.m_machiningBar);
 
-		heeksCAD->AddToolBarButton((wxToolBar*)(theApp.m_machiningBar), _("Tool"), ToolImage(_T("drill")), _("New Tool Definition..."), NewDrillMenuCallback);
+		heeksCAD->AddToolBarButton(theApp.m_machiningBar, _("Tool"), ToolImage(theApp.GetBitmapPath(_T("drill")), true), _("New Tool Definition..."), NewDrillMenuCallback);
+
+#ifndef STABLE_OPS_ONLY
+		heeksCAD->AddToolBarButton(theApp.m_machiningBar, _("Fixture"), ToolImage(theApp.GetBitmapPath(_T("fixture")), true), _("New Fixture..."), NewFixtureMenuCallback);
+#endif
 		heeksCAD->StartToolBarFlyout(_("Design Rules"));
-		heeksCAD->AddFlyoutButton(_("Design Rules Check"), ToolImage(_("design_rules_check")), _("Design Rules Check..."), DesignRulesCheckMenuCallback);
-		heeksCAD->AddFlyoutButton(_("Design Rules Adjustment"), ToolImage(_("design_rules_adjustment")), _("Design Rules Adjustment..."), DesignRulesAdjustmentMenuCallback);
-		heeksCAD->EndToolBarFlyout((wxToolBar*)(theApp.m_machiningBar));
+		heeksCAD->AddFlyoutButton(_("Design Rules Check"), ToolImage(theApp.GetBitmapPath(_T("design_rules_check")), true), _("Design Rules Check..."), DesignRulesCheckMenuCallback);
+		heeksCAD->AddFlyoutButton(_("Design Rules Adjustment"), ToolImage(theApp.GetBitmapPath(_T("design_rules_adjustment")), true), _("Design Rules Adjustment..."), DesignRulesAdjustmentMenuCallback);
+		heeksCAD->EndToolBarFlyout(theApp.m_machiningBar);
 
 		heeksCAD->StartToolBarFlyout(_("Speeds"));
-		heeksCAD->AddFlyoutButton(_("Speed Reference"), ToolImage(_T("speed_reference")), _("Add Speed Reference..."), NewSpeedReferenceMenuCallback);
-		heeksCAD->AddFlyoutButton(_("Cutting Rate"), ToolImage(_T("cutting_rate")), _("Add Cutting Rate Reference..."), NewCuttingRateMenuCallback);
-		heeksCAD->EndToolBarFlyout((wxToolBar*)(theApp.m_machiningBar));
+		heeksCAD->AddFlyoutButton(_("Speed Reference"), ToolImage(theApp.GetBitmapPath(_T("speed_reference")), true), _("Add Speed Reference..."), NewSpeedReferenceMenuCallback);
+		heeksCAD->AddFlyoutButton(_("Cutting Rate"), ToolImage(theApp.GetBitmapPath(_T("cutting_rate")), true), _("Add Cutting Rate Reference..."), NewCuttingRateMenuCallback);
+		heeksCAD->EndToolBarFlyout(theApp.m_machiningBar);
 
 		heeksCAD->StartToolBarFlyout(_("Post Processing"));
-		heeksCAD->AddFlyoutButton(_("PostProcess"), ToolImage(_T("postprocess")), _("Post-Process"), PostProcessMenuCallback);
-		heeksCAD->AddFlyoutButton(_("Make Python Script"), ToolImage(_T("python")), _("Make Python Script"), MakeScriptMenuCallback);
-		heeksCAD->AddFlyoutButton(_("Run Python Script"), ToolImage(_T("runpython")), _("Run Python Script"), RunScriptMenuCallback);
-		heeksCAD->AddFlyoutButton(_("OpenNC"), ToolImage(_T("opennc")), _("Open NC File"), OpenNcFileMenuCallback);
-		heeksCAD->AddFlyoutButton(_("SaveNC"), ToolImage(_T("savenc")), _("Save NC File"), SaveNcFileMenuCallback);
-		heeksCAD->AddFlyoutButton(_("Send to Machine"), ToolImage(_T("tomachine")), _("Send to Machine"), SendToMachineMenuCallback);
-		heeksCAD->AddFlyoutButton(_("Cancel"), ToolImage(_T("cancel")), _("Cancel Python Script"), CancelMenuCallback);
-#ifdef WIN32
-		heeksCAD->AddFlyoutButton(_("Simulate"), ToolImage(_T("simulate")), _("Simulate"), SimulateCallback);
-#endif
-		heeksCAD->EndToolBarFlyout((wxToolBar*)(theApp.m_machiningBar));
+		heeksCAD->AddFlyoutButton(_("PostProcess"), ToolImage(theApp.GetBitmapPath(_T("postprocess")), true), _("Post-Process"), PostProcessMenuCallback);
+		heeksCAD->AddFlyoutButton(_("Make Python Script"), ToolImage(theApp.GetBitmapPath(_T("python")), true), _("Make Python Script"), MakeScriptMenuCallback);
+		heeksCAD->AddFlyoutButton(_("Run Python Script"), ToolImage(theApp.GetBitmapPath(_T("runpython")), true), _("Run Python Script"), RunScriptMenuCallback);
+		heeksCAD->AddFlyoutButton(_("OpenNC"), ToolImage(theApp.GetBitmapPath(_T("opennc")), true), _("Open NC File"), OpenNcFileMenuCallback);
+		heeksCAD->AddFlyoutButton(_("SaveNC"), ToolImage(theApp.GetBitmapPath(_T("savenc")), true), _("Save NC File"), SaveNcFileMenuCallback);
+		heeksCAD->AddFlyoutButton(_("Send to Machine"), ToolImage(theApp.GetBitmapPath(_T("tomachine")), true), _("Send to Machine"), SendToMachineMenuCallback);
+		heeksCAD->AddFlyoutButton(_("Cancel"), ToolImage(theApp.GetBitmapPath(_T("cancel")), true), _("Cancel Python Script"), CancelMenuCallback);
+		heeksCAD->EndToolBarFlyout(theApp.m_machiningBar);
 
 		theApp.m_machiningBar->Realize();
-		aui_manager->AddPane(theApp.m_machiningBar, wxAuiPaneInfo().Name(_T("MachiningBar")).Caption(_T("Machining tools")).ToolbarPane().Top());
+		aui_manager->AddPane(theApp.m_machiningBar, wxAuiPaneInfo().Name(_T("MachiningBar")).Caption(_T("Machining Tools")).ToolbarPane().Top());
 		heeksCAD->RegisterToolBar(theApp.m_machiningBar);
 	}
 }
@@ -1042,7 +1388,7 @@ static void UnitsChangedHandler( const double units )
         response = wxMessageBox( _("Would you like to change the NC code generation units too?"), _("Change Units"), wxYES_NO );
         if (response == wxYES)
         {
-            theApp.m_program->m_units = units;
+            theApp.m_program->ChangeUnits( units );
         }
     }
 }
@@ -1066,8 +1412,6 @@ void CHeeksCNCApp::OnStartUp(CHeeksCADInterface* h, const wxString& dll_path)
 		+ _T("\n\n") + _("geometry code, donated by Geoff Hawkesford, Camtek GmbH http://www.peps.de/")
 		+ _T("\n") + _("pocketing code from http://code.google.com/p/libarea/ , derived from the kbool library written by Klaas Holwerda http://boolean.klaasholwerda.nl/bool.html")
 		+ _T("\n") + _("Zig zag code from opencamlib http://code.google.com/p/opencamlib/")
-		+ _T("\n") + _("Adaptive Roughing code from http://code.google.com/p/libactp/, using code written in 2004")
-		+ _T("\n") + _("For a more modern version of adaptive roughing, see Julian Todd and Martin Dunschen of http://www.freesteel.co.uk/")
 		+ _T("\n\n") + _("This HeeksCNC software installation is restricted by the GPL license http://www.gnu.org/licenses/gpl-3.0.txt")
 		+ _T("\n") + _("  which means it is free and open source, and must stay that way")
 		);
@@ -1082,61 +1426,86 @@ void CHeeksCNCApp::OnStartUp(CHeeksCADInterface* h, const wxString& dll_path)
 
 	// Milling Operations menu
 	wxMenu *menuMillingOperations = new wxMenu;
-	heeksCAD->AddMenuItem(menuMillingOperations, _("Profile Operation..."), ToolImage(_T("opprofile")), NewProfileOpMenuCallback);
-	heeksCAD->AddMenuItem(menuMillingOperations, _("Pocket Operation..."), ToolImage(_T("pocket")), NewPocketOpMenuCallback);
-	heeksCAD->AddMenuItem(menuMillingOperations, _("Drilling Operation..."), ToolImage(_T("drilling")), NewDrillingOpMenuCallback);
-	heeksCAD->AddMenuItem(menuMillingOperations, _("Tapping Operation..."), ToolImage(_T("optap")), NewTappingOpMenuCallback);
+	heeksCAD->AddMenuItem(menuMillingOperations, _("Profile Operation..."), ToolImage(theApp.GetBitmapPath(_T("opprofile")), true), NewProfileOpMenuCallback);
+	heeksCAD->AddMenuItem(menuMillingOperations, _("Pocket Operation..."), ToolImage(theApp.GetBitmapPath(_T("pocket")), true), NewPocketOpMenuCallback);
+	heeksCAD->AddMenuItem(menuMillingOperations, _("Drilling Operation..."), ToolImage(theApp.GetBitmapPath(_T("drilling")), true), NewDrillingOpMenuCallback);
+#ifndef STABLE_OPS_ONLY
+	heeksCAD->AddMenuItem(menuMillingOperations, _("Chamfer Operation..."), ToolImage(theApp.GetBitmapPath(_T("opchamfer")), true), NewChamferOpMenuCallback);
+	heeksCAD->AddMenuItem(menuMillingOperations, _("CounterBore Operation..."), ToolImage(theApp.GetBitmapPath(_T("counterbore")), true), NewCounterBoreOpMenuCallback);
+	heeksCAD->AddMenuItem(menuMillingOperations, _("Contour Operation..."), ToolImage(theApp.GetBitmapPath(_T("opcontour")), true), NewContourOpMenuCallback);
+	heeksCAD->AddMenuItem(menuMillingOperations, _("Inlay Operation..."), ToolImage(theApp.GetBitmapPath(_T("opinlay")), true), NewInlayOpMenuCallback);
+#endif
+	heeksCAD->AddMenuItem(menuMillingOperations, _("Tapping Operation..."), ToolImage(theApp.GetBitmapPath(_T("optap")), true), NewTappingOpMenuCallback);
 
 	wxMenu *menu3dMillingOperations = new wxMenu;
-	heeksCAD->AddMenuItem(menu3dMillingOperations, _("Attach Operation..."), ToolImage(_T("attach")), NewAttachOpMenuCallback);
-	heeksCAD->AddMenuItem(menu3dMillingOperations, _("Unattach Operation..."), ToolImage(_T("unattach")), NewUnattachOpMenuCallback);
+#ifndef STABLE_OPS_ONLY
+	heeksCAD->AddMenuItem(menu3dMillingOperations, _("ZigZag Operation..."), ToolImage(theApp.GetBitmapPath(_T("zigzag")), true), NewZigZagOpMenuCallback);
+	heeksCAD->AddMenuItem(menu3dMillingOperations, _("Waterline Operation..."), ToolImage(theApp.GetBitmapPath(_T("waterline")), true), NewWaterlineOpMenuCallback);
+#endif
+	heeksCAD->AddMenuItem(menu3dMillingOperations, _("Attach Operation..."), ToolImage(theApp.GetBitmapPath(_T("attach")), true), NewAttachOpMenuCallback);
+	heeksCAD->AddMenuItem(menu3dMillingOperations, _("Unattach Operation..."), ToolImage(theApp.GetBitmapPath(_T("unattach")), true), NewUnattachOpMenuCallback);
 
-	// Additive Operations menu
 	wxMenu *menuOperations = new wxMenu;
-	heeksCAD->AddMenuItem(menuOperations, _("Script Operation..."), ToolImage(_T("scriptop")), NewScriptOpMenuCallback);
-	heeksCAD->AddMenuItem(menuOperations, _("Design Rules Check..."), ToolImage(_T("design_rules_check")), DesignRulesCheckMenuCallback);
-	heeksCAD->AddMenuItem(menuOperations, _("Design Rules Adjustment..."), ToolImage(_T("design_rules_adjustment")), DesignRulesAdjustmentMenuCallback);
-	heeksCAD->AddMenuItem(menuOperations, _("Speed Reference..."), ToolImage(_T("speed_reference")), NewSpeedReferenceMenuCallback);
-	heeksCAD->AddMenuItem(menuOperations, _("Cutting Rate Reference..."), ToolImage(_T("cutting_rate")), NewCuttingRateMenuCallback);
-	heeksCAD->AddMenuItem(menuOperations, _("Positioning Operation..."), ToolImage(_T("locating")), NewPositioningOpMenuCallback);
-	heeksCAD->AddMenuItem(menuOperations, _("Probe Centre Operation..."), ToolImage(_T("probe")), NewProbe_Centre_MenuCallback);
-	heeksCAD->AddMenuItem(menuOperations, _("Probe Edge Operation..."), ToolImage(_T("probe")), NewProbe_Edge_MenuCallback);
-	heeksCAD->AddMenuItem(menuOperations, _("Probe Grid Operation..."), ToolImage(_T("probe")), NewProbe_Grid_MenuCallback);
+#ifndef STABLE_OPS_ONLY
+	heeksCAD->AddMenuItem(menuOperations, _("Rough Turning Operation..."), ToolImage(theApp.GetBitmapPath(_T("turnrough")), true), NewRoughTurnOpMenuCallback);
+#endif
+	heeksCAD->AddMenuItem(menuOperations, _("Script Operation..."), ToolImage(theApp.GetBitmapPath(_T("scriptop")), true), NewScriptOpMenuCallback);
+	heeksCAD->AddMenuItem(menuOperations, _("Design Rules Check..."), ToolImage(theApp.GetBitmapPath(_T("design_rules_check")), true), DesignRulesCheckMenuCallback);
+	heeksCAD->AddMenuItem(menuOperations, _("Design Rules Adjustment..."), ToolImage(theApp.GetBitmapPath(_T("design_rules_adjustment")), true), DesignRulesAdjustmentMenuCallback);
+	heeksCAD->AddMenuItem(menuOperations, _("Speed Reference..."), ToolImage(theApp.GetBitmapPath(_T("speed_reference")), true), NewSpeedReferenceMenuCallback);
+	heeksCAD->AddMenuItem(menuOperations, _("Cutting Rate Reference..."), ToolImage(theApp.GetBitmapPath(_T("cutting_rate")), true), NewCuttingRateMenuCallback);
+	heeksCAD->AddMenuItem(menuOperations, _("Positioning Operation..."), ToolImage(theApp.GetBitmapPath(_T("locating")), true), NewPositioningOpMenuCallback);
+	heeksCAD->AddMenuItem(menuOperations, _("Probe Centre Operation..."), ToolImage(theApp.GetBitmapPath(_T("probe")), true), NewProbe_Centre_MenuCallback);
+	heeksCAD->AddMenuItem(menuOperations, _("Probe Edge Operation..."), ToolImage(theApp.GetBitmapPath(_T("probe")), true), NewProbe_Edge_MenuCallback);
+	heeksCAD->AddMenuItem(menuOperations, _("Probe Grid Operation..."), ToolImage(theApp.GetBitmapPath(_T("probe")), true), NewProbe_Grid_MenuCallback);
 
     // Tapping tools menu
 	wxMenu *menuTappingTools = new wxMenu;
-	heeksCAD->AddMenuItem(menuTappingTools, _("Any sized tap..."), ToolImage(_T("tap")), NewTapToolMenuCallback);
-	heeksCAD->AddMenuItem(menuTappingTools, _("Pick from Metric standard sizes"), ToolImage(_T("tap")), NewMetricTappingToolMenuCallback);
-	heeksCAD->AddMenuItem(menuTappingTools, _("Pick from Unified Threading Standard (UNC, UNF or UNEF)"), ToolImage(_T("tap")), NewUnifiedThreadingStandardTappingToolMenuCallback);
-	heeksCAD->AddMenuItem(menuTappingTools, _("Pick from British Standard Whitworth standard sizes"), ToolImage(_T("tap")), NewBritishStandardWhitworthTappingToolMenuCallback);
+	heeksCAD->AddMenuItem(menuTappingTools, _("Any sized tap..."), ToolImage(theApp.GetBitmapPath(_T("tap")), true), NewTapToolMenuCallback);
+	heeksCAD->AddMenuItem(menuTappingTools, _("Pick from Metric standard sizes"), ToolImage(theApp.GetBitmapPath(_T("tap")), true), NewMetricTappingToolMenuCallback);
+	heeksCAD->AddMenuItem(menuTappingTools, _("Pick from Unified Threading Standard (UNC, UNF or UNEF)"), ToolImage(theApp.GetBitmapPath(_T("tap")), true), NewUnifiedThreadingStandardTappingToolMenuCallback);
+	heeksCAD->AddMenuItem(menuTappingTools, _("Pick from British Standard Whitworth standard sizes"), ToolImage(theApp.GetBitmapPath(_T("tap")), true), NewBritishStandardWhitworthTappingToolMenuCallback);
 
 	// Tools menu
 	wxMenu *menuTools = new wxMenu;
-	heeksCAD->AddMenuItem(menuTools, _("Drill..."), ToolImage(_T("drill")), NewDrillMenuCallback);
-	heeksCAD->AddMenuItem(menuTools, _("Centre Drill..."), ToolImage(_T("centredrill")), NewCentreDrillMenuCallback);
-	heeksCAD->AddMenuItem(menuTools, _("End Mill..."), ToolImage(_T("endmill")), NewEndmillMenuCallback);
-	heeksCAD->AddMenuItem(menuTools, _("Slot Drill..."), ToolImage(_T("slotdrill")), NewSlotCutterMenuCallback);
-	heeksCAD->AddMenuItem(menuTools, _("Ball End Mill..."), ToolImage(_T("ballmill")), NewBallEndMillMenuCallback);
-	heeksCAD->AddMenuItem(menuTools, _("Chamfer Mill..."), ToolImage(_T("chamfmill")), NewChamferMenuCallback);
-	heeksCAD->AddMenuItem(menuTools, _("Touch Probe..."), ToolImage(_T("probe")), NewTouchProbeMenuCallback);
-	heeksCAD->AddMenuItem(menuTools, _("Tool Length Switch..."), ToolImage(_T("probe")), NewToolLengthSwitchMenuCallback);
-	heeksCAD->AddMenuItem(menuTools, _("Tap Tool..."), ToolImage(_T("tap")), NULL, NULL, menuTappingTools);
+	heeksCAD->AddMenuItem(menuTools, _("Drill..."), ToolImage(theApp.GetBitmapPath(_T("drill")), true), NewDrillMenuCallback);
+	heeksCAD->AddMenuItem(menuTools, _("Centre Drill..."), ToolImage(theApp.GetBitmapPath(_T("centredrill")), true), NewCentreDrillMenuCallback);
+	heeksCAD->AddMenuItem(menuTools, _("End Mill..."), ToolImage(theApp.GetBitmapPath(_T("endmill")), true), NewEndmillMenuCallback);
+	heeksCAD->AddMenuItem(menuTools, _("Slot Drill..."), ToolImage(theApp.GetBitmapPath(_T("slotdrill")), true), NewSlotCutterMenuCallback);
+	heeksCAD->AddMenuItem(menuTools, _("Ball End Mill..."), ToolImage(theApp.GetBitmapPath(_T("ballmill")), true), NewBallEndMillMenuCallback);
+	heeksCAD->AddMenuItem(menuTools, _("Chamfer Mill..."), ToolImage(theApp.GetBitmapPath(_T("chamfmill")), true), NewChamferMenuCallback);
+#ifndef STABLE_OPS_ONLY
+	heeksCAD->AddMenuItem(menuTools, _("Turning Tool..."), ToolImage(theApp.GetBitmapPath(_T("turntool")), true), NewTurningToolMenuCallback);
+#endif
+	heeksCAD->AddMenuItem(menuTools, _("Touch Probe..."), ToolImage(theApp.GetBitmapPath(_T("probe")), true), NewTouchProbeMenuCallback);
+	heeksCAD->AddMenuItem(menuTools, _("Tool Length Switch..."), ToolImage(theApp.GetBitmapPath(_T("probe")), true), NewToolLengthSwitchMenuCallback);
+#ifndef STABLE_OPS_ONLY
+	heeksCAD->AddMenuItem(menuTools, _("Extrusion..."), ToolImage(theApp.GetBitmapPath(_T("extrusion")), true), NewExtrusionMenuCallback);
+#endif
+	heeksCAD->AddMenuItem(menuTools, _("Tap Tool..."), ToolImage(theApp.GetBitmapPath(_T("tap")), true), NULL, NULL, menuTappingTools);
+
+#ifndef STABLE_OPS_ONLY
+	// Fixtures menu
+	wxMenu *menuFixtures = new wxMenu;
+	heeksCAD->AddMenuItem(menuFixtures, _("New Fixture..."), ToolImage(theApp.GetBitmapPath(_T("fixture")), true), NewFixtureMenuCallback);
+#endif
 
 	// Machining menu
 	wxMenu *menuMachining = new wxMenu;
-	heeksCAD->AddMenuItem(menuMachining, _("Add New Milling Operation"), ToolImage(_T("ops")), NULL, NULL, menuMillingOperations);
-	heeksCAD->AddMenuItem(menuMachining, _("Add New 3D Operation"), ToolImage(_T("ops")), NULL, NULL, menu3dMillingOperations);
-	heeksCAD->AddMenuItem(menuMachining, _("Add Other Operation"), ToolImage(_T("ops")), NULL, NULL, menuOperations);
-	heeksCAD->AddMenuItem(menuMachining, _("Add New Tool"), ToolImage(_T("tools")), NULL, NULL, menuTools);
-	heeksCAD->AddMenuItem(menuMachining, _("Make Python Script"), ToolImage(_T("python")), MakeScriptMenuCallback);
-	heeksCAD->AddMenuItem(menuMachining, _("Run Python Script"), ToolImage(_T("runpython")), RunScriptMenuCallback);
-	heeksCAD->AddMenuItem(menuMachining, _("Post-Process"), ToolImage(_T("postprocess")), PostProcessMenuCallback);
-#ifdef WIN32
-	heeksCAD->AddMenuItem(menuMachining, _("Simulate"), ToolImage(_T("simulate")), SimulateCallback);
+	heeksCAD->AddMenuItem(menuMachining, _("Add New Milling Operation"), ToolImage(theApp.GetBitmapPath(_T("ops")), true), NULL, NULL, menuMillingOperations);
+	heeksCAD->AddMenuItem(menuMachining, _("Add New 3D Operation"), ToolImage(theApp.GetBitmapPath(_T("ops")), true), NULL, NULL, menu3dMillingOperations);
+	heeksCAD->AddMenuItem(menuMachining, _("Add Other Operation"), ToolImage(theApp.GetBitmapPath(_T("ops")), true), NULL, NULL, menuOperations);
+	heeksCAD->AddMenuItem(menuMachining, _("Add New Tool"), ToolImage(theApp.GetBitmapPath(_T("tools")), true), NULL, NULL, menuTools);
+#ifndef STABLE_OPS_ONLY
+	heeksCAD->AddMenuItem(menuMachining, _("Fixtures"), ToolImage(theApp.GetBitmapPath(_T("fixtures")), true), NULL, NULL, menuFixtures);
 #endif
-	heeksCAD->AddMenuItem(menuMachining, _("Open NC File"), ToolImage(_T("opennc")), OpenNcFileMenuCallback);
-	heeksCAD->AddMenuItem(menuMachining, _("Save NC File"), ToolImage(_T("savenc")), SaveNcFileMenuCallback);
-	heeksCAD->AddMenuItem(menuMachining, _("Send to Machine"), ToolImage(_T("tomachine")), SendToMachineMenuCallback);
+	heeksCAD->AddMenuItem(menuMachining, _("Make Python Script"), ToolImage(theApp.GetBitmapPath(_T("python")), true), MakeScriptMenuCallback);
+	heeksCAD->AddMenuItem(menuMachining, _("Run Python Script"), ToolImage(theApp.GetBitmapPath(_T("runpython")), true), RunScriptMenuCallback);
+	heeksCAD->AddMenuItem(menuMachining, _("Post-Process"), ToolImage(theApp.GetBitmapPath(_T("postprocess")), true), PostProcessMenuCallback);
+	heeksCAD->AddMenuItem(menuMachining, _("Open NC File"), ToolImage(theApp.GetBitmapPath(_T("opennc")), true), OpenNcFileMenuCallback);
+	heeksCAD->AddMenuItem(menuMachining, _("Save NC File"), ToolImage(theApp.GetBitmapPath(_T("savenc")), true), SaveNcFileMenuCallback);
+	heeksCAD->AddMenuItem(menuMachining, _("Send to Machine"), ToolImage(theApp.GetBitmapPath(_T("tomachine")), true), SendToMachineMenuCallback);
+	heeksCAD->AddMenuItem(menuMachining, _("Open BOM File"), ToolImage(theApp.GetBitmapPath(_T("opennc")), true), OpenBOMFileMenuCallback);
 	frame->GetMenuBar()->Append(menuMachining,  _("Machining"));
 
 	// add the program canvas
@@ -1158,6 +1527,7 @@ void CHeeksCNCApp::OnStartUp(CHeeksCADInterface* h, const wxString& dll_path)
 	CProfile::ReadFromConfig();
 	CPocket::ReadFromConfig();
 	CSpeedOp::ReadFromConfig();
+
 	CSendToMachine::ReadFromConfig();
 	config.Read(_T("UseClipperNotBoolean"), &m_use_Clipper_not_Boolean, false);
 	config.Read(_T("UseDOSNotUnix"), &m_use_DOS_not_Unix, false);
@@ -1180,31 +1550,41 @@ void CHeeksCNCApp::OnStartUp(CHeeksCADInterface* h, const wxString& dll_path)
 	heeksCAD->RegisterReadXMLfunction("Tools", CTools::ReadFromXMLElement);
 	heeksCAD->RegisterReadXMLfunction("Profile", CProfile::ReadFromXMLElement);
 	heeksCAD->RegisterReadXMLfunction("Pocket", CPocket::ReadFromXMLElement);
+#ifndef STABLE_OPS_ONLY
+	heeksCAD->RegisterReadXMLfunction("ZigZag", CZigZag::ReadFromXMLElement);
+	heeksCAD->RegisterReadXMLfunction("Waterline", CWaterline::ReadFromXMLElement);
+#endif
 	heeksCAD->RegisterReadXMLfunction("Drilling", CDrilling::ReadFromXMLElement);
 	heeksCAD->RegisterReadXMLfunction("Locating", CPositioning::ReadFromXMLElement);
 	heeksCAD->RegisterReadXMLfunction("Positioning", CPositioning::ReadFromXMLElement);
 	heeksCAD->RegisterReadXMLfunction("ProbeCentre", CProbe_Centre::ReadFromXMLElement);
 	heeksCAD->RegisterReadXMLfunction("ProbeEdge", CProbe_Edge::ReadFromXMLElement);
 	heeksCAD->RegisterReadXMLfunction("ProbeGrid", CProbe_Grid::ReadFromXMLElement);
+#ifndef STABLE_OPS_ONLY
+	heeksCAD->RegisterReadXMLfunction("CounterBore", CCounterBore::ReadFromXMLElement);
+#endif
 	heeksCAD->RegisterReadXMLfunction("Tool", CTool::ReadFromXMLElement);
 	heeksCAD->RegisterReadXMLfunction("CuttingTool", CTool::ReadFromXMLElement);
+#ifndef STABLE_OPS_ONLY
+	heeksCAD->RegisterReadXMLfunction("Fixture", CFixture::ReadFromXMLElement);
+	heeksCAD->RegisterReadXMLfunction("TurnRough", CTurnRough::ReadFromXMLElement);
+#endif
 	heeksCAD->RegisterReadXMLfunction("Tapping", CTapping::ReadFromXMLElement);
 
 	heeksCAD->RegisterReadXMLfunction("SpeedReferences", CSpeedReferences::ReadFromXMLElement);
 	heeksCAD->RegisterReadXMLfunction("SpeedReference", CSpeedReference::ReadFromXMLElement);
 	heeksCAD->RegisterReadXMLfunction("CuttingRate", CCuttingRate::ReadFromXMLElement);
+#ifndef STABLE_OPS_ONLY
+	heeksCAD->RegisterReadXMLfunction("Fixtures", CFixtures::ReadFromXMLElement);
+	heeksCAD->RegisterReadXMLfunction("Chamfer", CChamfer::ReadFromXMLElement);
+	heeksCAD->RegisterReadXMLfunction("Contour", CContour::ReadFromXMLElement);
+	heeksCAD->RegisterReadXMLfunction("Inlay", CInlay::ReadFromXMLElement);
+#endif
 	heeksCAD->RegisterReadXMLfunction("Tags", CTags::ReadFromXMLElement);
 	heeksCAD->RegisterReadXMLfunction("Tag", CTag::ReadFromXMLElement);
 	heeksCAD->RegisterReadXMLfunction("ScriptOp", CScriptOp::ReadFromXMLElement);
 	heeksCAD->RegisterReadXMLfunction("AttachOp", CAttachOp::ReadFromXMLElement);
 	heeksCAD->RegisterReadXMLfunction("UnattachOp", CUnattachOp::ReadFromXMLElement);
-
-#ifdef WIN32
-	heeksCAD->SetDefaultLayout(wxString(_T("layout2|name=ToolBar;caption=General Tools;state=2108156;dir=1;layer=10;row=0;pos=0;prop=100000;bestw=279;besth=31;minw=-1;minh=-1;maxw=-1;maxh=-1;floatx=-1;floaty=-1;floatw=-1;floath=-1|name=GeomBar;caption=Geometry Tools;state=2108156;dir=1;layer=10;row=0;pos=695;prop=100000;bestw=145;besth=31;minw=-1;minh=-1;maxw=-1;maxh=-1;floatx=384;floaty=355;floatw=172;floath=71|name=SolidBar;caption=Solid Tools;state=2108156;dir=1;layer=10;row=0;pos=851;prop=100000;bestw=116;besth=31;minw=-1;minh=-1;maxw=-1;maxh=-1;floatx=444;floaty=368;floatw=143;floath=71|name=ViewingBar;caption=Viewing Tools;state=2108156;dir=1;layer=10;row=0;pos=566;prop=100000;bestw=118;besth=31;minw=-1;minh=-1;maxw=-1;maxh=-1;floatx=480;floaty=399;floatw=145;floath=71|name=Graphics;caption=Graphics;state=768;dir=5;layer=0;row=0;pos=0;prop=100000;bestw=800;besth=600;minw=-1;minh=-1;maxw=-1;maxh=-1;floatx=-1;floaty=-1;floatw=-1;floath=-1|name=Objects;caption=Objects;state=2099196;dir=4;layer=1;row=0;pos=0;prop=100000;bestw=300;besth=400;minw=-1;minh=-1;maxw=-1;maxh=-1;floatx=204;floaty=327;floatw=318;floath=440|name=Options;caption=Options;state=2099196;dir=4;layer=1;row=0;pos=1;prop=100000;bestw=300;besth=200;minw=-1;minh=-1;maxw=-1;maxh=-1;floatx=-1;floaty=-1;floatw=-1;floath=-1|name=Input;caption=Input;state=2099196;dir=4;layer=1;row=0;pos=2;prop=100000;bestw=300;besth=200;minw=-1;minh=-1;maxw=-1;maxh=-1;floatx=-1;floaty=-1;floatw=-1;floath=-1|name=Properties;caption=Properties;state=2099196;dir=4;layer=1;row=0;pos=3;prop=100000;bestw=300;besth=200;minw=-1;minh=-1;maxw=-1;maxh=-1;floatx=-1;floaty=-1;floatw=-1;floath=-1|name=MachiningBar;caption=Machining tools;state=2108156;dir=1;layer=10;row=0;pos=290;prop=100000;bestw=265;besth=31;minw=-1;minh=-1;maxw=-1;maxh=-1;floatx=-1;floaty=-1;floatw=-1;floath=-1|name=Program;caption=Program;state=2099198;dir=3;layer=0;row=0;pos=0;prop=100000;bestw=600;besth=200;minw=-1;minh=-1;maxw=-1;maxh=-1;floatx=-1;floaty=-1;floatw=-1;floath=-1|name=Output;caption=Output;state=2099196;dir=3;layer=0;row=0;pos=0;prop=100000;bestw=600;besth=200;minw=-1;minh=-1;maxw=-1;maxh=-1;floatx=-1;floaty=-1;floatw=-1;floath=-1|dock_size(5,0,0)=504|dock_size(4,1,0)=205|dock_size(1,10,0)=33|dock_size(3,0,0)=219|")));
-#else
-	heeksCAD->SetDefaultLayout(wxString(_T("layout2|name=ToolBar;caption=General Tools;state=2108156;dir=1;layer=10;row=0;pos=0;prop=100000;bestw=328;besth=40;minw=-1;minh=-1;maxw=-1;maxh=-1;floatx=469;floaty=243;floatw=345;floath=64|name=GeomBar;caption=Geometry Tools;state=2108156;dir=1;layer=10;row=0;pos=339;prop=100000;bestw=174;besth=38;minw=-1;minh=-1;maxw=-1;maxh=-1;floatx=319;floaty=311;floatw=191;floath=62|name=SolidBar;caption=Solid Tools;state=2108156;dir=1;layer=10;row=0;pos=638;prop=100000;bestw=140;besth=38;minw=-1;minh=-1;maxw=-1;maxh=-1;floatx=373;floaty=261;floatw=157;floath=62|name=ViewingBar;caption=Viewing Tools;state=2108156;dir=1;layer=10;row=0;pos=524;prop=100000;bestw=140;besth=40;minw=-1;minh=-1;maxw=-1;maxh=-1;floatx=334;floaty=257;floatw=119;floath=64|name=Graphics;caption=Graphics;state=768;dir=5;layer=0;row=0;pos=0;prop=100000;bestw=800;besth=600;minw=-1;minh=-1;maxw=-1;maxh=-1;floatx=-1;floaty=-1;floatw=-1;floath=-1|name=Objects;caption=Objects;state=2099196;dir=4;layer=1;row=0;pos=0;prop=100000;bestw=300;besth=400;minw=-1;minh=-1;maxw=-1;maxh=-1;floatx=204;floaty=327;floatw=318;floath=440|name=Options;caption=Options;state=2099196;dir=4;layer=1;row=0;pos=1;prop=100000;bestw=300;besth=200;minw=-1;minh=-1;maxw=-1;maxh=-1;floatx=-1;floaty=-1;floatw=-1;floath=-1|name=Input;caption=Input;state=2099196;dir=4;layer=1;row=0;pos=2;prop=100000;bestw=300;besth=200;minw=-1;minh=-1;maxw=-1;maxh=-1;floatx=-1;floaty=-1;floatw=-1;floath=-1|name=Properties;caption=Properties;state=2099196;dir=4;layer=1;row=0;pos=3;prop=100000;bestw=300;besth=200;minw=-1;minh=-1;maxw=-1;maxh=-1;floatx=-1;floaty=-1;floatw=-1;floath=-1|name=MachiningBar;caption=Machining tools;state=2108156;dir=1;layer=10;row=0;pos=791;prop=100000;bestw=178;besth=40;minw=-1;minh=-1;maxw=-1;maxh=-1;floatx=357;floaty=413;floatw=195;floath=64|name=Program;caption=Program;state=2099196;dir=3;layer=0;row=0;pos=0;prop=100000;bestw=600;besth=200;minw=-1;minh=-1;maxw=-1;maxh=-1;floatx=-1;floaty=-1;floatw=-1;floath=-1|name=Output;caption=Output;state=2099196;dir=3;layer=0;row=0;pos=1;prop=100000;bestw=600;besth=200;minw=-1;minh=-1;maxw=-1;maxh=-1;floatx=-1;floaty=-1;floatw=-1;floath=-1|dock_size(5,0,0)=504|dock_size(4,1,0)=334|dock_size(3,0,0)=110|dock_size(1,10,0)=42|")));
-#endif
-
 
 	// icons
 	heeksCAD->RegisterOnBuildTexture(OnBuildTexture);
@@ -1220,6 +1600,17 @@ void CHeeksCNCApp::OnStartUp(CHeeksCADInterface* h, const wxString& dll_path)
             printf("Failed to register handler for Excellon dril files\n");
         }
 	}
+#ifndef STABLE_OPS_ONLY
+	{
+        std::list<wxString> file_extensions;
+        file_extensions.push_back(_T("fixture"));
+        file_extensions.push_back(_T("fixtures"));
+        if (! heeksCAD->RegisterFileOpenHandler( file_extensions, ImportFixturesFile ))
+        {
+            printf("Failed to register handler for Fixture files\n");
+        }
+	}
+#endif
 	{
         std::list<wxString> file_extensions;
         file_extensions.push_back(_T("tool"));
@@ -1331,14 +1722,14 @@ void CHeeksCNCApp::OnNewOrOpen(bool open, int res)
 			directory_separator = _T("/");
 		#endif
 
-		wxStandardPaths standard_paths;
+                wxStandardPaths& standard_paths = wxStandardPaths::Get();
 		directories.push_back( standard_paths.GetUserConfigDir() );	// Look for a user-specific file first
 		directories.push_back( GetDllFolder() );	// And then look in the application-delivered directory
 #ifdef CMAKE_UNIX
 	#ifdef RUNINPLACE
 		directories.push_back( GetResFolder() );
 	#else
-		directories.push_back( _T("/usr/lib/heekscnc") ); //Location if installed by CMAKE
+		directories.push_back( _T("/usr/local/lib/heekscnc") ); //Location if installed by CMAKE
 	#endif
 #endif //CMAKE_UNIX
 		bool tool_table_found = false;
@@ -1394,6 +1785,15 @@ void CHeeksCNCApp::OnNewOrOpen(bool open, int res)
 					heeksCAD->Changed();
 					tool_table_found = true;
 				}
+#ifndef STABLE_OPS_ONLY
+				else if ((fixtures_found == false) && (lowercase_file_name.Find(_T("fixture")) != -1))
+				{
+					printf("Importing data from %s\n",  Ttc(l_itFile->c_str()));
+					heeksCAD->OpenXMLFile( l_itFile->c_str(), theApp.m_program->Fixtures() );
+					heeksCAD->Changed();
+					fixtures_found = true;
+				}
+#endif
 			} // End for
 		} // End for
 	} // End if - then
@@ -1416,6 +1816,10 @@ void CHeeksCNCApp::GetOptions(std::list<Property *> *list){
 	CSpeedOp::GetOptions(&(machining_options->m_list));
 	CProfile::GetOptions(&(machining_options->m_list));
 	CPocket::GetOptions(&(machining_options->m_list));
+#ifndef STABLE_OPS_ONLY
+	CContour::GetOptions(&(machining_options->m_list));
+	CInlay::GetOptions(&(machining_options->m_list));
+#endif
 	CSendToMachine::GetOptions(&(machining_options->m_list));
 	machining_options->m_list.push_back ( new PropertyCheck ( _("Use Clipper not Boolean"), m_use_Clipper_not_Boolean, NULL, on_set_use_clipper ) );
 	machining_options->m_list.push_back ( new PropertyCheck ( _("Use DOS Line Endings"), m_use_DOS_not_Unix, NULL, on_set_use_DOS ) );
@@ -1450,7 +1854,8 @@ wxString CHeeksCNCApp::GetDllFolder()
 }
 
 wxString CHeeksCNCApp::GetResFolder()
-{wxStandardPaths sp;
+{ 
+//	wxStandardPaths& sp = wxStandardPaths::Get();
 #if defined(WIN32) || defined(RUNINPLACE) //compile with 'RUNINPLACE=yes make' then skip 'sudo make install'
 	#ifdef CMAKE_UNIX
 		return (m_dll_path + _T("/.."));
@@ -1459,7 +1864,7 @@ wxString CHeeksCNCApp::GetResFolder()
 	#endif
 #else
 #ifdef CMAKE_UNIX
-    return (_T("/usr/share/heekscnc"));
+    return (_T("/usr/local/share/heekscnc"));
     //return sp.GetResourcesDir();
 #else
 	return (m_dll_path + _T("/../../share/heekscnc"));
@@ -1469,7 +1874,10 @@ wxString CHeeksCNCApp::GetResFolder()
 }
 
 
-
+wxString CHeeksCNCApp::GetBitmapPath(const wxString& name)
+{
+	return theApp.GetResFolder() + _T("/bitmaps/") + name + _T(".png");
+}
 
 
 class MyApp : public wxApp
@@ -1506,7 +1914,6 @@ wxString HeeksCNCType( const int type )
 	case ProfileType:       return(_("Profile"));
 	case PocketType:       return(_("Pocket"));
 	case ZigZagType:       return(_("ZigZag"));
-	case AdaptiveType:       return(_("Adaptive"));
 	case DrillingType:       return(_("Drilling"));
 	case ToolType:       return(_("Tool"));
 	case ToolsType:       return(_("Tools"));
@@ -1532,7 +1939,6 @@ wxString HeeksCNCType( const int type )
 	case AttachOpType:       return(_("AttachOp"));
 	case UnattachOpType:       return(_("UnattachOp"));
 	case WaterlineType:       return(_("Waterline"));
-	case RaftType:       return(_("Raft"));
 	case TappingType:       return(_("Tapping"));
 
 	default:
