@@ -143,7 +143,6 @@ set( heekscnc_SRCS
     TurnRough.cpp
     Waterline.cpp
     ZigZag.cpp
-    ${HeeksCadDir}/src/Geom.cpp
    )
 
 
@@ -152,7 +151,7 @@ set( HeeksCAD_LIBS
    )
 
 add_library( heekscnc SHARED ${heekscnc_SRCS} ${platform_SRCS} ${heekscnc_HDRS} )
-target_link_libraries( heekscnc ${wxWidgets_LIBRARIES}  ${OpenCASCADE_LIBRARIES} ${HeeksCAD_LIBS} ${OSX_LIBS} )
+target_link_libraries( heekscnc ${HeeksCAD_LIBS} ${wxWidgets_LIBRARIES} ${OpenCASCADE_LIBRARIES} ${OSX_LIBS} )
 set_target_properties( heekscnc PROPERTIES SOVERSION ${CPACK_PACKAGE_VERSION_MAJOR}.${CPACK_PACKAGE_VERSION_MINOR}.${CPACK_PACKAGE_VERSION_PATCH} )
 # set_target_properties( heekscnc PROPERTIES LINK_FLAGS )
 

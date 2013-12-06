@@ -304,8 +304,8 @@ static void on_set_coordinate_system_number(const int zero_based_choice, HeeksOb
             parent->Add( pExistingFixture, NULL );
         } // End for
 #else
-		pFixture->m_owner->Remove(pFixture);
-		pFixture->m_owner->Add( pExistingFixture, NULL );
+		pFixture->Owner()->Remove(pFixture);
+		pFixture->Owner()->Add( pExistingFixture, NULL );
 #endif
 	}
 } // End on_set_coordinate_system_number

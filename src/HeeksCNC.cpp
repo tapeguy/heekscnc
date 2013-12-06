@@ -1158,16 +1158,12 @@ static void OpenBOMFileMenuCallback(wxCommandEvent& event)
 {
 	wxString ext_str(_T("*.*")); // to do, use the machine's NC extension
 	wxString wildcard_string = wxString(_("BOM files")) + _T(" |") + ext_str;
-    wxFileDialog dialog(theApp.m_output_canvas, _("Open BOM file"), wxEmptyString, wxEmptyString, wildcard_string);
-    dialog.CentreOnParent();
+	wxFileDialog dialog(theApp.m_output_canvas, _("Open BOM file"), wxEmptyString, wxEmptyString, wildcard_string);
+	dialog.CentreOnParent();
 
-    if (dialog.ShowModal() == wxID_OK)
-    {
-#ifdef MULTIPLE_OWNERS
+	if (dialog.ShowModal() == wxID_OK)
+	{
 		theApp.m_program->Owner()->Add(new CBOM(dialog.GetPath()),NULL);
-#else
-		theApp.m_program->m_owner->Add(new CBOM(dialog.GetPath()),NULL);
-#endif
 	}
 }
 

@@ -7,7 +7,7 @@
 #include "tinyxml/tinyxml.h"
 #include "NCCode.h"
 #include "TrsfNCCode.h"
-#include "src/Geom.h"
+#include "interface/Geom.h"
 
 
 using namespace std;
