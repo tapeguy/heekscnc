@@ -21,12 +21,15 @@
 
 class CChamfer;
 
-class CChamferParams{
+class CChamferParams : public MutableObject {
+
+private:
+        CChamfer * parent;
 
 public:
 	// The chamfer width is the width of the cut for the chamfer.  This value helps to determine
 	// the depth of cut.
-	double m_chamfer_width;
+	PropertyLength m_chamfer_width;
 
 	typedef enum {
 		eRightOrInside = -1,
@@ -35,9 +38,13 @@ public:
 	}eSide;
 	eSide m_tool_on_side;
 
+	PropertyChoice m_tool_on_side_choice;
+
+	CChamferParams(CChamfer * parent);
+	void InitializeProperties();
 	void set_initial_values();
 	void write_values_to_config();
-	void GetProperties(CChamfer * parent, std::list<Property *> *list);
+	void GetProperties(std::list<Property *> *list);
 	void WriteXMLAttributes(TiXmlNode* pElem);
 	void ReadParametersFromXMLElement(TiXmlElement* pElem);
 
@@ -118,9 +125,9 @@ public:
 	CChamferParams m_params;
 
 	//	Constructors.
-	CChamfer():CDepthOp(GetTypeString(), NULL, 0, ChamferType){}
-	CChamfer(	const Symbols_t &symbols,
-			const int tool_number );
+	CChamfer();
+	CChamfer( const Symbols_t &symbols,
+		  const int tool_number );
 
 	CChamfer( const CChamfer & rhs );
 	CChamfer & operator= ( const CChamfer & rhs );
@@ -132,6 +139,7 @@ public:
 	void glCommands(bool select, bool marked, bool no_color);
 
 	const wxBitmap &GetIcon();
+	void OnPropertyEdit(Property * prop);
 	void GetProperties(std::list<Property *> *list);
 	HeeksObj *MakeACopy(void)const;
 	void CopyFrom(const HeeksObj* object);

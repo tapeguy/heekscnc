@@ -8,15 +8,30 @@
 
 class CWaterline;
 
-class CWaterlineParams{
-public:
-	CBox m_box; // z values ignored ( use start_depth, final_depth instead )
-	double m_step_over;
-	double m_material_allowance;
-	double m_tolerance;
+class CWaterlineParams : public MutableObject
+{
+private:
 
-	void GetProperties(CWaterline* parent, std::list<Property *> *list);
-	void WriteXMLAttributes(TiXmlNode* pElem);
+    CWaterline * parent;
+
+public:
+
+    CBox m_box; // z values ignored ( use start_depth, final_depth instead )
+    PropertyLength m_min_x;
+    PropertyLength m_min_y;
+    PropertyLength m_max_x;
+    PropertyLength m_max_y;
+//    PropertyLength m_step_over;
+    PropertyLength m_material_allowance;
+    PropertyLength m_tolerance;
+
+    CWaterlineParams ( CWaterline * parent );
+
+    void InitializeProperties();
+    void GetProperties(std::list<Property *> *list);
+    void OnPropertyEdit(Property * prop);
+
+    void WriteXMLAttributes(TiXmlNode* pElem);
 	void ReadFromXMLElement(TiXmlElement* pElem);
 
 	const wxString ConfigScope(void)const{return _T("Waterline");}
@@ -31,7 +46,11 @@ public:
 	CWaterlineParams m_params;
 	static int number_for_stl_file;
 
-	CWaterline():CDepthOp(GetTypeString(), 0, WaterlineType){}
+	CWaterline()
+	 : CDepthOp(GetTypeString(), 0, WaterlineType), m_params(this)
+	{
+	}
+
 	CWaterline(const std::list<int> &solids, const int tool_number = -1);
 	CWaterline( const CWaterline & rhs );
 	CWaterline & operator= ( const CWaterline & rhs );

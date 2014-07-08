@@ -15,13 +15,6 @@
 #include "CNCConfig.h"
 #include "ProgramCanvas.h"
 #include "interface/HeeksObj.h"
-#include "interface/PropertyInt.h"
-#include "interface/PropertyDouble.h"
-#include "interface/PropertyLength.h"
-#include "interface/PropertyChoice.h"
-#include "interface/PropertyString.h"
-#include "interface/PropertyVertex.h"
-#include "interface/PropertyCheck.h"
 #include "tinyxml/tinyxml.h"
 #include "CNCPoint.h"
 #include "PythonStuff.h"
@@ -53,9 +46,9 @@ void CFixtureParams::set_initial_values(const bool safety_height_defined, const 
 {
 	CNCConfig config(ConfigScope());
 
-	config.Read(_T("m_yz_plane"), &m_yz_plane, 0.0);
-	config.Read(_T("m_xz_plane"), &m_xz_plane, 0.0);
-	config.Read(_T("m_xy_plane"), &m_xy_plane, 0.0);
+	config.Read(_T("m_yz_plane"), m_yz_plane, 0.0);
+	config.Read(_T("m_xz_plane"), m_xz_plane, 0.0);
+	config.Read(_T("m_xy_plane"), m_xy_plane, 0.0);
 
 	double pivot_point_x, pivot_point_y, pivot_point_z;
 	config.Read(_T("pivot_point_x"), &pivot_point_x, 0.0);
@@ -66,15 +59,15 @@ void CFixtureParams::set_initial_values(const bool safety_height_defined, const 
 
 	m_safety_height_defined = safety_height_defined;
 	m_safety_height = safety_height;
-	config.Read(_T("clearance_height"), &m_clearance_height, 100.0);
+	config.Read(_T("clearance_height"), m_clearance_height, 100.0);
 
-	config.Read(_T("touch_off_point_defined"), &m_touch_off_point_defined, false);
+	config.Read(_T("touch_off_point_defined"), m_touch_off_point_defined, false);
 	double touch_off_point_x, touch_off_point_y;
 	config.Read(_T("touch_off_point_x"), &touch_off_point_x, 0.0);
 	config.Read(_T("touch_off_point_y"), &touch_off_point_y, 0.0);
 	m_touch_off_point = gp_Pnt( touch_off_point_x, touch_off_point_y, 0.0 );
 
-	config.Read(_T("touch_off_description"), &m_touch_off_description, _T(""));
+	config.Read(_T("touch_off_description"), m_touch_off_description, _T(""));
 }
 
 void CFixtureParams::write_values_to_config()
@@ -100,102 +93,32 @@ void CFixtureParams::write_values_to_config()
 	config.Write(_T("touch_off_point_x"), m_touch_off_point.X());
 	config.Write(_T("touch_off_point_y"), m_touch_off_point.Y());
 
-	config.Write(_T("touch_off_description"), m_touch_off_description);
+	config.Write(_T("touch_off_description"), (const wxString&)m_touch_off_description);
 }
 
-static void on_set_yz_plane(double value, HeeksObj* object)
+void CFixtureParams::InitializeProperties()
 {
-	((CFixture*)object)->m_params.m_yz_plane = value;
-	 ((CFixture*)object)->ResetTitle();
+	m_yz_plane.Initialize(_("YZ plane (around X) rotation"), parent);
+	m_xz_plane.Initialize(_("XZ plane (around Y) rotation"), parent);
+	m_xy_plane.Initialize(_("XY plane (around Z) rotation"), parent);
+
+	m_pivot_point.Initialize(_("Pivot Point"), parent);
+
+	m_safety_height_defined.Initialize(_("Safety Height Defined"), parent);
+	m_safety_height.Initialize(_("Safety Height for inter-fixture movements (in G53 - Machine - coordinates)"), parent);
+
+	m_clearance_height.Initialize(_("Clearance Height for inter-operation movements(in local (G54, G55 etc.) coordinates)"), parent);
+
+	m_touch_off_point_defined.Initialize(_("Touch Off Point Defined"), parent);
+	wxString title;
+	title << _("Touch-off Point (in ") << parent->m_coordinate_system_number << _(" coordinates)");
+	m_touch_off_point.Initialize(title, parent);
+	m_touch_off_description.Initialize(_("Touch-off Description"), parent);
 }
 
-static void on_set_xz_plane(double value, HeeksObj* object)
+void CFixtureParams::GetProperties(std::list<Property *> *list)
 {
-	((CFixture*)object)->m_params.m_xz_plane = value;
-	((CFixture*)object)->ResetTitle();
-}
-
-static void on_set_xy_plane(double value, HeeksObj* object)
-{
-	((CFixture*)object)->m_params.m_xy_plane = value;
-	((CFixture*)object)->ResetTitle();
-}
-
-static void on_set_pivot_point(const double *vt, HeeksObj* object)
-{
-	((CFixture *)object)->m_params.m_pivot_point.SetX( vt[0] );
-	((CFixture *)object)->m_params.m_pivot_point.SetY( vt[1] );
-	((CFixture *)object)->m_params.m_pivot_point.SetZ( vt[2] );
-}
-
-static void on_set_touch_off_point(const double *vt, HeeksObj* object){
-	((CFixture *)object)->m_params.m_touch_off_point.SetX( vt[0] );
-	((CFixture *)object)->m_params.m_touch_off_point.SetY( vt[1] );
-}
-
-static void on_set_touch_off_point_defined(const bool value, HeeksObj *object)
-{
-    ((CFixture *)object)->m_params.m_touch_off_point_defined = value;
-    heeksCAD->Changed();
-}
-
-static void on_set_touch_off_description(const wxChar *value, HeeksObj* object){
-	((CFixture *)object)->m_params.m_touch_off_description = value;
-}
-
-static void on_set_safety_height_defined(const bool value, HeeksObj *object)
-{
-    ((CFixture *)object)->m_params.m_safety_height_defined = value;
-    heeksCAD->Changed();
-}
-
-static void on_set_safety_height(const double value, HeeksObj *object)
-{
-    ((CFixture *)object)->m_params.m_safety_height = value;
-    heeksCAD->Changed();
-}
-
-static void on_set_clearance_height(const double value, HeeksObj *object)
-{
-    ((CFixture *)object)->m_params.m_clearance_height = value;
-    heeksCAD->Changed();
-}
-
-void CFixtureParams::GetProperties(CFixture* parent, std::list<Property *> *list)
-{
-	list->push_back(new PropertyDouble(_("YZ plane (around X) rotation"), m_yz_plane, parent, on_set_yz_plane));
-	list->push_back(new PropertyDouble(_("XZ plane (around Y) rotation"), m_xz_plane, parent, on_set_xz_plane));
-	list->push_back(new PropertyDouble(_("XY plane (around Z) rotation"), m_xy_plane, parent, on_set_xy_plane));
-
-	double pivot_point[3];
-	pivot_point[0] = m_pivot_point.X();
-	pivot_point[1] = m_pivot_point.Y();
-	pivot_point[2] = m_pivot_point.Z();
-
-	list->push_back(new PropertyVertex(_("Pivot Point"), pivot_point, parent, on_set_pivot_point));
-
-    list->push_back(new PropertyCheck(_("Safety Height Defined"), m_safety_height_defined, parent, on_set_safety_height_defined));
-
-    if (m_safety_height_defined)
-    {
-        list->push_back(new PropertyLength(_("Safety Height for inter-fixture movements (in G53 - Machine - coordinates)"), m_safety_height, parent, on_set_safety_height));
-    }
-
-	list->push_back(new PropertyLength(_("Clearance Height for inter-operation movements(in local (G54, G55 etc.) coordinates)"), m_clearance_height, parent, on_set_clearance_height));
-
-	list->push_back(new PropertyCheck(_("Touch Off Point Defined"), m_touch_off_point_defined, parent, on_set_touch_off_point_defined));
-	if (m_touch_off_point_defined)
-	{
-		double touch_off_point[2];
-		touch_off_point[0] = m_touch_off_point.X();
-		touch_off_point[1] = m_touch_off_point.Y();
-
-		wxString title;
-		title << _("Touch-off Point (in ") << parent->m_coordinate_system_number << _T(" coordinates)");
-		list->push_back(new PropertyVertex2d(title, touch_off_point, parent, on_set_touch_off_point));
-		list->push_back(new PropertyString(_("Touch-off Description"), m_touch_off_description, parent, on_set_touch_off_description));
-	}
-
+    MutableObject::GetProperties(list);
 }
 
 void CFixtureParams::WriteXMLAttributes(TiXmlNode *root)
@@ -220,16 +143,17 @@ void CFixtureParams::WriteXMLAttributes(TiXmlNode *root)
 	element->SetDoubleAttribute( "touch_off_point_x", m_touch_off_point.X());
 	element->SetDoubleAttribute( "touch_off_point_y", m_touch_off_point.Y());
 
-	element->SetAttribute( "touch_off_description", m_touch_off_description.utf8_str());
+	element->SetAttribute( "touch_off_description", ((const wxString&)m_touch_off_description).utf8_str());
 }
 
 void CFixtureParams::ReadParametersFromXMLElement(TiXmlElement* pElem)
 {
 	set_initial_values(false, 0.0);
 
-	if (pElem->Attribute("yz_plane")) pElem->Attribute("yz_plane", &m_yz_plane);
-	if (pElem->Attribute("xz_plane")) pElem->Attribute("xz_plane", &m_xz_plane);
-	if (pElem->Attribute("xy_plane")) pElem->Attribute("xy_plane", &m_xy_plane);
+	double value;
+	if (pElem->Attribute("yz_plane")) { pElem->Attribute("yz_plane", &value); m_yz_plane = value; }
+	if (pElem->Attribute("xz_plane")) { pElem->Attribute("xz_plane", &value); m_xz_plane = value; }
+	if (pElem->Attribute("xy_plane")) { pElem->Attribute("xy_plane", &value); m_xy_plane = value; }
 
 	if (pElem->Attribute("pivot_point_x")) { double value; pElem->Attribute("pivot_point_x", &value); m_pivot_point.SetX( value ); }
 	if (pElem->Attribute("pivot_point_y")) { double value; pElem->Attribute("pivot_point_y", &value); m_pivot_point.SetY( value ); }
@@ -238,14 +162,13 @@ void CFixtureParams::ReadParametersFromXMLElement(TiXmlElement* pElem)
 	int flag = 0;
 	if (pElem->Attribute("safety_height_defined")) pElem->Attribute("safety_height_defined", &flag);
 	m_safety_height_defined = (flag != 0);
-	if (pElem->Attribute("safety_height")) pElem->Attribute("safety_height", &m_safety_height);
-	if (pElem->Attribute("clearance_height")) pElem->Attribute("clearance_height", &m_clearance_height);
+	if (pElem->Attribute("safety_height")) { pElem->Attribute("safety_height", &value); m_safety_height = value; }
+	if (pElem->Attribute("clearance_height")) { pElem->Attribute("clearance_height", &value); m_clearance_height = value; }
 
 	flag = 0;
 	if (pElem->Attribute("touch_off_point_defined")) pElem->Attribute("touch_off_point_defined", &flag);
 	m_touch_off_point_defined = (flag != 0);
 
-	double value;
 	if (pElem->Attribute("touch_off_point_x")) { pElem->Attribute("touch_off_point_x", &value); m_touch_off_point.SetX( value ); }
 	if (pElem->Attribute("touch_off_point_y")) { pElem->Attribute("touch_off_point_y", &value); m_touch_off_point.SetY( value ); }
 
@@ -281,58 +204,61 @@ Python CFixture::AppendTextToProgram() const
 }
 
 
-// 1 = G54, 2 = G55 etc.
-static void on_set_coordinate_system_number(const int zero_based_choice, HeeksObj* object)
+void CFixture::OnPropertyEdit(Property * prop)
 {
-	if (zero_based_choice < 0) return;	// An error has occured.
-	CFixture *pFixture = (CFixture *) object;
-
-	pFixture->m_coordinate_system_number = CFixture::eCoordinateSystemNumber_t(zero_based_choice + 1);	// Change from zero-based to one-based offset
-	pFixture->ResetTitle();
-
-	// See if we already have a fixture for this coordinate system.  If so, merge with it.
-	CFixture *pExistingFixture = FIXTURES_FIND( pFixture->m_coordinate_system_number );
-	if ((pExistingFixture != NULL) && (pExistingFixture != pFixture))
+	if (prop == &m_coordinate_system_number_choice)
 	{
-        // There is a pre-existing fixture for this coordinate system.  Use the pre-existing one and
-        // throw this one away.
+		int zero_based_choice = m_coordinate_system_number_choice;
+		if (zero_based_choice < 0) return;	// An error has occured.
+
+		// 1 = G54, 2 = G55 etc.
+		m_coordinate_system_number = CFixture::eCoordinateSystemNumber_t(zero_based_choice + 1);	// Change from zero-based to one-based offset
+		ResetTitle();
+
+		// See if we already have a fixture for this coordinate system.  If so, merge with it.
+		CFixture *pExistingFixture = FIXTURES_FIND( m_coordinate_system_number );
+		if ((pExistingFixture != NULL) && (pExistingFixture != this))
+		{
+			// There is a pre-existing fixture for this coordinate system.  Use the pre-existing one and
+			// throw this one away.
 
 #ifdef MULTIPLE_OWNERS
-        for (HeeksObj *parent = pFixture->GetFirstOwner(); parent != NULL; parent = pFixture->GetNextOwner())
-        {
-            parent->Remove(pFixture);
-            parent->Add( pExistingFixture, NULL );
-        } // End for
+			for (HeeksObj *parent = this->GetFirstOwner(); parent != NULL; parent = this->GetNextOwner())
+			{
+				parent->Remove(this);
+				parent->Add( pExistingFixture, NULL );
+			} // End for
 #else
-		pFixture->Owner()->Remove(pFixture);
-		pFixture->Owner()->Add( pExistingFixture, NULL );
+			Owner()->Remove(this);
+			Owner()->Add( pExistingFixture, NULL );
 #endif
+		}
 	}
-} // End on_set_coordinate_system_number
+}
 
 /**
 	NOTE: The m_title member is a special case.  The HeeksObj code looks for a 'GetShortString()' method.  If found, it
 	adds a Property called 'Object Title'.  If the value is changed, it tries to call the 'OnEditString()' method.
 	That's why the m_title value is not defined here
  */
+void CFixture::InitializeProperties()
+{
+	m_coordinate_system_number_choice.Initialize(_("Coordinate System"), this);
+	m_coordinate_system_number_choice.m_choices.push_back(_T("G54"));
+	m_coordinate_system_number_choice.m_choices.push_back(_T("G55"));
+	m_coordinate_system_number_choice.m_choices.push_back(_T("G56"));
+	m_coordinate_system_number_choice.m_choices.push_back(_T("G57"));
+	m_coordinate_system_number_choice.m_choices.push_back(_T("G58"));
+	m_coordinate_system_number_choice.m_choices.push_back(_T("G59"));
+	m_coordinate_system_number_choice.m_choices.push_back(_T("G59.1"));
+	m_coordinate_system_number_choice.m_choices.push_back(_T("G59.2"));
+	m_coordinate_system_number_choice.m_choices.push_back(_T("G59.3"));
+}
+
 void CFixture::GetProperties(std::list<Property *> *list)
 {
-	std::list< wxString > choices;
-
-	{
-		choices.push_back(_T("G54"));
-		choices.push_back(_T("G55"));
-		choices.push_back(_T("G56"));
-		choices.push_back(_T("G57"));
-		choices.push_back(_T("G58"));
-		choices.push_back(_T("G59"));
-		choices.push_back(_T("G59.1"));
-		choices.push_back(_T("G59.2"));
-		choices.push_back(_T("G59.3"));
-	} // End for
-	list->push_back(new PropertyChoice(_("Coordinate System"), choices, int(m_coordinate_system_number) - 1, this, on_set_coordinate_system_number));
-
-	m_params.GetProperties(this, list);
+	m_coordinate_system_number_choice = m_coordinate_system_number - 1;
+	m_params.GetProperties(list);
 	HeeksObj::GetProperties(list);
 }
 
@@ -711,7 +637,7 @@ void CFixture::SetRotationsFromProbedPoints( const wxString & probed_points_xml_
 						measured_run = points[1].X() - points[0].X();
 
 						m_params.m_xy_plane = (atan2( measured_rise, measured_run ) / (2 * PI)) * 360.0;
-						m_params.m_xy_plane -= xy_reference;
+						m_params.m_xy_plane = m_params.m_xy_plane - xy_reference;
 					}
 
 					// rotation around Y
@@ -721,7 +647,7 @@ void CFixture::SetRotationsFromProbedPoints( const wxString & probed_points_xml_
 						measured_run = points[1].X() - points[0].X();
 
 						m_params.m_xz_plane = (atan2( measured_rise, measured_run ) / (2 * PI)) * 360.0;
-						m_params.m_xz_plane -= xz_reference;
+						m_params.m_xz_plane = m_params.m_xz_plane - xz_reference;
 					}
 
 					// rotation around X
@@ -731,7 +657,7 @@ void CFixture::SetRotationsFromProbedPoints( const wxString & probed_points_xml_
 						measured_run = points[1].Y() - points[0].Y();
 
 						m_params.m_yz_plane = (atan2( measured_rise, measured_run ) / (2 * PI)) * 360.0;
-						m_params.m_yz_plane -= yz_reference;
+						m_params.m_yz_plane = m_params.m_yz_plane - yz_reference;
 					}
 
 					// Erase these three points
@@ -810,7 +736,7 @@ bool CFixtureParams::operator== ( const CFixtureParams & rhs ) const
 	if (m_clearance_height != rhs.m_clearance_height) return(false);
 	if (m_touch_off_point_defined != rhs.m_touch_off_point_defined) return(false);
 	if (CNCPoint(m_touch_off_point) != CNCPoint(rhs.m_touch_off_point)) return(false);
-	if (m_touch_off_description != rhs.m_touch_off_description) return(false);
+	if ((const wxString&)m_touch_off_description != (const wxString&)rhs.m_touch_off_description) return(false);
 
 	return(true);
 }

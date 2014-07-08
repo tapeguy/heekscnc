@@ -15,7 +15,12 @@
 class CProfile;
 class CTags;
 
-class CProfileParams{
+class CProfileParams : public MutableObject
+{
+private:
+
+        CProfile * parent;
+
 public:
 	typedef enum {
 		eRightOrInside = -1,
@@ -28,7 +33,7 @@ public:
 		eConventional,
 		eClimb
 	}eCutMode;
-	eCutMode m_cut_mode;
+	PropertyChoice m_cut_mode;
 
 	// these are only used when m_sketches.size() == 1
 	bool m_auto_roll_on;
@@ -42,7 +47,7 @@ public:
 	bool m_end_given;
 	double m_start[3];
 	double m_end[3];
-    double m_extend_at_start; 
+    double m_extend_at_start;
     double m_extend_at_end;
 	bool m_end_beyond_full_profile;
 	int m_sort_sketches;
@@ -51,11 +56,12 @@ public:
 	bool m_do_finishing_pass;
 	bool m_only_finishing_pass; // don't do roughing pass
 	double m_finishing_h_feed_rate;
-	eCutMode m_finishing_cut_mode;
+	PropertyChoice m_finishing_cut_mode;
 	double m_finishing_step_down;
 
-	CProfileParams();
+	CProfileParams(CProfile * parent);
 
+	void InitializeProperties();
 	void GetProperties(CProfile* parent, std::list<Property *> *list);
 	void WriteXMLAttributes(TiXmlNode* pElem);
 	void ReadFromXMLElement(TiXmlElement* pElem);
@@ -75,12 +81,17 @@ public:
 	Sketches_t	m_sketches;
 	CProfileParams m_profile_params;
 
-	static double max_deviation_for_spline_to_arc;
+	static PropertyDouble max_deviation_for_spline_to_arc;
 
-	CProfile():CDepthOp(GetTypeString(), 0, ProfileType), m_tags(NULL) {}
+	CProfile()
+	 : CDepthOp(GetTypeString(), 0, ProfileType), m_tags(NULL), m_profile_params(this)
+	{
+	}
+
 	CProfile(const std::list<int> &sketches, const int tool_number );
 
 	CProfile( const CProfile & rhs );
+
 	CProfile & operator= ( const CProfile & rhs );
 
 	bool operator==( const CProfile & rhs ) const;

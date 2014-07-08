@@ -10,10 +10,6 @@
 #include "CNCConfig.h"
 #include "ProgramCanvas.h"
 #include "interface/HeeksObj.h"
-#include "interface/PropertyInt.h"
-#include "interface/PropertyDouble.h"
-#include "interface/PropertyLength.h"
-#include "interface/PropertyChoice.h"
 #include "tinyxml/tinyxml.h"
 #include "CTool.h"
 #include "Profile.h"
@@ -29,12 +25,17 @@
 extern CHeeksCADInterface* heeksCAD;
 
 
+CPositioningParams::CPositioningParams(CPositioning * parent)
+{
+	this->parent = parent;
+}
+
 void CPositioningParams::set_initial_values()
 {
 	CNCConfig config(ConfigScope());
 
-	config.Read(_T("m_standoff"), &m_standoff, (25.4 / 4));	// Quarter of an inch
-	config.Read(_T("m_sort_locations"), &m_sort_locations, 1);
+	config.Read(_T("m_standoff"), m_standoff, (25.4 / 4));	// Quarter of an inch
+	config.Read(_T("m_sort_locations"), m_sort_locations, 1);
 }
 
 void CPositioningParams::write_values_to_config()
@@ -49,31 +50,12 @@ void CPositioningParams::write_values_to_config()
 }
 
 
-static void on_set_standoff(double value, HeeksObj* object)
+void CPositioningParams::InitializeProperties()
 {
-	((CPositioning*)object)->m_params.m_standoff = value;
-	((CPositioning*)object)->m_params.write_values_to_config();
-}
-
-static void on_set_sort_locations(int value, HeeksObj* object)
-{
-	((CPositioning*)object)->m_params.m_sort_locations = value;
-	((CPositioning*)object)->m_params.write_values_to_config();
-}
-
-
-void CPositioningParams::GetProperties(CPositioning* parent, std::list<Property *> *list)
-{
-	list->push_back(new PropertyLength(_("standoff"), m_standoff, parent, on_set_standoff));
-	{ // Begin choice scope
-		std::list< wxString > choices;
-
-		choices.push_back(_("Respect existing order"));	// Must be 'false' (0)
-		choices.push_back(_("True"));			// Must be 'true' (non-zero)
-
-		int choice = int(m_sort_locations);
-		list->push_back(new PropertyChoice(_("sort_locations"), choices, choice, parent, on_set_sort_locations));
-	} // End choice scope
+	m_standoff.Initialize(_("Standoff"), parent);
+	m_sort_locations.Initialize(_("Sort locations"), parent);
+	m_sort_locations.m_choices.push_back(_("Respect existing order"));	// Must be 'false' (0)
+	m_sort_locations.m_choices.push_back(_("True"));			// Must be 'true' (non-zero)
 }
 
 void CPositioningParams::WriteXMLAttributes(TiXmlNode *root)
@@ -88,8 +70,16 @@ void CPositioningParams::WriteXMLAttributes(TiXmlNode *root)
 
 void CPositioningParams::ReadParametersFromXMLElement(TiXmlElement* pElem)
 {
-	if (pElem->Attribute("standoff")) pElem->Attribute("standoff", &m_standoff);
-	if (pElem->Attribute("sort_locations")) pElem->Attribute("sort_locations", &m_sort_locations);
+	if (pElem->Attribute("standoff")) {
+		double d;
+		pElem->Attribute("standoff", &d);
+		m_standoff = d;
+	}
+	if (pElem->Attribute("sort_locations")) {
+		int i;
+		pElem->Attribute("sort_locations", &i);
+		m_sort_locations = i;
+	}
 }
 
 const wxBitmap &CPositioning::GetIcon()
@@ -153,7 +143,7 @@ void CPositioning::glCommands(bool select, bool marked, bool no_color)
 
 void CPositioning::GetProperties(std::list<Property *> *list)
 {
-	m_params.GetProperties(this, list);
+	m_params.GetProperties(list);
 	COp::GetProperties(list);
 }
 
@@ -172,15 +162,16 @@ bool CPositioning::CanAddTo(HeeksObj* owner)
 	return ((owner != NULL) && (owner->GetType() == OperationsType));
 }
 
-CPositioning::CPositioning( const CPositioning & rhs ) : COp(rhs)
+CPositioning::CPositioning( const CPositioning & rhs )
+ : COp(rhs), m_params(this)
 {
 	m_symbols.clear();
 	std::copy( rhs.m_symbols.begin(), rhs.m_symbols.end(), std::inserter( m_symbols, m_symbols.begin() ));
 	m_params = rhs.m_params;
 }
 
-CPositioning::CPositioning(	const Symbols_t &symbols )
-		: COp(GetTypeString(), 0, PositioningType), m_symbols(symbols)
+CPositioning::CPositioning(const Symbols_t &symbols)
+ : COp(GetTypeString(), 0, PositioningType), m_symbols(symbols), m_params(this)
 {
     m_params.set_initial_values();
 

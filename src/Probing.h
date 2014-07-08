@@ -45,7 +45,7 @@ class CProbing;
 	It is based on CSpeedOp so that feed rates can be obtained.
  */
 
-class CProbing: public CSpeedOp {
+class CProbing : public CSpeedOp {
 public:
 	// NOTE that the first and last values here are used within 'for' loops in other parts of the code.
 	typedef enum
@@ -69,7 +69,7 @@ public:
 	typedef enum
 	{
 		eInside = 0,	// From inside towards outside
-		eOutside		// From outside towards inside
+		eOutside	// From outside towards inside
 	} eProbeDirection_t;
 
 	typedef enum
@@ -80,7 +80,8 @@ public:
 
 public:
 	//	Constructors.
-	CProbing( const wxString title, const int tool_number, const int operation_type):CSpeedOp(title, tool_number, operation_type)
+    CProbing ( const wxString title, const int tool_number, const int operation_type )
+     : CSpeedOp ( title, tool_number, operation_type )
 	{
 		m_speed_op_params.m_spindle_speed = 0;	// We don't want the spindle to move while we're probing.
 		COp::m_active = 0;	// We don't want the normal GCode generation routines to include us.
@@ -101,7 +102,7 @@ public:
 	CProbing( const CProbing & rhs);
 	CProbing & operator= ( const CProbing & rhs );
 
-	void GetProperties(std::list<Property *> *list);
+	void InitializeProperties ( );
 	void WriteBaseXML(TiXmlElement *element);
 	void ReadBaseXML(TiXmlElement* element);
 	void glCommands(bool select, bool marked, bool no_color);
@@ -133,8 +134,8 @@ public:
 
 	virtual void GenerateMeaningfullName();
 
-	double m_depth;			// How far to drop down from the current position before starting to probe inwards.
-	double m_distance;	// Distance from starting point outwards before dropping down and probing in.
+	PropertyLength m_depth;		// How far to drop down from the current position before starting to probe inwards.
+	PropertyLength m_distance;	// Distance from starting point outwards before dropping down and probing in.
 
 	typedef enum
 	{
@@ -400,7 +401,9 @@ public:
 	void WriteXML(TiXmlNode *root);
 	const wxChar* GetTypeString(void)const{return _T("ProbeGrid");}
 
+    void InitializeProperties();
 	void GetProperties(std::list<Property *> *list);
+	void OnPropertyEdit(Property * prop);
 	HeeksObj *MakeACopy(void)const;
 	void CopyFrom(const HeeksObj* object);
 
@@ -418,9 +421,9 @@ public:
 	void OnChangeUnits(const double units);
 
 public:
-	int	m_num_x_points;
-	int m_num_y_points;
-	bool m_for_fixture_measurement;
+	PropertyInt m_num_x_points;
+	PropertyInt m_num_y_points;
+	PropertyChoice m_for_fixture_measurement;	// Point Cloud or Fixture Measurement
 };
 
 
@@ -449,7 +452,9 @@ public:
 	void WriteXML(TiXmlNode *root);
 	const wxChar* GetTypeString(void)const{return _T("ProbeCentre");}
 
+	void InitializeProperties();
 	void GetProperties(std::list<Property *> *list);
+	void OnPropertyEdit(Property *prop);
 	HeeksObj *MakeACopy(void)const;
 	void CopyFrom(const HeeksObj* object);
 
@@ -467,9 +472,10 @@ public:
 	void OnChangeUnits(const double units);
 
 public:
-	int m_direction;	// Really eProbeDirection_t.  i.e. eInside or eOutside
-	int m_number_of_points;	// Can be either 2 or 4 ONLY
-	int m_alignment;	// really eAlignment_t.  i.e. eXAxis or xYAxis
+	PropertyChoice m_direction;	// Really eProbeDirection_t.  i.e. eInside or eOutside
+	PropertyChoice m_number_of_points_choice;
+	int m_number_of_points;		// Can be either 2 or 4 ONLY
+	PropertyChoice m_alignment;	// really eAlignment_t.  i.e. eXAxis or xYAxis
 };
 
 /**
@@ -516,7 +522,9 @@ public:
 	void WriteXML(TiXmlNode *root);
 	const wxChar* GetTypeString(void)const{return _T("ProbeEdge");}
 
+	void InitializeProperties();
 	void GetProperties(std::list<Property *> *list);
+	void OnPropertyEdit(Property *prop);
 	HeeksObj *MakeACopy(void)const;
 	void CopyFrom(const HeeksObj* object);
 
@@ -535,22 +543,23 @@ public:
 
 public:
 	// The probing feed rate will be taken from CSpeedOp::m_speed_op_params.m_horozontal_feed_rate
-	double m_retract;	// mm.  This is how far to retract from the edge before probing back in.
-	unsigned int m_number_of_edges;	// A single edge produces only an angle in an XML document.  Two edges also moves the
-									// cutting point back to the intersection of these edges. NOTE: Values of 1 and 2 ONLY are valid.
+	PropertyLength m_retract;   // mm.  This is how far to retract from the edge before probing back in.
+	PropertyChoice m_number_of_edges_choice;
+	int m_number_of_edges;      // A single edge produces only an angle in an XML document.  Two edges also moves the
+	                            // cutting point back to the intersection of these edges. NOTE: Values of 1 and 2 ONLY are valid.
 
-	eEdges_t m_edge;	// This is only valid if m_number_of_edges = 1
-	eCorners_t m_corner;	// This is only valid if m_number_of_edges = 2
+	PropertyChoice m_edge;	// This is only valid if m_number_of_edges = 1
+	PropertyChoice m_corner;	// This is only valid if m_number_of_edges = 2
 
 	// If m_check_levels is true then we should also probe directly down near the point
 	// of intersection to find the workpiece's Z coordinate.  We store these coordinates
 	// in the XML file so that we can calculate the YZ and/or XZ plane rotations as well
 	// as the XY plane rotation during the IMPORT function of the CFixture class.
-	int m_check_levels;	// 1 = true, 0 = false
+	PropertyCheck m_check_levels;	// 1 = true, 0 = false
 
 	// The following two members are only relevant when probing a corner.
-	CNCPoint m_corner_coordinate;
-	CNCPoint m_final_coordinate;
+	PropertyVertex m_corner_coordinate;
+	PropertyVertex m_final_coordinate;
 };
 
 

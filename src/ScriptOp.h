@@ -15,13 +15,14 @@ class CScriptOp: public CDepthOp {
 
 public:
 	wxString m_str;
-	int m_emit_depthop_params;
+	PropertyCheck  m_emit_depthop_params;
 
 	CScriptOp():CDepthOp(GetTypeString(), 0, ScriptOpType) {}
 
 	CScriptOp( const CScriptOp & rhs );
 	CScriptOp & operator= ( const CScriptOp & rhs );
 
+	void InitializeProperties();
 	bool operator==( const CScriptOp & rhs ) const;
 	bool operator!=( const CScriptOp & rhs ) const { return(! (*this == rhs)); }
 
@@ -32,7 +33,6 @@ public:
 	int GetType()const{return ScriptOpType;}
 	const wxChar* GetTypeString(void)const{return _T("ScriptOp");}
 	const wxBitmap &GetIcon();
-	void GetProperties( std::list<Property *> *list);
 	ObjectCanvas* GetDialog(wxWindow* parent);
 	HeeksObj *MakeACopy(void)const;
 	void CopyFrom(const HeeksObj* object);

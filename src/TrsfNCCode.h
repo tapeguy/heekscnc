@@ -21,7 +21,7 @@ public:
 
 	// HeeksObj's virtual functions
 	int GetType()const{return TrsfNCCodeType;}
-	long GetMarkingMask()const{return MARKING_FILTER_UNKNOWN;}
+	int GetMarkingFilter()const{return UnknownMarkingFilter;}
 	const wxChar* GetTypeString(void)const{return _T("Transformable NC Code");}
 	const wxBitmap &GetIcon();
 	HeeksObj *MakeACopy(void)const;

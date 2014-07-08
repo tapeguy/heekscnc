@@ -9,12 +9,6 @@
 #include "ProgramCanvas.h"
 #include "NCCode.h"
 #include "interface/MarkedObject.h"
-#include "interface/PropertyString.h"
-#include "interface/PropertyFile.h"
-#include "interface/PropertyChoice.h"
-#include "interface/PropertyDouble.h"
-#include "interface/PropertyLength.h"
-#include "interface/PropertyCheck.h"
 #include "interface/Tool.h"
 #include "Profile.h"
 #include "Pocket.h"
@@ -211,9 +205,9 @@ CMachine::CMachine()
 	m_max_spindle_speed = 0.0;
 
 	CNCConfig config(CMachine::ConfigScope());
-	config.Read(_T("safety_height_defined"), &m_safety_height_defined, false );
-	config.Read(_T("safety_height"), &m_safety_height, 0.0 );		// in G53 machine units - indicates where to move to for tool changes
-	config.Read(_("ClearanceHeight"), (double *) &(m_clearance_height), 50.0 ); // in local coordinate system (G54 etc.) to show how tall clamps and vices are for movement between machine operations.
+	config.Read(_T("safety_height_defined"), m_safety_height_defined, false );
+	config.Read(_T("safety_height"), m_safety_height, 0.0 );		// in G53 machine units - indicates where to move to for tool changes
+	config.Read(_("ClearanceHeight"), m_clearance_height, 50.0 ); // in local coordinate system (G54 etc.) to show how tall clamps and vices are for movement between machine operations.
 }
 
 CMachine::CMachine( const CMachine & rhs )
@@ -325,6 +319,7 @@ static void on_set_naive_cam_tolerance(double value, HeeksObj *object)
 
 void CProgram::GetProperties(std::list<Property *> *list)
 {
+/*
 	{
 		std::vector<CMachine> machines;
 		GetMachines(machines);
@@ -372,10 +367,11 @@ void CProgram::GetProperties(std::list<Property *> *list)
 		if(m_units > 25.0)choice = 1;
 		list->push_back ( new PropertyChoice ( _("units for nc output"),  choices, choice, this, on_set_units ) );
 	}
+*/
 
 	m_machine.GetProperties(this, list);
-	m_raw_material.GetProperties(this, list);
-
+	m_raw_material.GetProperties(list);
+/*
 	{
 		std::list< wxString > choices;
 		choices.push_back(_("Exact Path Mode"));
@@ -391,7 +387,7 @@ void CProgram::GetProperties(std::list<Property *> *list)
 			list->push_back( new PropertyLength( _("Naive CAM Tolerance"), m_naive_cam_tolerance, this, on_set_naive_cam_tolerance ) );
 		} // End if - then
 	}
-
+*/
 	HeeksObj::GetProperties(list);
 }
 
@@ -432,19 +428,32 @@ static void on_set_clearance_height( const double value, HeeksObj *object)
 	heeksCAD->RefreshProperties();
 }
 
+void CMachine::InitializeProperties()
+{
+    m_max_spindle_speed.Initialize(_("Maximum Spindle Speed (RPM)"), this);
+    m_safety_height_defined.Initialize(_("Safety Height Defined"), this);
+    m_clearance_height.Initialize(_("Clearance Height (for inter-operation movement)"), this);
+    m_safety_height.Initialize(_("Safety Height (in G53 - Machine - coordinates)"), this);
+}
+
 void CMachine::GetProperties(CProgram *parent, std::list<Property *> *list)
 {
-	list->push_back(new PropertyDouble(_("Maximum Spindle Speed (RPM)"), m_max_spindle_speed, parent, on_set_max_spindle_speed));
-	list->push_back(new PropertyCheck(_("Safety Height Defined"), m_safety_height_defined, parent, on_set_safety_height_defined));
-
 	if (theApp.m_program->m_clearance_source == CProgram::eClearanceDefinedByMachine)
 	{
-		list->push_back(new PropertyLength(_("Clearance Height (for inter-operation movement)"), m_clearance_height, parent, on_set_clearance_height));
+        m_clearance_height.SetVisible(true);
+	}
+	else
+	{
+        m_clearance_height.SetVisible(false);
 	}
 
-    if (m_safety_height_defined)
+    if (m_safety_height_defined.IsSet())
     {
-        list->push_back(new PropertyLength(_("Safety Height (in G53 - Machine - coordinates)"), m_safety_height, parent, on_set_safety_height));
+        m_safety_height.SetVisible(true);
+    }
+    else
+    {
+        m_safety_height.SetVisible(true);
     }
 } // End GetProperties() method
 
@@ -601,16 +610,26 @@ void CMachine::WriteBaseXML(TiXmlElement *element)
 
 void CMachine::ReadBaseXML(TiXmlElement* element)
 {
+    double d;
 	if (element->Attribute("max_spindle_speed"))
 	{
-		element->Attribute("max_spindle_speed", &m_max_spindle_speed);
+		element->Attribute("max_spindle_speed", &d);
+		m_max_spindle_speed = d;
 	} // End if - then
 
 	int flag = 0;
-	if (element->Attribute("safety_height_defined")) element->Attribute("safety_height_defined", &flag);
+	if (element->Attribute("safety_height_defined"))
+	    element->Attribute("safety_height_defined", &flag);
 	m_safety_height_defined = (flag != 0);
-	if (element->Attribute("safety_height")) element->Attribute("safety_height", &m_safety_height);
-	if (element->Attribute("clearance_height")) element->Attribute("clearance_height", &m_clearance_height);
+
+	if (element->Attribute("safety_height")) {
+	    element->Attribute("safety_height", &d);
+	    m_safety_height = d;
+	}
+	if (element->Attribute("clearance_height")) {
+	    element->Attribute("clearance_height", &d);
+	    m_clearance_height = d;
+	}
 
 } // End ReadBaseXML() method
 
@@ -994,15 +1013,17 @@ void CProgram::UpdateFromUserType()
 void CProgram::GetMachines(std::vector<CMachine> &machines)
 {
 	wxString machines_file = CProgram::alternative_machines_file;
-#ifdef CMAKE_UNIX
+
+#ifdef WIN32
+	if(machines_file.Len() == 0)machines_file = theApp.GetResFolder() + _T("/nc/machines.txt");
+#else
 	#ifdef RUNINPLACE
 		if(machines_file.Len() == 0)machines_file = theApp.GetResFolder() + _T("/nc/machines.txt");
 	#else
 		if(machines_file.Len() == 0)machines_file = _T("/usr/local/lib/heekscnc/nc/machines.txt");
 	#endif
-#else
-	if(machines_file.Len() == 0)machines_file = theApp.GetResFolder() + _T("/nc/machines.txt");
 #endif
+
     ifstream ifs(Ttc(machines_file.c_str()));
 	if(!ifs)
 	{
@@ -1042,7 +1063,9 @@ void CProgram::GetMachines(std::vector<CMachine> &machines)
 			// We may have a material rate value.
 			if (AllNumeric( *tokens.rbegin() ))
 			{
-				tokens.rbegin()->ToDouble(&(m.m_max_spindle_speed));
+			    double d;
+				tokens.rbegin()->ToDouble(&d);
+				m.m_max_spindle_speed = d;
 				tokens.resize(tokens.size() - 1);	// Remove last token.
 			} // End if - then
 		} // End if - then
@@ -1083,8 +1106,8 @@ CMachine CProgram::GetMachine(const wxString& file_name)
 	machine.description = _T("not found");
 
 	CNCConfig config(ConfigScope());
-	config.Read(_T("safety_height_defined"), &machine.m_safety_height_defined, false);
-	config.Read(_T("safety_height"), &machine.m_safety_height, 0.0);
+	config.Read(_T("safety_height_defined"), machine.m_safety_height_defined, false);
+	config.Read(_T("safety_height"), machine.m_safety_height, 0.0);
 
 	return machine;
 }

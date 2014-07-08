@@ -11,12 +11,6 @@
 #include "ProgramCanvas.h"
 #include "Program.h"
 #include "interface/HeeksObj.h"
-#include "interface/PropertyDouble.h"
-#include "interface/PropertyLength.h"
-#include "interface/PropertyString.h"
-#include "interface/PropertyChoice.h"
-#include "interface/PropertyVertex.h"
-#include "interface/PropertyCheck.h"
 #include "tinyxml/tinyxml.h"
 #include "CTool.h"
 #include "CNCPoint.h"
@@ -26,11 +20,11 @@
 
 #include <sstream>
 
-// static
-double CPocket::max_deviation_for_spline_to_arc = 0.1;
+/* static */ PropertyDouble CPocket::max_deviation_for_spline_to_arc = 0.1;
 
-CPocketParams::CPocketParams()
+CPocketParams::CPocketParams(CPocket* parent)
 {
+	this->parent = parent;
 	m_step_over = 0.0;
 	m_material_allowance = 0.0;
 	m_starting_place = true;
@@ -53,78 +47,30 @@ void CPocketParams::set_initial_values(const CTool::ToolNumber_t tool_number)
     }
 }
 
-static void on_set_entry_move(int value, HeeksObj* object)
+void CPocketParams::InitializeProperties()
 {
-	((CPocket*)object)->m_pocket_params.m_entry_move = (CPocketParams::eEntryStyle) value;
-	((CPocket*)object)->WriteDefaultValues();
+	m_step_over.Initialize(_("Step over"), parent);
+	m_material_allowance.Initialize(_("Material allowance"), parent);
+
+	m_starting_place.Initialize(_("Starting place"), parent);
+	m_starting_place.m_choices.push_back(_("Boundary"));
+	m_starting_place.m_choices.push_back(_("Center"));
+
+	m_entry_move.Initialize(_("Entry move"), parent);
+	m_entry_move.m_choices.push_back(_("Plunge"));
+	m_entry_move.m_choices.push_back(_("Ramp"));
+	m_entry_move.m_choices.push_back(_("Helical"));
+
+	m_keep_tool_down_if_poss.Initialize(_("Keep tool down"), parent);
+	m_use_zig_zag.Initialize(_("Use zig zag"), parent);
+	m_zig_angle.Initialize(_("Zig angle"), parent);
+	m_zig_unidirectional.Initialize(_("Zig unidirectional"), parent);
 }
 
-static void on_set_step_over(double value, HeeksObj* object)
+void CPocketParams::GetProperties(std::list<Property *> *list)
 {
-	((CPocket*)object)->m_pocket_params.m_step_over = value;
-	((CPocket*)object)->WriteDefaultValues();
-}
-
-static void on_set_material_allowance(double value, HeeksObj* object)
-{
-	((CPocket*)object)->m_pocket_params.m_material_allowance = value;
-	((CPocket*)object)->WriteDefaultValues();
-}
-
-static void on_set_starting_place(int value, HeeksObj* object)
-{
-	((CPocket*)object)->m_pocket_params.m_starting_place = value;
-	((CPocket*)object)->WriteDefaultValues();
-}
-
-static void on_set_keep_tool_down(bool value, HeeksObj* object)
-{
-	((CPocket*)object)->m_pocket_params.m_keep_tool_down_if_poss = value;
-	((CPocket*)object)->WriteDefaultValues();
-}
-
-static void on_set_use_zig_zag(bool value, HeeksObj* object)
-{
-	((CPocket*)object)->m_pocket_params.m_use_zig_zag = value;
-	((CPocket*)object)->WriteDefaultValues();
-}
-
-static void on_set_zig_angle(double value, HeeksObj* object)
-{
-	((CPocket*)object)->m_pocket_params.m_zig_angle = value;
-	((CPocket*)object)->WriteDefaultValues();
-}
-
-static void on_set_zig_uni(bool value, HeeksObj* object)
-{
-	((CPocket*)object)->m_pocket_params.m_zig_unidirectional = value;
-	((CPocket*)object)->WriteDefaultValues();
-}
-
-void CPocketParams::GetProperties(CPocket* parent, std::list<Property *> *list)
-{
-	list->push_back(new PropertyLength(_("step over"), m_step_over, parent, on_set_step_over));
-	list->push_back(new PropertyLength(_("material allowance"), m_material_allowance, parent, on_set_material_allowance));
-	{
-		std::list< wxString > choices;
-		choices.push_back(_("Boundary"));
-		choices.push_back(_("Center"));
-		list->push_back(new PropertyChoice(_("starting_place"), choices, m_starting_place, parent, on_set_starting_place));
-	}
-	{
-		std::list< wxString > choices;
-		choices.push_back(_("Plunge"));
-		choices.push_back(_("Ramp"));
-		choices.push_back(_("Helical"));
-		list->push_back(new PropertyChoice(_("entry_move"), choices, m_entry_move, parent, on_set_entry_move));
-	}
-	list->push_back(new PropertyCheck(_("keep tool down"), m_keep_tool_down_if_poss, parent, on_set_keep_tool_down));
-	list->push_back(new PropertyCheck(_("use zig zag"), m_use_zig_zag, parent, on_set_use_zig_zag));
-	if(m_use_zig_zag)
-	{
-		list->push_back(new PropertyDouble(_("zig angle"), m_zig_angle, parent, on_set_zig_angle));
-		list->push_back(new PropertyCheck(_("unidirectional"), m_zig_unidirectional, parent, on_set_zig_uni));
-	}
+	m_zig_angle.SetVisible(m_use_zig_zag.IsSet());
+	m_zig_unidirectional.SetVisible(m_use_zig_zag.IsSet());
 }
 
 void CPocketParams::WriteXMLAttributes(TiXmlNode *root)
@@ -144,20 +90,40 @@ void CPocketParams::WriteXMLAttributes(TiXmlNode *root)
 
 void CPocketParams::ReadFromXMLElement(TiXmlElement* pElem)
 {
-	pElem->Attribute("step", &m_step_over);
-	pElem->Attribute("mat", &m_material_allowance);
-	pElem->Attribute("from_center", &m_starting_place);
-	int int_for_bool = false;
-	pElem->Attribute("keep_tool_down", &int_for_bool);
-	m_keep_tool_down_if_poss = (int_for_bool != 0);
-	pElem->Attribute("use_zig_zag", &int_for_bool);
-	m_use_zig_zag = (int_for_bool != 0);
-	pElem->Attribute("zig_angle", &m_zig_angle);
-	pElem->Attribute("zig_unidirectional", &int_for_bool);
-	m_zig_unidirectional = (int_for_bool != 0);
-	int int_for_entry_move = (int) ePlunge;
-	pElem->Attribute("entry_move", &int_for_entry_move);
-	m_entry_move = (eEntryStyle) int_for_entry_move;
+	double d;
+	int i;
+	if (pElem->Attribute("step")) {
+		pElem->Attribute("step", &d);
+		m_step_over = d;
+	}
+	if (pElem->Attribute("mat")) {
+		pElem->Attribute("mat", &d);
+		m_material_allowance = d;
+	}
+	if (pElem->Attribute("from_center")) {
+		pElem->Attribute("from_center", &i);
+		m_starting_place = i;
+	}
+	if (pElem->Attribute("keep_tool_down")) {
+		pElem->Attribute("keep_tool_down", &i);
+		m_keep_tool_down_if_poss = (i != 0);
+	}
+	if (pElem->Attribute("use_zig_zag")) {
+		pElem->Attribute("use_zig_zag", &i);
+		m_use_zig_zag = (i != 0);
+	}
+	if (pElem->Attribute("zig_angle")) {
+		pElem->Attribute("zig_angle", &d);
+		m_zig_angle = d;
+	}
+	if (pElem->Attribute("zig_unidirectional")) {
+		pElem->Attribute("zig_unidirectional", &i);
+		m_zig_unidirectional = (i != 0);
+	}
+	if (pElem->Attribute("entry_move")) {
+		pElem->Attribute("entry_move", &i);
+		m_entry_move = i;
+	}
 }
 
 //static wxString WriteCircleDefn(HeeksObj* sketch, CMachineState *pMachineState) {
@@ -451,7 +417,7 @@ Python CPocket::AppendTextToProgram(CMachineState *pMachineState)
 				{
 				case SketchOrderTypeOpen:
 					{
-						wxMessageBox(wxString::Format(_("Pocket operation - Sketch must be a closed shape - sketch %d"), object->m_id));
+						wxMessageBox(wxString::Format(_("Pocket operation - Sketch must be a closed shape - sketch %d"), (int)object->m_id));
 						delete re_ordered_sketch;
 						continue;
 					}
@@ -459,7 +425,7 @@ Python CPocket::AppendTextToProgram(CMachineState *pMachineState)
 
 				default:
 					{
-						wxMessageBox(wxString::Format(_("Pocket operation - Badly ordered sketch - sketch %d"), object->m_id));
+						wxMessageBox(wxString::Format(_("Pocket operation - Badly ordered sketch - sketch %d"), (int)object->m_id));
 						delete re_ordered_sketch;
 						continue;
 					}
@@ -529,13 +495,13 @@ void CPocket::ReadDefaultValues()
 	CDepthOp::ReadDefaultValues();
 
 	CNCConfig config(CPocketParams::ConfigScope());
-	config.Read(_T("StepOver"), &m_pocket_params.m_step_over, 1.0);
-	config.Read(_T("MaterialAllowance"), &m_pocket_params.m_material_allowance, 0.2);
-	config.Read(_T("FromCenter"), &m_pocket_params.m_starting_place, 1);
-	config.Read(_T("KeepToolDown"), &m_pocket_params.m_keep_tool_down_if_poss, true);
-	config.Read(_T("UseZigZag"), &m_pocket_params.m_use_zig_zag, false);
-	config.Read(_T("ZigAngle"), &m_pocket_params.m_zig_angle);
-	config.Read(_T("ZigUnidirectional"), &m_pocket_params.m_zig_unidirectional, false);
+	config.Read(_T("StepOver"), m_pocket_params.m_step_over, 1.0);
+	config.Read(_T("MaterialAllowance"), m_pocket_params.m_material_allowance, 0.2);
+	config.Read(_T("FromCenter"), m_pocket_params.m_starting_place, 1);
+	config.Read(_T("KeepToolDown"), m_pocket_params.m_keep_tool_down_if_poss, true);
+	config.Read(_T("UseZigZag"), m_pocket_params.m_use_zig_zag, false);
+	config.Read(_T("ZigAngle"), m_pocket_params.m_zig_angle);
+	config.Read(_T("ZigUnidirectional"), m_pocket_params.m_zig_unidirectional, false);
 	int int_for_entry_move = CPocketParams::ePlunge;
 	config.Read(_T("DecentStrategy"), &int_for_entry_move);
 	m_pocket_params.m_entry_move = (CPocketParams::eEntryStyle) int_for_entry_move;
@@ -553,7 +519,7 @@ void CPocket::GetProperties(std::list<Property *> *list)
 #else
 	AddSketchesProperties(list, m_sketches);
 #endif
-	m_pocket_params.GetProperties(this, list);
+	m_pocket_params.GetProperties(list);
 	CDepthOp::GetProperties(list);
 }
 
@@ -567,7 +533,7 @@ void CPocket::CopyFrom(const HeeksObj* object)
 	operator=(*((CPocket*)object));
 }
 
-CPocket::CPocket( const CPocket & rhs ) : CDepthOp(rhs)
+CPocket::CPocket( const CPocket & rhs ) : CDepthOp(rhs), m_pocket_params(this)
 {
 	m_sketches.clear();
 	std::copy( rhs.m_sketches.begin(), rhs.m_sketches.end(), std::inserter( m_sketches, m_sketches.begin() ) );
@@ -583,7 +549,6 @@ CPocket & CPocket::operator= ( const CPocket & rhs )
 		std::copy( rhs.m_sketches.begin(), rhs.m_sketches.end(), std::inserter( m_sketches, m_sketches.begin() ) );
 
 		m_pocket_params = rhs.m_pocket_params;
-		// static double max_deviation_for_spline_to_arc;
 	}
 
 	return(*this);
@@ -657,7 +622,7 @@ HeeksObj* CPocket::ReadFromXMLElement(TiXmlElement* element)
 }
 
 CPocket::CPocket(const std::list<int> &sketches, const int tool_number )
-	: CDepthOp(GetTypeString(), &sketches, tool_number ), m_sketches(sketches)
+	: CDepthOp(GetTypeString(), &sketches, tool_number ), m_sketches(sketches), m_pocket_params(this)
 {
 	ReadDefaultValues();
 	m_pocket_params.set_initial_values(tool_number);
@@ -677,7 +642,7 @@ CPocket::CPocket(const std::list<int> &sketches, const int tool_number )
 }
 
 CPocket::CPocket(const std::list<HeeksObj *> &sketches, const int tool_number )
-	: CDepthOp(GetTypeString(), sketches, tool_number )
+	: CDepthOp(GetTypeString(), sketches, tool_number ), m_pocket_params(this)
 {
 	ReadDefaultValues();
 	m_pocket_params.set_initial_values(tool_number);
@@ -804,22 +769,11 @@ std::list<wxString> CPocket::DesignRulesAdjustment(const bool apply_changes)
 
 } // End DesignRulesAdjustment() method
 
-static void on_set_spline_deviation(double value, HeeksObj* object){
-	CPocket::max_deviation_for_spline_to_arc = value;
-	CPocket::WriteToConfig();
-}
-
-// static
-void CPocket::GetOptions(std::list<Property *> *list)
-{
-	list->push_back ( new PropertyDouble ( _("Pocket spline deviation"), max_deviation_for_spline_to_arc, NULL, on_set_spline_deviation ) );
-}
-
 // static
 void CPocket::ReadFromConfig()
 {
 	CNCConfig config(CPocketParams::ConfigScope());
-	config.Read(_T("PocketSplineDeviation"), &max_deviation_for_spline_to_arc, 0.1);
+	config.Read(_T("PocketSplineDeviation"), max_deviation_for_spline_to_arc, 0.1);
 }
 
 // static

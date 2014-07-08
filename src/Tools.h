@@ -7,14 +7,15 @@
 
 #pragma once
 
-class CTools: public ObjList{
+class CTools: public ObjList
+{
 public:
     typedef enum {
-        eGuageReplacesSize = 0,
-        eIncludeGuageAndSize
+        eGaugeReplacesSize = 0,
+        eIncludeGaugeAndSize
 	} TitleFormat_t;
 
-    TitleFormat_t m_title_format;
+    PropertyChoice m_title_format;
 
 public:
 
@@ -28,11 +29,14 @@ public:
 	CTools( const CTools & rhs );
 	CTools & operator= ( const CTools & rhs );
 
+	void InitializeProperties();
+	void OnPropertyEdit(Property * prop);
+
 	bool operator==( const CTools & rhs ) const { return(ObjList::operator==(rhs)); }
 	bool operator!=( const CTools & rhs ) const { return(! (*this == rhs)); }
 
 	bool IsDifferent(HeeksObj *other) { return(*this != (*(CTools *)other)); }
-	
+
 
 	const wxBitmap &GetIcon();
 	bool CanAddTo(HeeksObj* owner){return owner->GetType() == ProgramType;}
@@ -46,8 +50,6 @@ public:
 	void GetTools(std::list<Tool*>* t_list, const wxPoint* p);
 
 	void OnChangeUnits(const double units);
-	void GetProperties(std::list<Property *> *list);
-
 
 	static wxString ConfigScope() { return(_("Tools")); }
 

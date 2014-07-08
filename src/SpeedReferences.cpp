@@ -4,10 +4,6 @@
 #include "tinyxml/tinyxml.h"
 #include "ProgramCanvas.h"
 #include "CNCConfig.h"
-#include "interface/PropertyString.h"
-#include "interface/PropertyChoice.h"
-#include "interface/PropertyDouble.h"
-#include "interface/PropertyLength.h"
 #include "interface/Tool.h"
 #include "CTool.h"
 #include "Op.h"
@@ -149,34 +145,41 @@ HeeksObj* CSpeedReferences::ReadFromXMLElement(TiXmlElement* pElem)
 	return new_object;
 }
 
-static void on_set_estimate_when_possible(int value, HeeksObj* object)
+void CSpeedReferences::InitializeProperties()
 {
-	((CSpeedReferences *)object)->m_estimate_when_possible = (value == 0) ? true: false;
+    {
+        std::list< wxString > choices;
+        choices.push_back( _("Estimate when possible") );       // true
+        choices.push_back( _("Use default values") );       // false
 
-	CNCConfig config(CSpeedReferences::ConfigScope());
-	config.Write(_T("estimate_when_possible"), int(((CSpeedReferences *)object)->m_estimate_when_possible?1:0));
+        m_estimate_when_possible_choices.Initialize( _("Feeds and Speeds"), this);
+        m_estimate_when_possible_choices.m_choices = choices;
+    }
 }
 
 void CSpeedReferences::GetProperties(std::list<Property *> *list)
 {
-	{
-		std::list< wxString > choices;
-		int choice = 0;
-		choices.push_back( _("Estimate when possible") );		// true
-		choices.push_back( _("Use default values") );		// false
+    if (m_estimate_when_possible)
+    {
+        m_estimate_when_possible_choices = 0;
+    } // End if - then
+    else
+    {
+        m_estimate_when_possible_choices = 1;
+    } // End if - else
+    HeeksObj::GetProperties(list);
+}
 
-		if (m_estimate_when_possible)
-		{
-			choice = 0;
-		} // End if - then
-		else
-		{
-			choice = 1;
-		} // End if - else
+void CSpeedReferences::OnPropertyEdit(Property *prop)
+{
+    if (prop == &m_estimate_when_possible_choices)
+    {
+        m_estimate_when_possible = (m_estimate_when_possible_choices == 0) ? true : false;
+        CNCConfig config(CSpeedReferences::ConfigScope());
+        config.Write(_T("estimate_when_possible"), int(m_estimate_when_possible?1:0));
 
-		list->push_back ( new PropertyChoice ( _("Feeds and Speeds"),  choices, choice, this, on_set_estimate_when_possible ) );
-	}
-	HeeksObj::GetProperties(list);
+    }
+    ObjList::OnPropertyEdit(prop);
 }
 
 
@@ -202,7 +205,7 @@ std::set< wxString > CSpeedReferences::GetMaterials()
 } // End GetMaterials() method
 
 /**
-	Return a set of harndess values that are valid for the chosen material name.
+	Return a set of hardness values that are valid for the chosen material name.
  */
 std::set< double > CSpeedReferences::GetHardnessForMaterial( const wxString & material_name )
 {
@@ -213,11 +216,13 @@ std::set< double > CSpeedReferences::GetHardnessForMaterial( const wxString & ma
 			material != NULL;
 			material = theApp.m_program->SpeedReferences()->GetNextChild())
 		{
-			if (material->GetType() != SpeedReferenceType) continue;
+			if (material->GetType() != SpeedReferenceType)
+			    continue;
 
-			if (material_name == ((CSpeedReference *) material)->m_material_name)
+			CSpeedReference * speedref = (CSpeedReference *) material;
+			if ((const wxString&)material_name == (const wxString&)speedref->m_material_name)
 			{
-				hardness_values.insert( ((CSpeedReference *) material)->m_brinell_hardness_of_raw_material );
+				hardness_values.insert( speedref->m_brinell_hardness_of_raw_material );
 			} // End if - then
 		} // End for
 	} // End if - then
@@ -238,8 +243,10 @@ std::set< double > CSpeedReferences::GetAllHardnessValues()
 			material != NULL;
 			material = theApp.m_program->SpeedReferences()->GetNextChild())
 		{
-			if (material->GetType() != SpeedReferenceType) continue;
-			hardness_values.insert( ((CSpeedReference *) material)->m_brinell_hardness_of_raw_material );
+			if (material->GetType() != SpeedReferenceType)
+			    continue;
+			CSpeedReference * speedref = (CSpeedReference *) material;
+			hardness_values.insert( speedref->m_brinell_hardness_of_raw_material );
 		} // End for
 	} // End if - then
 
@@ -259,12 +266,15 @@ double CSpeedReferences::GetSurfaceSpeed(
 		material != NULL;
 		material = theApp.m_program->SpeedReferences()->GetNextChild())
 	{
-		if (material->GetType() != SpeedReferenceType) continue;
-		if ((material_name == ((CSpeedReference *) material)->m_material_name) &&
-		    (tool_material == ((CSpeedReference *) material)->m_tool_material) &&
-		    (brinell_hardness_of_raw_material == ((CSpeedReference *) material)->m_brinell_hardness_of_raw_material))
+		if (material->GetType() != SpeedReferenceType)
+		    continue;
+
+		CSpeedReference * speedref = (CSpeedReference *) material;
+		if (((const wxString&)material_name == (const wxString&)speedref->m_material_name) &&
+		    (tool_material == speedref->m_tool_material) &&
+		    (brinell_hardness_of_raw_material == speedref->m_brinell_hardness_of_raw_material))
 		{
-			return( ((CSpeedReference *) material)->m_surface_speed );
+			return( speedref->m_surface_speed );
 		} // End if - then
 	} // End for
 

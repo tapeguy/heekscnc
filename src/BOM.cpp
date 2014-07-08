@@ -8,10 +8,6 @@
 #include "tinyxml/tinyxml.h"
 #include "NCCode.h"
 #include "interface/MarkedObject.h"
-#include "interface/PropertyString.h"
-#include "interface/PropertyChoice.h"
-#include "interface/PropertyDouble.h"
-#include "interface/PropertyLength.h"
 #include "interface/Tool.h"
 #include "TrsfNCCode.h"
 

@@ -11,8 +11,6 @@
 #include "Waterline.h"
 #include "CNCConfig.h"
 #include "ProgramCanvas.h"
-#include "interface/PropertyLength.h"
-#include "interface/PropertyChoice.h"
 #include "tinyxml/tinyxml.h"
 #include "Reselect.h"
 #include <wx/stdpaths.h>
@@ -26,23 +24,40 @@
 
 int CWaterline::number_for_stl_file = 1;
 
-static void on_set_minx(double value, HeeksObj* object){((CWaterline*)object)->m_params.m_box.m_x[0] = value; heeksCAD->Changed();}
-static void on_set_maxx(double value, HeeksObj* object){((CWaterline*)object)->m_params.m_box.m_x[3] = value;heeksCAD->Changed();}
-static void on_set_miny(double value, HeeksObj* object){((CWaterline*)object)->m_params.m_box.m_x[1] = value;heeksCAD->Changed();}
-static void on_set_maxy(double value, HeeksObj* object){((CWaterline*)object)->m_params.m_box.m_x[4] = value;heeksCAD->Changed();}
-//static void on_set_step_over(double value, HeeksObj* object){((CWaterline*)object)->m_params.m_step_over = value;heeksCAD->Changed();}
-static void on_set_material_allowance(double value, HeeksObj* object){((CWaterline*)object)->m_params.m_material_allowance = value;heeksCAD->Changed();}
-static void on_set_tolerance(double value, HeeksObj* object){((CWaterline*)object)->m_params.m_tolerance = value;heeksCAD->Changed();}
 
-void CWaterlineParams::GetProperties(CWaterline* parent, std::list<Property *> *list)
+CWaterlineParams::CWaterlineParams ( CWaterline * parent )
 {
-	list->push_back(new PropertyLength(_("minimum x"), m_box.m_x[0], parent, on_set_minx));
-	list->push_back(new PropertyLength(_("maximum x"), m_box.m_x[3], parent, on_set_maxx));
-	list->push_back(new PropertyLength(_("minimum y"), m_box.m_x[1], parent, on_set_miny));
-	list->push_back(new PropertyLength(_("maximum y"), m_box.m_x[4], parent, on_set_maxy));
-	//list->push_back(new PropertyLength(_("step over"), m_step_over, parent, on_set_step_over));
-	list->push_back(new PropertyLength(_("material allowance"), m_material_allowance, parent, on_set_material_allowance));
-	list->push_back(new PropertyLength(_("tolerance"), m_tolerance, parent, on_set_tolerance));
+    this->parent = parent;
+}
+
+void CWaterlineParams::InitializeProperties()
+{
+    m_min_x.Initialize(_("minimum x"), parent);
+    m_min_y.Initialize(_("minimum y"), parent);
+    m_max_x.Initialize(_("maximum x"), parent);
+    m_max_y.Initialize(_("maximum y"), parent);
+	//m_step_over.Initialize(_("step over"), parent);
+    m_material_allowance.Initialize(_("material allowance"), parent);
+    m_tolerance.Initialize(_("tolerance"), parent);
+}
+
+void CWaterlineParams::GetProperties(std::list<Property *> *list)
+{
+    m_min_x = m_box.MinX();
+    m_min_y = m_box.MinY();
+    m_max_x = m_box.MaxX();
+    m_max_y = m_box.MaxY();
+    MutableObject::GetProperties(list);
+}
+
+void CWaterlineParams::OnPropertyEdit(Property * prop)
+{
+    m_box.m_x[0] = m_min_x;
+    m_box.m_x[1] = m_min_y;
+    m_box.m_x[3] = m_max_x;
+    m_box.m_x[4] = m_max_y;
+    heeksCAD->Changed();
+    MutableObject::OnPropertyEdit(prop);
 }
 
 void CWaterlineParams::WriteXMLAttributes(TiXmlNode *root)
@@ -50,10 +65,10 @@ void CWaterlineParams::WriteXMLAttributes(TiXmlNode *root)
 	TiXmlElement * element;
 	element = heeksCAD->NewXMLElement( "params" );
 	heeksCAD->LinkXMLEndChild( root,  element );
-	element->SetDoubleAttribute( "minx", m_box.m_x[0]);
-	element->SetDoubleAttribute( "maxx", m_box.m_x[3]);
-	element->SetDoubleAttribute( "miny", m_box.m_x[1]);
-	element->SetDoubleAttribute( "maxy", m_box.m_x[4]);
+    element->SetDoubleAttribute( "minx", m_box.m_x[0]);
+    element->SetDoubleAttribute( "maxx", m_box.m_x[3]);
+    element->SetDoubleAttribute( "miny", m_box.m_x[1]);
+    element->SetDoubleAttribute( "maxy", m_box.m_x[4]);
 	//element->SetDoubleAttribute( "step_over", m_step_over);
 	element->SetDoubleAttribute( "material_allowance", m_material_allowance);
 	element->SetDoubleAttribute( "tolerance", m_tolerance);
@@ -61,18 +76,32 @@ void CWaterlineParams::WriteXMLAttributes(TiXmlNode *root)
 
 void CWaterlineParams::ReadFromXMLElement(TiXmlElement* pElem)
 {
+    double d;
+
 	// get the attributes
-	pElem->Attribute("minx", &m_box.m_x[0]);
-	pElem->Attribute("maxx", &m_box.m_x[3]);
-	pElem->Attribute("miny", &m_box.m_x[1]);
-	pElem->Attribute("maxy", &m_box.m_x[4]);
-	//pElem->Attribute("step_over", &m_step_over);
-	pElem->Attribute("material_allowance", &m_material_allowance);
-	pElem->Attribute("tolerance", &m_tolerance);
+	pElem->Attribute("minx", &d);
+	m_min_x = d;
+    pElem->Attribute("miny", &d);
+    m_min_y = d;
+	pElem->Attribute("maxx", &d);
+	m_max_x = d;
+	pElem->Attribute("maxy", &d);
+	m_max_y = d;
+	//pElem->Attribute("step_over", &d);
+	// m_step_over = d;
+	pElem->Attribute("material_allowance", &d);
+	m_material_allowance = d;
+	pElem->Attribute("tolerance", &d);
+	m_tolerance = d;
+
+    m_box.m_x[0] = m_min_x;
+    m_box.m_x[1] = m_min_y;
+    m_box.m_x[3] = m_max_x;
+    m_box.m_x[4] = m_max_y;
 }
 
 CWaterline::CWaterline(const std::list<int> &solids, const int tool_number)
-    :CDepthOp(GetTypeString(), NULL, tool_number, WaterlineType), m_solids(solids)
+    :CDepthOp(GetTypeString(), NULL, tool_number, WaterlineType), m_solids(solids), m_params(this)
 {
 	ReadDefaultValues();
 
@@ -118,7 +147,7 @@ CWaterline::CWaterline(const std::list<int> &solids, const int tool_number)
 	}
 }
 
-CWaterline::CWaterline( const CWaterline & rhs ) : CDepthOp(rhs)
+CWaterline::CWaterline( const CWaterline & rhs ) : CDepthOp(rhs), m_params(this)
 {
 	m_solids.clear();
     std::copy( rhs.m_solids.begin(), rhs.m_solids.end(), std::inserter( m_solids, m_solids.begin() ) );
@@ -277,8 +306,8 @@ void CWaterline::glCommands(bool select, bool marked, bool no_color)
 
 void CWaterline::GetProperties(std::list<Property *> *list)
 {
-	AddSolidsProperties(list, this);
-	m_params.GetProperties(this, list);
+//	AddSolidsProperties(list, this);
+	m_params.GetProperties(list);
 	CDepthOp::GetProperties(list);
 }
 
@@ -375,10 +404,10 @@ void CWaterline::WriteDefaultValues()
 	CDepthOp::WriteDefaultValues();
 
 	CNCConfig config(ConfigScope());
-	config.Write(wxString(GetTypeString()) + _T("BoxXMin"), m_params.m_box.m_x[0]);
-	config.Write(wxString(GetTypeString()) + _T("BoxYMin"), m_params.m_box.m_x[1]);
-	config.Write(wxString(GetTypeString()) + _T("BoxXMax"), m_params.m_box.m_x[3]);
-	config.Write(wxString(GetTypeString()) + _T("BoxYMax"), m_params.m_box.m_x[4]);
+	config.Write(wxString(GetTypeString()) + _T("BoxXMin"), m_params.m_min_x);
+	config.Write(wxString(GetTypeString()) + _T("BoxYMin"), m_params.m_min_y);
+	config.Write(wxString(GetTypeString()) + _T("BoxXMax"), m_params.m_max_x);
+	config.Write(wxString(GetTypeString()) + _T("BoxYMax"), m_params.m_max_y);
 	//config.Write(wxString(GetTypeString()) + _T("StepOver"), m_params.m_step_over);
 	config.Write(wxString(GetTypeString()) + _T("MatAllowance"), m_params.m_material_allowance);
 	config.Write(wxString(GetTypeString()) + _T("Tolerance"), m_params.m_tolerance);
@@ -389,13 +418,13 @@ void CWaterline::ReadDefaultValues()
 	CDepthOp::ReadDefaultValues();
 
 	CNCConfig config(ConfigScope());
-	config.Read(wxString(GetTypeString()) + _T("BoxXMin"), &m_params.m_box.m_x[0], -7.0);
-	config.Read(wxString(GetTypeString()) + _T("BoxYMin"), &m_params.m_box.m_x[1], -7.0);
-	config.Read(wxString(GetTypeString()) + _T("BoxXMax"), &m_params.m_box.m_x[3], 7.0);
-	config.Read(wxString(GetTypeString()) + _T("BoxYMax"), &m_params.m_box.m_x[4], 7.0);
-	//config.Read(wxString(GetTypeString()) + _T("StepOver"), &m_params.m_step_over, 1.0);
-	config.Read(wxString(GetTypeString()) + _T("MatAllowance"), &m_params.m_material_allowance, 0.0);
-	config.Read(wxString(GetTypeString()) + _T("Tolerance"), &m_params.m_tolerance, 0.01);
+	config.Read(wxString(GetTypeString()) + _T("BoxXMin"), m_params.m_min_x, -7.0);
+	config.Read(wxString(GetTypeString()) + _T("BoxYMin"), m_params.m_min_y, -7.0);
+	config.Read(wxString(GetTypeString()) + _T("BoxXMax"), m_params.m_max_x, 7.0);
+	config.Read(wxString(GetTypeString()) + _T("BoxYMax"), m_params.m_max_y, 7.0);
+	//config.Read(wxString(GetTypeString()) + _T("StepOver"), m_params.m_step_over, 1.0);
+	config.Read(wxString(GetTypeString()) + _T("MatAllowance"), m_params.m_material_allowance, 0.0);
+	config.Read(wxString(GetTypeString()) + _T("Tolerance"), m_params.m_tolerance, 0.01);
 }
 
 

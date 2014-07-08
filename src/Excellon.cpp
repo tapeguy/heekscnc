@@ -29,7 +29,7 @@
 
 extern CHeeksCADInterface* heeksCAD;
 
-/* static */ bool Excellon::s_allow_dummy_tool_definitions = true;
+/* static */ PropertyCheck Excellon::s_allow_dummy_tool_definitions = true;
 
 Excellon::Excellon()
 {
@@ -802,7 +802,8 @@ bool Excellon::ReadDataBlock( const std::string & data_block )
             int id = heeksCAD->GetNextID(ToolType);
             CTool *tool = new CTool(NULL, CToolParams::eDrill, id);
             heeksCAD->SetObjectID( tool, id );
-            tool->SetDiameter( tool_diameter * m_units );
+            tool->m_params.m_diameter = tool_diameter * m_units;
+            tool->SetAngleAndRadius();
             theApp.m_program->Tools()->Add( tool, NULL );
 
             // Keep a map of the tool numbers found in the Excellon file to those in our tool table.
@@ -872,22 +873,5 @@ bool Excellon::ReadDataBlock( const std::string & data_block )
 	return(true);
 } // End ReadDataBlock() method
 
-
-
-static void on_set_allow_dummy_tool_definitions(int choice, HeeksObj *unused)
-{
-	(void) unused;	// Avoid the compiler warning.
-	Excellon::s_allow_dummy_tool_definitions = (choice != 0);
-}
-
-
-/* static */ void Excellon::GetOptions(std::list<Property *> *list)
-{
-	std::list<wxString> choices;
-
-	choices.push_back(_("False"));
-	choices.push_back(_("True"));
-	list->push_back(new PropertyChoice(_("allow dummy tool definitions"), choices, (int) (s_allow_dummy_tool_definitions?1:0), NULL, on_set_allow_dummy_tool_definitions));
-} // End GetOptions() method
 
 

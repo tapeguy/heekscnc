@@ -10,14 +10,17 @@
 
 #include "Op.h"
 #include "HeeksCNCTypes.h"
-
+#include "interface/Property.h"
 #include <vector>
 #include <algorithm>
 
 class CTool;
 class CAttachOp;
 
-class CToolParams{
+class CToolParams : public MutableObject {
+
+private:
+	CTool * parent;
 
 public:
 
@@ -92,20 +95,18 @@ public:
 	// table from within a program.
 	// G10 L1 P[tool number] R[radius] X[offset] Z[offset] Q[orientation]
 
-	int m_material;	// eMaterial_t - describes the cutting surface type.
+	PropertyChoice m_type;
+	PropertyChoice m_material;	// eMaterial_t - describes the cutting surface type.
 
-
-
-
-	double m_diameter;
-	double m_tool_length_offset;
+	PropertyLength m_diameter;
+	PropertyLength m_tool_length_offset;
 
 	// The following are all for lathe tools.  They become relevant when the m_type = eTurningTool
-	double m_x_offset;
-	double m_front_angle;
-	double m_tool_angle;
-	double m_back_angle;
-	int m_orientation;
+	PropertyLength m_x_offset;
+	PropertyDouble m_front_angle;
+	PropertyDouble m_tool_angle;
+	PropertyDouble m_back_angle;
+	PropertyChoice m_orientation;
 	// also m_corner_radius, see below, is used for turning tools and milling tools
 
 
@@ -136,20 +137,19 @@ public:
 			- m_flat_radius = 0;	// sharp pointed end.  This may be larger if we can't use the centre point.
 			- m_cutting_edge_angle = 45	// degrees from centre line of tool
 	 */
-	double m_corner_radius;
-	double m_flat_radius;
-	double m_cutting_edge_angle;
-	double m_cutting_edge_height;	// How far, from the bottom of the cutter, do the flutes extend?
+	PropertyLength m_corner_radius;
+	PropertyLength m_flat_radius;
+	PropertyDouble m_cutting_edge_angle;
+	PropertyLength m_cutting_edge_height;	// How far, from the bottom of the cutter, do the flutes extend?
 
-	eToolType	m_type;
-	double m_max_advance_per_revolution;	// This is the maximum distance a tool should advance during a single
-						// revolution.  This value is often defined by the manufacturer in
-						// terms of an advance no a per-tooth basis.  This value, however,
-						// must be expressed on a per-revolution basis.  i.e. we don't want
-						// to maintain the number of cutting teeth so a per-revolution
-						// value is easier to use.
+	PropertyLength m_max_advance_per_revolution;	// This is the maximum distance a tool should advance during a single
+							// revolution.  This value is often defined by the manufacturer in
+							// terms of an advance no a per-tooth basis.  This value, however,
+							// must be expressed on a per-revolution basis.  i.e. we don't want
+							// to maintain the number of cutting teeth so a per-revolution
+							// value is easier to use.
 
-	int m_automatically_generate_title;	// Set to true by default but reset to false when the user edits the title.
+	PropertyCheck m_automatically_generate_title;	// Set to true by default but reset to false when the user edits the title.
 
 	// The following coordinates relate ONLY to touch probe tools.  They describe
 	// the error the probe tool has in locating an X,Y point.  These values are
@@ -162,8 +162,8 @@ public:
 	// make sense if the probe's body is aligned consistently each time.  I will
 	// ASSUME this is correct.
 
-	double m_probe_offset_x;
-	double m_probe_offset_y;
+	PropertyLength m_probe_offset_x;
+	PropertyLength m_probe_offset_y;
 
 	// The following  properties relate to the extrusions created by a reprap style 3D printer.
 	// using temperature, speed, and the height of the nozzle, and the nozzle size it's possible to create
@@ -188,32 +188,34 @@ public:
 
 		return(ExtrusionMaterials_list);
 	}
-	int m_extrusion_material;
-	double m_feedrate;
-	double m_layer_height;
-	double m_width_over_thickness;
-	double m_temperature;
-	double m_flowrate;
-	double m_filament_diameter;
-
+	PropertyChoice m_extrusion_material;
+	PropertyLength m_feedrate;
+	PropertyLength m_layer_height;
+	PropertyLength m_width_over_thickness;
+	PropertyLength m_temperature;
+	PropertyLength m_flowrate;
+	PropertyLength m_filament_diameter;
 
 
 	// The gradient is the steepest angle at which this tool can plunge into the material.  Many
 	// tools behave better if they are slowly ramped down into the material.  This gradient
-	// specifies the steepest angle of decsent.  This is expected to be a negative number indicating
+	// specifies the steepest angle of descent.  This is expected to be a negative number indicating
 	// the 'rise / run' ratio.  Since the 'rise' will be downward, it will be negative.
 	// By this measurement, a drill bit's straight plunge would have an infinite gradient (all rise, no run).
 	// To cater for this, a value of zero will indicate a straight plunge.
 
-	double m_gradient;
+	PropertyDouble m_gradient;
 
 	// properties for tapping tools
-	int m_direction;    // 0.. right hand tapping, 1..left hand tapping
-        double m_pitch;     // in units/rev
+	PropertyChoice m_thread_standard;
+	PropertyChoice m_direction;    // 0.. right hand tapping, 1..left hand tapping
+        PropertyLength m_pitch;     // in units/rev
 
+	CToolParams(CTool * parent);
+	void InitializeProperties();
 	void set_initial_values();
 	void write_values_to_config();
-	void GetProperties(CTool* parent, std::list<Property *> *list);
+	void GetProperties(std::list<Property *> *list);
 	void WriteXMLAttributes(TiXmlNode* pElem);
 	void ReadParametersFromXMLElement(TiXmlElement* pElem);
 
@@ -228,14 +230,13 @@ class CTool: public HeeksObj {
 public:
 	//	These are references to the CAD elements whose position indicate where the Tool Cycle begins.
 	CToolParams m_params;
-	wxString m_title;
 
 	typedef int ToolNumber_t;
-	ToolNumber_t m_tool_number;
+	PropertyInt m_tool_number;
 	HeeksObj *m_pToolSolid;
 
 	//	Constructors.
-	CTool(const wxChar *title, CToolParams::eToolType type, const int tool_number) : m_tool_number(tool_number), m_pToolSolid(NULL)
+	CTool(const wxChar *title, CToolParams::eToolType type, const int tool_number) : m_params(this), m_tool_number(tool_number), m_pToolSolid(NULL)
 	{
 		m_params.set_initial_values();
 		m_params.m_type = type;
@@ -251,10 +252,12 @@ public:
 		ResetParametersToReasonableValues();
 	} // End constructor
 
-    CTool( const CTool & rhs );
-    CTool & operator= ( const CTool & rhs );
+	CTool( const CTool & rhs );
+	CTool & operator= ( const CTool & rhs );
 
 	~CTool();
+
+	void InitializeProperties();
 
 	bool operator== ( const CTool & rhs ) const;
 	bool operator!= ( const CTool & rhs ) const { return(! (*this == rhs)); }
@@ -277,7 +280,6 @@ public:
 	void CopyFrom(const HeeksObj* object);
 	bool CanAddTo(HeeksObj* owner);
 	const wxBitmap &GetIcon();
-    const wxChar* GetShortString(void)const{return m_title.c_str();}
 	void glCommands(bool select, bool marked, bool no_color);
 	void KillGLLists(void);
 	void GetTools(std::list<Tool*>* t_list, const wxPoint* p);
@@ -292,7 +294,7 @@ public:
 	wxString GenerateMeaningfulName() const;
 	wxString ResetTitle();
 	static wxString FractionalRepresentation( const double original_value, const int max_denominator = 64 );
-	static wxString GuageNumberRepresentation( const double size, const double units );
+	static wxString GaugeNumberRepresentation( const double size, const double units );
 
 	TopoDS_Shape GetShape() const;
 	TopoDS_Face  GetSideProfile() const;
@@ -301,7 +303,8 @@ public:
 	static CToolParams::eToolType CutterType( const int tool_number );
 	static CToolParams::eMaterial_t CutterMaterial( const int tool_number );
 
-	void SetDiameter( const double diameter );
+	void OnPropertyEdit(Property *prop);
+	void SetAngleAndRadius();
 	void ResetParametersToReasonableValues();
 	void ImportProbeCalibrationData( const wxString & probed_points_xml_file_name );
 	double Gradient() const { return(m_params.m_gradient); }

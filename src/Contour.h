@@ -21,7 +21,11 @@
 
 class CContour;
 
-class CContourParams{
+class CContourParams : public MutableObject {
+
+private:
+	CContour * parent;
+
 public:
 	typedef enum {
 		eRightOrInside = -1,
@@ -30,24 +34,28 @@ public:
 	}eSide;
 	eSide m_tool_on_side;
 
+	PropertyChoice m_tool_on_side_choice;
+
 	typedef enum
 	{
 	    ePlunge = 0,
 	    eRamp
-    } EntryMove_t;
-    EntryMove_t m_entry_move_type;
+	} EntryMove_t;
+	PropertyChoice m_entry_move_type;
 
-public:
-	CContourParams()
+
+	CContourParams(CContour * parent)
 	{
+		this->parent = parent;
 		m_tool_on_side = eOn;
 		m_entry_move_type = ePlunge;
 		ReadDefaultValues();
 	}
 
+	void InitializeProperties();
 	void WriteDefaultValues();
-    void ReadDefaultValues();
-	void GetProperties(CContour* parent, std::list<Property *> *list);
+	void ReadDefaultValues();
+	void GetProperties(std::list<Property *> *list);
 	void WriteXMLAttributes(TiXmlNode* pElem);
 	void ReadParametersFromXMLElement(TiXmlElement* pElem);
 
@@ -119,17 +127,17 @@ public:
 
 	Symbols_t m_symbols;
 	CContourParams m_params;
-	static double max_deviation_for_spline_to_arc;
+	static PropertyDouble max_deviation_for_spline_to_arc;
 
 	//	Constructors.
-	CContour():CDepthOp(GetTypeString(), 0, ContourType)
+	CContour():CDepthOp(GetTypeString(), 0, ContourType), m_params(this)
 	{
 	    ReadDefaultValues();
 	}
 
-	CContour(	const Symbols_t &symbols,
-			const int tool_number )
-		: CDepthOp(GetTypeString(), NULL, tool_number, ContourType), m_symbols(symbols)
+	CContour( const Symbols_t &symbols,
+		  const int tool_number )
+	 : CDepthOp(GetTypeString(), NULL, tool_number, ContourType), m_symbols(symbols), m_params(this)
 	{
 	    ReadDefaultValues();
 		ReloadPointers();
@@ -144,6 +152,7 @@ public:
 	void glCommands(bool select, bool marked, bool no_color);
 
 	const wxBitmap &GetIcon();
+	void OnPropertyEdit(Property *prop);
 	void GetProperties(std::list<Property *> *list);
 	HeeksObj *MakeACopy(void)const;
 	void CopyFrom(const HeeksObj* object);
@@ -153,7 +162,7 @@ public:
 	void GetTools(std::list<Tool*>* t_list, const wxPoint* p);
 
 	void WriteDefaultValues();
-    void ReadDefaultValues();
+	void ReadDefaultValues();
 
 	bool operator== ( const CContour & rhs ) const;
 	bool operator!= ( const CContour & rhs ) const { return(! (*this == rhs)); }
@@ -169,42 +178,40 @@ public:
 
 	std::list<wxString> DesignRulesAdjustment(const bool apply_changes);
 
-	static Python GeneratePathFromWire( 	const TopoDS_Wire & wire,
-											CMachineState *pMachineState,
-											const double clearance_height,
-											const double rapid_down_to_height,
-											const double start_depth,
-											const CContourParams::EntryMove_t entry_move_type );
+	static Python GeneratePathFromWire( const TopoDS_Wire & wire,
+	                                    CMachineState *pMachineState,
+	                                    const double clearance_height,
+	                                    const double rapid_down_to_height,
+	                                    const double start_depth,
+	                                    const PropertyChoice& entry_move_type );
 
-	static Python GeneratePathForEdge(		const TopoDS_Edge &edge,
-											const double first_parameter,
-											const double last_parameter,
-											const bool forwards,
-											CMachineState *pMachineState,
-											const double end_z );
+	static Python GeneratePathForEdge( const TopoDS_Edge &edge,
+	                                   const double first_parameter,
+	                                   const double last_parameter,
+	                                   const bool forwards,
+	                                   CMachineState *pMachineState,
+	                                   const double end_z );
 
-    static Python GenerateRampedEntry(      ::size_t starting_edge_offset,
-                                            std::vector<TopoDS_Edge> & edges,
-                                            CMachineState *pMachineState,
-											const double end_z );
+	static Python GenerateRampedEntry( ::size_t starting_edge_offset,
+	                                   std::vector<TopoDS_Edge> & edges,
+	                                   CMachineState *pMachineState,
+	                                   const double end_z );
 
 	static bool Clockwise( const gp_Circ & circle );
 	void ReloadPointers();
-	static void GetOptions(std::list<Property *> *list);
-
 	static std::vector<TopoDS_Edge> SortEdges( const TopoDS_Wire & wire );
 	static bool DirectionTowarardsNextEdge( const TopoDS_Edge &from, const TopoDS_Edge &to );
 
-	static std::vector<TopoDS_Edge>::size_type NextOffset(	const std::vector<TopoDS_Edge> &edges,
-													const std::vector<TopoDS_Edge>::size_type edges_offset,
-													const int direction );
+	static std::vector<TopoDS_Edge>::size_type NextOffset( const std::vector<TopoDS_Edge> &edges,
+	                                                       const std::vector<TopoDS_Edge>::size_type edges_offset,
+	                                                       const int direction );
 
 	static bool EdgesJoin( const TopoDS_Edge &a, const TopoDS_Edge &b );
 
 public:
 	static CNCPoint GetStart(const TopoDS_Edge &edge);
-    static CNCPoint GetEnd(const TopoDS_Edge &edge);
-    static double GetLength(const TopoDS_Edge &edge);
+	static CNCPoint GetEnd(const TopoDS_Edge &edge);
+	static double GetLength(const TopoDS_Edge &edge);
 };
 
 

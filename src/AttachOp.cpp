@@ -11,7 +11,6 @@
 #include "ProgramCanvas.h"
 #include "Program.h"
 #include "interface/HeeksObj.h"
-#include "interface/PropertyLength.h"
 #include "tinyxml/tinyxml.h"
 #include "PythonStuff.h"
 #include "MachineState.h"
@@ -24,11 +23,13 @@
 
 int CAttachOp::number_for_stl_file = 1;
 
-CAttachOp::CAttachOp():COp(GetTypeString(), 0, AttachOpType), m_tolerance(0.01), m_min_z(0.0)
+CAttachOp::CAttachOp()
+ : COp(GetTypeString(), 0, AttachOpType), m_tolerance(0.01), m_min_z(0.0)
 {
 }
 
-CAttachOp::CAttachOp(const std::list<int> &solids, double tol, double min_z):COp(GetTypeString(), 0, AttachOpType), m_solids(solids), m_tolerance(tol), m_min_z(min_z)
+CAttachOp::CAttachOp(const std::list<int> &solids, double tol, double min_z)
+ : COp(GetTypeString(), 0, AttachOpType), m_solids(solids), m_tolerance(tol), m_min_z(min_z)
 {
 	ReadDefaultValues();
 
@@ -46,8 +47,16 @@ CAttachOp::CAttachOp(const std::list<int> &solids, double tol, double min_z):COp
 #endif
 }
 
-CAttachOp::CAttachOp( const CAttachOp & rhs ) : COp(rhs), m_solids(rhs.m_solids), m_tolerance(rhs.m_tolerance), m_min_z(rhs.m_min_z)
+CAttachOp::CAttachOp( const CAttachOp & rhs )
+ : COp(rhs), m_solids(rhs.m_solids), m_tolerance(rhs.m_tolerance), m_min_z(rhs.m_min_z)
 {
+}
+
+void CAttachOp::InitializeProperties()
+{
+	m_tolerance.Initialize(_("tolerance"), this);
+	m_min_z.Initialize(_("minimum z"), this);
+	m_material_allowance.Initialize(_("material allowance"), this);
 }
 
 CAttachOp & CAttachOp::operator= ( const CAttachOp & rhs )
@@ -170,10 +179,6 @@ Python CAttachOp::AppendTextToProgram(CMachineState *pMachineState)
 	return(python);
 } // End AppendTextToProgram() method
 
-static void on_set_tolerance(double value, HeeksObj* object){((CAttachOp*)object)->m_tolerance = value;}
-static void on_set_min_z(double value, HeeksObj* object){((CAttachOp*)object)->m_min_z = value;}
-static void on_set_material_allowance(double value, HeeksObj* object){((CAttachOp*)object)->m_material_allowance = value;}
-
 void CAttachOp::GetProperties(std::list<Property *> *list)
 {
 #ifdef OP_SKETCHES_AS_CHILDREN
@@ -181,9 +186,6 @@ void CAttachOp::GetProperties(std::list<Property *> *list)
 #else
 	AddSolidsProperties(list, m_solids);
 #endif
-	list->push_back(new PropertyLength(_("tolerance"), m_tolerance, this, on_set_tolerance));
-	list->push_back(new PropertyLength(_("minimum z"), m_min_z, this, on_set_min_z));
-	list->push_back(new PropertyLength(_("material allowance"), m_material_allowance, this, on_set_material_allowance));
 	COp::GetProperties(list);
 }
 
@@ -249,9 +251,17 @@ HeeksObj* CAttachOp::ReadFromXMLElement(TiXmlElement* element)
 {
 	CAttachOp* new_object = new CAttachOp;
 
-	element->Attribute("tolerance", &new_object->m_tolerance);
-	element->Attribute("minz", &new_object->m_min_z);
-	element->Attribute("material_allowance", &new_object->m_material_allowance);
+	double tolerance = 0.0;
+	double minz = 0.0;
+	double material_allowance = 0.0;
+
+	element->Attribute("tolerance", &tolerance);
+	element->Attribute("minz", &minz);
+	element->Attribute("material_allowance", &material_allowance);
+
+	new_object->m_tolerance = tolerance;
+	new_object->m_min_z = minz;
+	new_object->m_material_allowance = material_allowance;
 
 	std::list<TiXmlElement *> elements_to_remove;
 
@@ -297,9 +307,9 @@ void CAttachOp::ReadDefaultValues()
 	COp::ReadDefaultValues();
 
 	CNCConfig config(ConfigScope());
-	config.Read(wxString(GetTypeString()) + _T("Tolerance"), &m_tolerance, 0.01);
-	config.Read(wxString(GetTypeString()) + _T("MinZ"), &m_min_z, 0.0);
-	config.Read(wxString(GetTypeString()) + _T("MatAllowance"), &m_material_allowance, 0.0);
+	config.Read(wxString(GetTypeString()) + _T("Tolerance"), m_tolerance, 0.01);
+	config.Read(wxString(GetTypeString()) + _T("MinZ"), m_min_z, 0.0);
+	config.Read(wxString(GetTypeString()) + _T("MatAllowance"), m_material_allowance, 0.0);
 }
 
 bool CAttachOp::operator==( const CAttachOp & rhs ) const

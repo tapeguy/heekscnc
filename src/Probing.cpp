@@ -10,11 +10,6 @@
 #include "CNCConfig.h"
 #include "ProgramCanvas.h"
 #include "interface/HeeksObj.h"
-#include "interface/PropertyInt.h"
-#include "interface/PropertyDouble.h"
-#include "interface/PropertyLength.h"
-#include "interface/PropertyChoice.h"
-#include "interface/PropertyVertex.h"
 #include "interface/Tool.h"
 #include "interface/strconv.h"
 #include "tinyxml/tinyxml.h"
@@ -40,20 +35,6 @@
 
 extern CHeeksCADInterface* heeksCAD;
 
-
-static void on_set_distance(double value, HeeksObj* object)
-{
-	((CProbing*)object)->m_distance = value;
-	((CProbing*)object)->GenerateMeaningfullName();
-	heeksCAD->Changed();	// Force a re-draw from glCommands()
-}
-
-static void on_set_depth(double value, HeeksObj* object)
-{
-	((CProbing*)object)->m_depth = value;
-	((CProbing*)object)->GenerateMeaningfullName();
-	heeksCAD->Changed();	// Force a re-draw from glCommands()
-}
 
 Python CProbe_Centre::AppendTextToProgram( CMachineState *pMachineState )
 {
@@ -447,11 +428,13 @@ Python CProbe_Edge::AppendTextToProgram( CMachineState *pMachineState )
 
 	if (m_number_of_edges == 1)
 	{
-		python << eEdges_t(m_edge) << _T(" edge of the workpiece.')\n");
+		int edge_value = m_edge;
+		python << eEdges_t(edge_value) << _T(" edge of the workpiece.')\n");
 	}
 	else
 	{
-		python << eCorners_t(m_corner) << _T(" corner of the workpiece.')\n");
+		int corner_value = m_corner;
+		python << eCorners_t(corner_value) << _T(" corner of the workpiece.')\n");
 	}
 
 	double probe_offset_x = 0.0;
@@ -890,10 +873,10 @@ Python CProbe_Edge::AppendTextToProgram( CMachineState *pMachineState )
 				<< _T("y2='[#1005]', ")
 				<< _T("ref_x='") << ref1.X() << _T("', ")
 				<< _T("ref_y='") << ref1.Y() << _T("', ")
-				<< _T("x_current=") << m_corner_coordinate.X(true) << _T(", ")
-				<< _T("y_current=") << m_corner_coordinate.Y(true) << _T(", ")
-				<< _T("x_final=") << m_final_coordinate.X(true) << _T(", ")
-				<< _T("y_final=") << m_final_coordinate.Y(true) << _T(")\n");
+				<< _T("x_current=") << m_corner_coordinate.X() << _T(", ")
+				<< _T("y_current=") << m_corner_coordinate.Y() << _T(", ")
+				<< _T("x_final=") << m_final_coordinate.X() << _T(", ")
+				<< _T("y_final=") << m_final_coordinate.Y() << _T(")\n");
 		python << _T("remove_temporary_origin()\n");
 
 	} // End if - else
@@ -901,127 +884,110 @@ Python CProbe_Edge::AppendTextToProgram( CMachineState *pMachineState )
 	return(python);
 }
 
-
-void CProbing::GetProperties(std::list<Property *> *list)
+void CProbe_Centre::InitializeProperties()
 {
-	list->push_back(new PropertyLength(_("Depth"), m_depth, this, on_set_depth));
-	list->push_back(new PropertyLength(_("Distance"), m_distance, this, on_set_distance));
-	CSpeedOp::GetProperties(list);
-}
+    { // Begin choice scope
+        std::list< wxString > choices;
 
-static void on_set_number_of_points(int zero_based_offset, HeeksObj* object)
-{
-	if (zero_based_offset == 0) ((CProbe_Centre *)object)->m_number_of_points = 2;
-	if (zero_based_offset == 1) ((CProbe_Centre *)object)->m_number_of_points = 4;
-	((CProbe_Centre*)object)->GenerateMeaningfullName();
-	heeksCAD->Changed();	// Force a re-draw from glCommands()
-}
+        choices.push_back(_("Two"));
+        choices.push_back(_("Four"));
 
-static void on_set_direction(int zero_based_choice, HeeksObj* object)
-{
-	((CProbe_Centre*)object)->m_direction = CProbing::eProbeDirection_t(zero_based_choice);
-	((CProbe_Centre*)object)->GenerateMeaningfullName();
-	heeksCAD->Changed();	// Force a re-draw from glCommands()
-}
+        m_number_of_points_choice.Initialize(_("Number of points"), this);
+        m_number_of_points_choice.m_choices = choices;
+    } // End choice scope
 
-static void on_set_alignment(int zero_based_choice, HeeksObj* object)
-{
-	((CProbe_Centre*)object)->m_alignment = CProbing::eAlignment_t(zero_based_choice);
-	((CProbe_Centre*)object)->GenerateMeaningfullName();
-	heeksCAD->Changed();	// Force a re-draw from glCommands()
+    { // Begin choice scope
+        std::list< wxString > choices;
+
+        // We're probing a single edge.
+        for (eProbeDirection_t direction = eInside; direction <= eOutside; direction = eProbeDirection_t(int(direction) + 1))
+        {
+            wxString option;
+            option << direction;
+            choices.push_back( option );
+        } // End for
+
+        m_direction.Initialize(_("m_direction"), this);
+        m_direction.m_choices = choices;
+    } // End choice scope
+
+    { // Begin choice scope
+        std::list< wxString > choices;
+
+        // We're probing a single edge.
+        for (eAlignment_t alignment = eXAxis; alignment <= eYAxis; alignment = eAlignment_t(int(alignment) + 1))
+        {
+            wxString option;
+            option << alignment;
+            choices.push_back( option );
+        } // End for
+
+        m_alignment.Initialize(_("Alignment"), this);
+        m_alignment.m_choices = choices;
+    } // End choice scope
+
+    CProbing::InitializeProperties();
 }
 
 void CProbe_Centre::GetProperties(std::list<Property *> *list)
 {
-	{ // Begin choice scope
-		int choice = 0;
-		std::list< wxString > choices;
-
-		choices.push_back(_("Two"));
-		choices.push_back(_("Four"));
-
-		if (m_number_of_points == 2) choice = 0;
-		if (m_number_of_points == 4) choice = 1;
-
-		list->push_back(new PropertyChoice(_("Number of points"), choices, choice, this, on_set_number_of_points));
-	} // End choice scope
-
-	{ // Begin choice scope
-		std::list< wxString > choices;
-		int choice = 0;
-
-		// We're probing a single edge.
-		for (eProbeDirection_t direction = eInside; direction <= eOutside; direction = eProbeDirection_t(int(direction) + 1))
-		{
-			if (direction == m_direction) choice = choices.size();
-
-			wxString option;
-			option << direction;
-			choices.push_back( option );
-		} // End for
-
-		list->push_back(new PropertyChoice(_("Direction"), choices, choice, this, on_set_direction));
-	} // End choice scope
-
 	if (m_number_of_points == 2)
-	{ // Begin choice scope
-		std::list< wxString > choices;
-		int choice = 0;
+	{
+	    m_alignment.SetVisible(true);
+	}
+	else
+	{
+	    m_alignment.SetVisible(false);
+	}
 
-		// We're probing a single edge.
-		for (eAlignment_t alignment = eXAxis; alignment <= eYAxis; alignment = eAlignment_t(int(alignment) + 1))
-		{
-			if (alignment == m_alignment) choice = choices.size();
-
-			wxString option;
-			option << alignment;
-			choices.push_back( option );
-		} // End for
-
-		list->push_back(new PropertyChoice(_("Alignment"), choices, choice, this, on_set_alignment));
-	} // End choice scope
+    if (m_number_of_points == 2) {
+        m_number_of_points_choice = 0;
+    }
+    else if (m_number_of_points == 4) {
+        m_number_of_points_choice = 1;
+    }
 
 	CProbing::GetProperties(list);
 }
 
-static void on_set_num_x_points(int value, HeeksObj* object)
+void CProbe_Centre::OnPropertyEdit(Property *prop)
 {
-	((CProbe_Grid*)object)->m_num_x_points = value;
-	((CProbe_Grid*)object)->GenerateMeaningfullName();
-	heeksCAD->Changed();
+    if (prop == &m_number_of_points_choice) {
+        if (m_number_of_points_choice == 0) {
+            m_number_of_points = 2;
+        }
+        else if (m_number_of_points_choice == 1) {
+            m_number_of_points = 4;
+        }
+    }
+    this->GenerateMeaningfullName();
+    heeksCAD->Changed();    // Force a re-draw from glCommands()
+    CProbing::OnPropertyEdit(prop);
 }
 
-static void on_set_num_y_points(int value, HeeksObj* object)
+void CProbe_Grid::InitializeProperties()
 {
-	((CProbe_Grid*)object)->m_num_y_points = value;
-	((CProbe_Grid*)object)->GenerateMeaningfullName();
-	heeksCAD->Changed();
-}
+    m_num_x_points.Initialize(_("Num points along X"), this);
+    m_num_y_points.Initialize(_("Num points along Y"), this);
 
-static void on_set_reason(int value, HeeksObj* object)
-{
-	((CProbe_Grid*)object)->m_for_fixture_measurement = (value != 0);
-	((CProbe_Grid*)object)->GenerateMeaningfullName();
-	heeksCAD->Changed();
+    std::list< wxString > choices;
+    choices.push_back ( wxString ( _("Point Cloud") ) );
+    choices.push_back ( wxString ( _("Fixture Measurement") ) );
+    m_for_fixture_measurement.Initialize( _("Point Data Format"), this);
+    m_for_fixture_measurement.m_choices = choices;
 }
 
 void CProbe_Grid::GetProperties(std::list<Property *> *list)
 {
-    if (! m_for_fixture_measurement)
-    {
-        list->push_back(new PropertyInt(_("Num points along X"), m_num_x_points, this, on_set_num_x_points));
-        list->push_back(new PropertyInt(_("Num points along Y"), m_num_y_points, this, on_set_num_y_points));
-    }
-
-    std::list< wxString > choices;
-	choices.push_back ( wxString ( _("Point Cloud") ) );
-	choices.push_back ( wxString ( _("Fixture Measurement") ) );
-	list->push_back ( new PropertyChoice ( _("Point Data Format"),  choices, (m_for_fixture_measurement?1:0), this, on_set_reason ) );
-
-	CProbing::GetProperties(list);
+    m_num_x_points.SetVisible((m_for_fixture_measurement == 1));
+    m_num_y_points.SetVisible((m_for_fixture_measurement == 1));
 }
 
-
+void CProbe_Grid::OnPropertyEdit(Property * prop)
+{
+    this->GenerateMeaningfullName();
+    heeksCAD->Changed();
+}
 
 static void on_set_number_of_edges(int zero_based_offset, HeeksObj* object)
 {
@@ -1030,113 +996,83 @@ static void on_set_number_of_edges(int zero_based_offset, HeeksObj* object)
 	heeksCAD->Changed();
 }
 
-static void on_set_retract(double value, HeeksObj* object)
+void CProbe_Edge::InitializeProperties()
 {
-	((CProbe_Edge*)object)->m_retract = value;
-	((CProbe_Edge*)object)->GenerateMeaningfullName();
-	heeksCAD->Changed();	// Force a re-draw from glCommands()
-}
+    m_retract.Initialize(_("Retract"), this);
+    m_check_levels.Initialize(_("Check Levels"), this);
 
-static void on_set_edge(int zero_based_choice, HeeksObj* object)
-{
-	((CProbe_Edge*)object)->m_edge = CProbing::eEdges_t(zero_based_choice);
-	((CProbe_Edge*)object)->GenerateMeaningfullName();
-	heeksCAD->Changed();	// Force a re-draw from glCommands()
-}
+    { // Begin choice scope
+        std::list< wxString > choices;
 
+        choices.push_back(_("One"));
+        choices.push_back(_("Two"));
 
-static void on_set_corner(int zero_based_choice, HeeksObj* object)
-{
-	((CProbe_Edge*)object)->m_corner = CProbing::eCorners_t(zero_based_choice);
-	((CProbe_Edge*)object)->GenerateMeaningfullName();
-	heeksCAD->Changed();	// Force a re-draw from glCommands()
-}
+        m_number_of_edges_choice.Initialize(_("Number of edges"), this);
+        m_number_of_edges_choice.m_choices = choices;
+    } // End choice scope
 
-static void on_set_check_levels(int zero_based_choice, HeeksObj* object)
-{
-	((CProbe_Edge*)object)->m_check_levels = zero_based_choice;
-	((CProbe_Edge*)object)->GenerateMeaningfullName();
-	heeksCAD->Changed();	// Force a re-draw from glCommands()
-}
+    {
+        std::list< wxString > choices;
 
-static void on_set_corner_coordinate(const double *vt, HeeksObj* object)
-{
-	((CProbe_Edge *)object)->m_corner_coordinate = CNCPoint(vt);
-}
+        // We're probing a single edge.
+        for (eEdges_t edge = eBottom; edge <= eRight; edge = eEdges_t(int(edge) + 1))
+        {
+            wxString option;
+            option << edge;
+            choices.push_back( option );
+        } // End for
 
-static void on_set_final_coordinate(const double *vt, HeeksObj* object)
-{
-	((CProbe_Edge *)object)->m_final_coordinate = CNCPoint(vt);
+        m_edge.Initialize(_("Edge"), this);
+        m_edge.m_choices = choices;
+    } // End if - then
+
+    {
+        // We're probing two edges.
+        std::list< wxString > choices;
+
+        // We're probing a single edge.
+        for (eCorners_t corner = eBottomLeft; corner <= eTopRight; corner = eCorners_t(int(corner) + 1))
+        {
+            wxString option;
+            option << corner;
+            choices.push_back( option );
+        } // End for
+
+        m_corner.Initialize(_("Corner"), this);
+        m_corner.m_choices = choices;
+    }
+
+    m_corner_coordinate.Initialize(_("Corner Coordinate"), this);
+    m_final_coordinate.Initialize(_("Final Coordinate"), this);
 }
 
 void CProbe_Edge::GetProperties(std::list<Property *> *list)
 {
-	list->push_back(new PropertyLength(_("Retract"), m_retract, this, on_set_retract));
-
-	{ // Begin choice scope
-		std::list< wxString > choices;
-
-		choices.push_back(_("False"));
-		choices.push_back(_("True"));
-
-		int choice = m_check_levels;
-		list->push_back(new PropertyChoice(_("Check Levels"), choices, choice, this, on_set_check_levels));
-	} // End choice scope
-
-	{ // Begin choice scope
-		std::list< wxString > choices;
-
-		choices.push_back(_("One"));
-		choices.push_back(_("Two"));
-
-		int choice = int(m_number_of_edges - 1);
-		list->push_back(new PropertyChoice(_("Number of edges"), choices, choice, this, on_set_number_of_edges));
-	} // End choice scope
-
+    m_number_of_edges_choice =  m_number_of_edges - 1;
 	if (m_number_of_edges == 1)
 	{
-		std::list< wxString > choices;
-		int choice = 0;
-
-		// We're probing a single edge.
-		for (eEdges_t edge = eBottom; edge <= eRight; edge = eEdges_t(int(edge) + 1))
-		{
-			if (edge == m_edge) choice = choices.size();
-
-			wxString option;
-			option << edge;
-			choices.push_back( option );
-		} // End for
-
-		list->push_back(new PropertyChoice(_("Edge"), choices, choice, this, on_set_edge));
-	} // End if - then
+		m_edge.SetVisible(true);
+		m_corner.SetVisible(false);
+		m_corner_coordinate.SetVisible(false);
+		m_final_coordinate.SetVisible(false);
+	}
 	else
 	{
-		// We're probing two edges.
-		std::list< wxString > choices;
-		int choice = 0;
-
-		// We're probing a single edge.
-		for (eCorners_t corner = eBottomLeft; corner <= eTopRight; corner = eCorners_t(int(corner) + 1))
-		{
-			if (corner == m_corner) choice = choices.size();
-
-			wxString option;
-			option << corner;
-			choices.push_back( option );
-		} // End for
-
-		list->push_back(new PropertyChoice(_("Edge"), choices, choice, this, on_set_corner));
-
-		double corner_coordinate[3], final_coordinate[3];
-		m_corner_coordinate.ToDoubleArray(corner_coordinate);
-		m_final_coordinate.ToDoubleArray(final_coordinate);
-
-		list->push_back(new PropertyVertex(_("Corner Coordinate"), corner_coordinate, this, on_set_corner_coordinate));
-		list->push_back(new PropertyVertex(_("Final Coordinate"), final_coordinate, this, on_set_final_coordinate));
-	} // End if - else
+        m_edge.SetVisible(false);
+        m_corner.SetVisible(true);
+        m_corner_coordinate.SetVisible(true);
+        m_final_coordinate.SetVisible(true);
+	}
 
 	CProbing::GetProperties(list);
+}
+
+void CProbe_Edge::OnPropertyEdit(Property *prop)
+{
+    if (prop == &m_number_of_edges_choice)
+    {
+        m_number_of_edges = m_number_of_edges_choice + 1;
+    }
 }
 
 HeeksObj *CProbe_Edge::MakeACopy(void)const
@@ -1193,6 +1129,12 @@ CProbing & CProbing::operator= ( const CProbing & rhs )
 	}
 
 	return(*this);
+}
+
+void CProbing::InitializeProperties ( )
+{
+    m_depth.Initialize(_("Depth"), this);
+    m_distance.Initialize(_("Distance"), this);
 }
 
 
@@ -1295,27 +1237,56 @@ void CProbe_Edge::WriteXML(TiXmlNode *root)
 // static member function
 HeeksObj* CProbe_Edge::ReadFromXMLElement(TiXmlElement* element)
 {
+    int i;
+    double d;
 	CProbe_Edge* new_object = new CProbe_Edge();
 
-	if (element->Attribute("retract")) element->Attribute("retract", &(new_object->m_retract) );
-	if (element->Attribute("number_of_edges")) element->Attribute("number_of_edges", (int *) &(new_object->m_number_of_edges) );
-	if (element->Attribute("edge")) { int value; element->Attribute("edge", &value); new_object->m_edge = CProbing::eEdges_t(value); }
-	if (element->Attribute("corner")) { int value; element->Attribute("corner", &value); new_object->m_corner = CProbing::eCorners_t(value); }
-	if (element->Attribute("check_levels")) element->Attribute("check_levels", &(new_object->m_check_levels) );
+	if (element->Attribute("retract")) {
+	    element->Attribute("retract", &d );
+	    new_object->m_retract = d;
+	}
+	if (element->Attribute("number_of_edges")) {
+	    element->Attribute("number_of_edges", &i );
+	   new_object->m_number_of_edges = i;
+	}
+	if (element->Attribute("edge")) {
+	    element->Attribute("edge", &i);
+	    new_object->m_edge = CProbing::eEdges_t(i);
+	}
+	if (element->Attribute("corner")) {
+	    element->Attribute("corner", &i);
+	    new_object->m_corner = CProbing::eCorners_t(i);
+	}
+	if (element->Attribute("check_levels")) {
+	    element->Attribute("check_levels", &i );
+	    new_object->m_check_levels = ( i != 0 );
+	}
 
 	if (element->Attribute("corner_coordinate_x")) {
-		double value; element->Attribute("corner_coordinate_x", &value); new_object->m_corner_coordinate.SetX(value);
+		element->Attribute("corner_coordinate_x", &d);
+		new_object->m_corner_coordinate.SetX(d);
 	}
 	if (element->Attribute("corner_coordinate_y")) {
-		double value; element->Attribute("corner_coordinate_y", &value); new_object->m_corner_coordinate.SetY(value);
+		element->Attribute("corner_coordinate_y", &d);
+		new_object->m_corner_coordinate.SetY(d);
 	}
 	if (element->Attribute("corner_coordinate_z")) {
-		double value; element->Attribute("corner_coordinate_z", &value); new_object->m_corner_coordinate.SetZ(value);
+        element->Attribute("corner_coordinate_z", &d);
+        new_object->m_corner_coordinate.SetZ(d);
 	}
 
-	if (element->Attribute("final_coordinate_x")) { double value; element->Attribute("final_coordinate_x", &value); new_object->m_final_coordinate.SetX(value); }
-	if (element->Attribute("final_coordinate_y")) { double value; element->Attribute("final_coordinate_y", &value); new_object->m_final_coordinate.SetY(value); }
-	if (element->Attribute("final_coordinate_z")) { double value; element->Attribute("final_coordinate_z", &value); new_object->m_final_coordinate.SetZ(value); }
+	if (element->Attribute("final_coordinate_x")) {
+	    element->Attribute("final_coordinate_x", &d);
+	    new_object->m_final_coordinate.SetX(d);
+	}
+	if (element->Attribute("final_coordinate_y")) {
+	    element->Attribute("final_coordinate_y", &d);
+	    new_object->m_final_coordinate.SetY(d);
+	}
+	if (element->Attribute("final_coordinate_z")) {
+	    element->Attribute("final_coordinate_z", &d);
+	    new_object->m_final_coordinate.SetZ(d);
+	}
 
 	new_object->ReadBaseXML(element);
 
@@ -1386,8 +1357,15 @@ void CProbing::WriteBaseXML(TiXmlElement *element)
 
 void CProbing::ReadBaseXML(TiXmlElement* element)
 {
-	if (element->Attribute("depth")) element->Attribute("depth", &m_depth);
-	if (element->Attribute("distance")) element->Attribute("distance", &m_distance);
+    double d;
+	if (element->Attribute("depth")) {
+	    element->Attribute("depth", &d);
+	    m_depth = d;
+	}
+	if (element->Attribute("distance")) {
+	    element->Attribute("distance", &d);
+	    m_distance = d;
+	}
 
 	CSpeedOp::ReadBaseXML(element);
 }
@@ -1520,7 +1498,7 @@ wxString CProbing::GetOutputFileName(const wxString extension, const bool filena
 	}
 
 	file_name << _T("_");
-	file_name << m_title;
+	file_name << (const wxChar *)m_title;
 	file_name << _T("_id_");
 	file_name << m_id;
 	file_name << extension;
@@ -2124,114 +2102,145 @@ CProbing::PointsList_t CProbe_Grid::GetPoints() const
 
 void CProbe_Edge::GenerateMeaningfullName()
 {
+    wxString title;
+
 	if (m_number_of_edges == 1)
 	{
-		m_title = _("Probe ");
-		m_title << eEdges_t(m_edge) << _(" edge");
+	    title = _("Probe ");
+	    title << eEdges_t((int)m_edge) << _(" edge");
 	} // End if - then
 	else
 	{
 		// We're looking for the intersection of two edges.
 
-		m_title = _("Probe ");
-		m_title << eCorners_t(m_corner) << _(" corner");
+	    title = _("Probe ");
+	    title << eCorners_t((int)m_corner) << _(" corner");
 	} // End if - else
 
 	if (theApp.m_program->m_units == 1)
 	{
 		// We're using metric.  Leave the diameter as a floating point number.  It just looks more natural.
-		m_title << _T(" at ") << m_distance / theApp.m_program->m_units;
+	    title << _T(" at ") << m_distance / theApp.m_program->m_units;
 	} // End if - then
 	else
 	{
 		// We're using inches.  Find a fractional representation if one matches.
-		m_title << _T(" at ") << CTool::FractionalRepresentation( m_distance / theApp.m_program->m_units, 64 );
+	    title << _T(" at ") << CTool::FractionalRepresentation( m_distance / theApp.m_program->m_units, 64 );
 	}
 
-	if (theApp.m_program->m_units > 1) m_title << _T(" inch intervals");
-	else m_title << _T(" mm intervals");
+	if (theApp.m_program->m_units > 1)
+	{
+	    title << _T(" inch intervals");
+	}
+	else
+    {
+	    title << _T(" mm intervals");
+    }
 
+	m_title = title;
 }
 
 void CProbe_Centre::GenerateMeaningfullName()
 {
+    wxString title;
+
 	if (m_direction == eOutside)
 	{
-		m_title = _("Probe protrusion along ");
-		m_title << eAlignment_t(m_alignment);
+	    title = _("Probe protrusion along ");
+	    title << eAlignment_t((int)m_alignment);
 		if (theApp.m_program->m_units == 1.0)
 		{
-			m_title << _T(" min ") << (m_distance / theApp.m_program->m_units);
+		    title << _T(" min ") << (m_distance / theApp.m_program->m_units);
 		}
 		else
 		{
-			m_title << _T(" min ") << CTool::FractionalRepresentation( m_distance / theApp.m_program->m_units, 64 );
+		    title << _T(" min ") << CTool::FractionalRepresentation( m_distance / theApp.m_program->m_units, 64 );
 		}
 
-		if (theApp.m_program->m_units > 1) m_title << _T(" inches");
-		else m_title << _T(" mm");
+		if (theApp.m_program->m_units > 1) {
+		    title << _T(" inches");
+		}
+		else {
+		    title << _T(" mm");
+		}
 	} // End if - then
 	else
 	{
-		m_title = _("Probe hole along ");
-		m_title << eAlignment_t(m_alignment);
+	    title = _("Probe hole along ");
+	    title << eAlignment_t((int)m_alignment);
 		if (theApp.m_program->m_units == 1.0)
 		{
-			m_title << _T(" max ") << (m_distance / theApp.m_program->m_units);
+		    title << _T(" max ") << (m_distance / theApp.m_program->m_units);
 		}
 		else
 		{
-			m_title << _T(" max ") << CTool::FractionalRepresentation( m_distance / theApp.m_program->m_units, 64 );
+		    title << _T(" max ") << CTool::FractionalRepresentation( m_distance / theApp.m_program->m_units, 64 );
 		}
 
-		if (theApp.m_program->m_units > 1) m_title << _T(" inches");
-		else m_title << _T(" mm");
+		if (theApp.m_program->m_units > 1) {
+		    title << _T(" inches");
+		}
+		else {
+		    title << _T(" mm");
+		}
 	} // End if - else
 
 	if (m_number_of_points == 4)
 	{
 		if (m_direction == eOutside)
 		{
-			m_title = _("Probe protrusion");
+		    title = _("Probe protrusion");
 			if (theApp.m_program->m_units == 1.0)
 			{
-				m_title << _T(" min ") << (m_distance / theApp.m_program->m_units);
+			    title << _T(" min ") << (m_distance / theApp.m_program->m_units);
 			}
 			else
 			{
-				m_title << _T(" min ") << CTool::FractionalRepresentation( m_distance / theApp.m_program->m_units, 64 );
+			    title << _T(" min ") << CTool::FractionalRepresentation( m_distance / theApp.m_program->m_units, 64 );
 			}
-			if (theApp.m_program->m_units > 1) m_title << _T(" inches");
-			else m_title << _T(" mm");
+			if (theApp.m_program->m_units > 1) {
+			    title << _T(" inches");
+			}
+			else {
+			    title << _T(" mm");
+			}
 		} // End if - then
 		else
 		{
-			m_title = _("Probe hole");
+		    title = _("Probe hole");
 			if (theApp.m_program->m_units == 1.0)
 			{
-				m_title << _T(" max ") << (m_distance / theApp.m_program->m_units);
+			    title << _T(" max ") << (m_distance / theApp.m_program->m_units);
 			}
 			else
 			{
-				m_title << _T(" max ") << CTool::FractionalRepresentation( m_distance / theApp.m_program->m_units, 64 );
+			    title << _T(" max ") << CTool::FractionalRepresentation( m_distance / theApp.m_program->m_units, 64 );
 			}
-			if (theApp.m_program->m_units > 1) m_title << _T(" inches");
-			else m_title << _T(" mm");
+			if (theApp.m_program->m_units > 1) {
+			    title << _T(" inches");
+			}
+			else {
+			    title << _T(" mm");
+			}
 		} // End if - else
 	} // End if - then
+
+	m_title = title;
 }
 
 void CProbe_Grid::GenerateMeaningfullName()
 {
+    wxString title;
     if (m_for_fixture_measurement)
     {
-        m_title = _("Probe Fixture Tilt");
+        title = _("Probe Fixture Tilt");
     }
     else
     {
-        m_title = _("Probe ");
-        m_title << this->m_num_x_points << _T(" x ") << m_num_y_points << _T(" ") << _("grid");
+        title = _("Probe ");
+        title << this->m_num_x_points << _T(" x ") << m_num_y_points << _T(" ") << _("grid");
     }
+    m_title = title;
 }
 
 void CProbing::GenerateMeaningfullName()

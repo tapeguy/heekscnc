@@ -24,50 +24,54 @@
 
 class CSpeedReference: public HeeksObj {
 public:
-        wxString m_title;
+    wxString m_title;
 
-	// Inputs...
-	int m_tool_material;	// HSS or carbide
-	wxString m_material_name;					// Aluminium
-	double m_brinell_hardness_of_raw_material;			// 15.0 for Al
+    // Inputs...
+    PropertyChoice m_tool_material;                      // HSS or carbide
+    PropertyString m_material_name;                      // Aluminum
+    PropertyDouble m_brinell_hardness_of_raw_material;   // 15.0 for Al
 
-	// Output
-	double m_surface_speed;				// tool/material speed in metres per minute
+    // Output
+    PropertyDouble m_surface_speed;                      // tool/material speed in metres per minute
 
-	void ResetTitle();
-	//	Constructors.
-        CSpeedReference( const wxString &material_name,
-			const int tool_material,
-			const double brinell_hardness_of_raw_material,
-			const double surface_speed ) :
-		m_tool_material(tool_material),
-		m_material_name(material_name),
-		m_brinell_hardness_of_raw_material(brinell_hardness_of_raw_material),
-		m_surface_speed(surface_speed)
-	{
-		ResetTitle();
-	} // End constructor
+    void ResetTitle();
 
-	 // HeeksObj's virtual functions
-        int GetType()const{return SpeedReferenceType;}
-	const wxChar* GetTypeString(void) const{ return _T("SpeedReference"); }
-        HeeksObj *MakeACopy(void)const;
+    //	Constructors.
+    CSpeedReference( const wxString &material_name,
+                     const int tool_material,
+                     const double brinell_hardness_of_raw_material,
+                     const double surface_speed ) :
+    m_tool_material(tool_material),
+    m_material_name(material_name),
+    m_brinell_hardness_of_raw_material(brinell_hardness_of_raw_material),
+    m_surface_speed(surface_speed)
+    {
+        ResetTitle();
+    } // End constructor
 
-        void WriteXML(TiXmlNode *root);
-        static HeeksObj* ReadFromXMLElement(TiXmlElement* pElem);
+    void InitializeProperties();
+    void GetProperties(std::list<Property *> *list);
+    void OnPropertyEdit(Property *prop);
 
-	void GetProperties(std::list<Property *> *list);
-	void CopyFrom(const HeeksObj* object);
-	bool CanAddTo(HeeksObj* owner);
-	const wxBitmap &GetIcon();
-        const wxChar* GetShortString(void)const{return m_title.c_str();}
+    // HeeksObj's virtual functions
+    int GetType()const{return SpeedReferenceType;}
+    const wxChar* GetTypeString(void) const{ return _T("SpeedReference"); }
+    HeeksObj *MakeACopy(void)const;
 
-        bool CanEditString(void)const{return true;}
-        void OnEditString(const wxChar* str);
+    void WriteXML(TiXmlNode *root);
+    static HeeksObj* ReadFromXMLElement(TiXmlElement* pElem);
 
-	double GetSurfaceSpeed( const wxChar *material_name,
-				const int tool_material,
-				const double brinell_hardness_of_raw_material ) const;
+    void CopyFrom(const HeeksObj* object);
+    bool CanAddTo(HeeksObj* owner);
+    const wxBitmap &GetIcon();
+    const wxChar* GetShortString(void)const{return m_title.c_str();}
+
+    bool CanEditString(void)const{return true;}
+    void OnEditString(const wxChar* str);
+
+    double GetSurfaceSpeed( const wxChar *material_name,
+                            const int tool_material,
+                            const double brinell_hardness_of_raw_material ) const;
 
     const wxString ConfigScope(void)const{return _T("SpeedReference");}
 

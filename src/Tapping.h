@@ -23,26 +23,33 @@ typedef enum {
 } tap_mode_t;
 
 
-class CTappingParams{
+class CTappingParams : public MutableObject
+{
+private:
+
+    CTapping * parent;
 
 public:
-	double m_standoff;		// This is the height above the staring Z position that forms the Z retract height
-	double m_dwell;			// If dwell_bottom is non-zero then we're using the G82 tap cycle rather than G83 peck drill cycle.  This is the 'P' word
-	int    m_sort_tapping_locations;	// Perform a location-based sort before generating GCode?
-	int    m_tap_mode;	                // tap_mode_t
-	int    m_direction;	                // right=0, left=1
-	// double m_pitch;	        // typically mm/rev - read from tool parameter
-	double m_depth;         // length of thread below x/y/z
+
+    PropertyLength m_standoff;                 // This is the height above the staring Z position that forms the Z retract height
+    PropertyDouble m_dwell;                    // If dwell_bottom is non-zero then we're using the G82 tap cycle rather than G83 peck drill cycle.  This is the 'P' word
+    PropertyChoice m_sort_tapping_locations;   // Perform a location-based sort before generating GCode?
+    PropertyChoice m_tap_mode;                 // tap_mode_t
+	int    m_direction;                        // right=0, left=1
+	// double m_pitch;	                       // typically mm/rev - read from tool parameter
+	PropertyLength m_depth;                    // length of thread below x/y/z
 
 	// The following line is the prototype setup in the Python routines for the tap sequence.
-        // def tap(x=None, y=None, z=None, zretract=None, depth=None, standoff=None, dwell_bottom=None, pitch=None, stoppos=None, spin_in=None, spin_out=None):
+    // def tap(x=None, y=None, z=None, zretract=None, depth=None, standoff=None, dwell_bottom=None, pitch=None, stoppos=None, spin_in=None, spin_out=None):
 
 	// currently these parameters are passed to tap(), I cant make sense of the others:
 	// def tap(x=None, y=None, z=None, depth=None,  standoff=None, pitch=None, tap_mode=None,direction=None):
 
+    CTappingParams(CTapping * parent);
+    void InitializeProperties();
 	void set_initial_values( const double depth, const int tool_number );
 	void write_values_to_config();
-	void GetProperties(CTapping* parent, std::list<Property *> *list);
+	void OnPropertyEdit(Property * prop);
 	void WriteXMLAttributes(TiXmlNode* pElem);
 	void ReadParametersFromXMLElement(TiXmlElement* pElem);
 
@@ -70,7 +77,7 @@ public:
 	tap's depth and whose orientation describes the tap's orientation at machining time (i.e. rotate A, B and/or C axes)
  */
 
-class CTapping: public CSpeedOp {
+class CTapping : public CSpeedOp {
 public:
 	/**
 		The following two methods are just to draw pretty lines on the screen to represent taping
@@ -103,8 +110,12 @@ public:
 	CTappingParams m_params;
 
 	//	Constructors.
-	CTapping():CSpeedOp(GetTypeString(), 0){}
-	CTapping(	const Symbols_t &symbols,
+	CTapping()
+	: CSpeedOp(GetTypeString(), 0), m_params(this)
+	{
+	}
+
+	CTapping(const Symbols_t &symbols,
 			const int tool_number,
 			const double depth );
 

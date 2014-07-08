@@ -11,12 +11,6 @@
 #include "CNCConfig.h"
 #include "ProgramCanvas.h"
 #include "interface/HeeksObj.h"
-#include "interface/HeeksColor.h"
-#include "interface/PropertyInt.h"
-#include "interface/PropertyDouble.h"
-#include "interface/PropertyLength.h"
-#include "interface/PropertyChoice.h"
-#include "interface/PropertyString.h"
 #include "tinyxml/tinyxml.h"
 
 #include <sstream>
@@ -26,20 +20,44 @@
 extern CHeeksCADInterface* heeksCAD;
 
 
-static void on_set_brinell_hardness_of_raw_material(int zero_based_choice, HeeksObj* object)
+void CCuttingRate::InitializeProperties()
 {
-	if (zero_based_choice < 0) return;	// An error has occured.
-
+	m_brinell_hardness_of_raw_material.Initialize(_("m_brinell_hardness_of_raw_material"), this);
+	m_brinell_hardness_of_raw_material.SetVisible(false);
+	m_brinell_hardness_choice.Initialize(_("Brinell hardness of raw material"), this);
 	std::set<double> all_values = CSpeedReferences::GetAllHardnessValues();
 	for (std::set<double>::iterator l_itHardness = all_values.begin(); l_itHardness != all_values.end(); l_itHardness++)
 	{
-		if (std::distance( all_values.begin(), l_itHardness) == zero_based_choice)
+		wxString message;
+		message << *l_itHardness;
+		m_brinell_hardness_choice.m_choices.push_back( message );
+	}
+	m_max_material_removal_rate.Initialize(_("Maximum Material Removal Rate (mm^3/min)"), this);
+}
+
+void CCuttingRate::OnPropertyEdit(Property * prop)
+{
+	if (prop == &m_brinell_hardness_choice) {
+		int choice = m_brinell_hardness_choice;
+		if (choice < 0) return;	// An error has occured.
+
+		std::set<double> all_values = CSpeedReferences::GetAllHardnessValues();
+		for (std::set<double>::iterator l_itHardness = all_values.begin(); l_itHardness != all_values.end(); l_itHardness++)
 		{
-			((CCuttingRate*)object)->m_brinell_hardness_of_raw_material = *l_itHardness;
-			break;
-		} // End if - then
-	} // End for
-	((CCuttingRate*)object)->ResetTitle();
+			if (std::distance( all_values.begin(), l_itHardness) == choice)
+			{
+				m_brinell_hardness_of_raw_material = *l_itHardness;
+				break;
+			} // End if - then
+		} // End for
+	}
+	else if (prop == &m_max_material_removal_rate) {
+		if (theApp.m_program->m_units != 1.0) {
+			double cubic_mm_per_cubic_inch = 25.4 * 25.4 * 25.4;
+			m_max_material_removal_rate = m_max_material_removal_rate * cubic_mm_per_cubic_inch;
+		}
+	}
+	this->ResetTitle();
 }
 
 const wxBitmap &CCuttingRate::GetIcon()
@@ -49,34 +67,21 @@ const wxBitmap &CCuttingRate::GetIcon()
 	return *icon;
 }
 
-static void on_set_max_material_removal_rate(double value, HeeksObj* object){((CCuttingRate*)object)->m_max_material_removal_rate = value; ((CCuttingRate*)object)->ResetTitle(); }
-
 void CCuttingRate::GetProperties(std::list<Property *> *list)
 {
-	int choice = -1;
-	std::list<wxString> choices;
-	std::set<double> all_values = CSpeedReferences::GetAllHardnessValues();
-	for (std::set<double>::iterator l_itHardness = all_values.begin(); l_itHardness != all_values.end(); l_itHardness++)
-	{
-		wxString message;
-		message << *l_itHardness;
-		choices.push_back( message );
-		if (m_brinell_hardness_of_raw_material == *l_itHardness) choice = std::distance( all_values.begin(), l_itHardness );
-	} // End for
-
-	list->push_back(new PropertyChoice(_("Brinell hardness of raw material"), choices, choice, this, on_set_brinell_hardness_of_raw_material));
 
 	if (theApp.m_program->m_units == 1.0)
 	{
 		// We're set to metric.  Just present the internal value.
-		list->push_back(new PropertyDouble(_("Maximum Material Removal Rate (mm^3/min)"), m_max_material_removal_rate, this, on_set_max_material_removal_rate));
+		m_max_material_removal_rate.SetTitle(_("Maximum Material Removal Rate (mm^3/min)"));
 	} // End if - then
 	else
 	{
 		// We're set to imperial.  Convert the internal (metric) value for presentation.
 
 		double cubic_mm_per_cubic_inch = 25.4 * 25.4 * 25.4;
-		list->push_back(new PropertyDouble(_("Maximum Material Removal Rate (inches^3/min)"), m_max_material_removal_rate / cubic_mm_per_cubic_inch, this, on_set_max_material_removal_rate));
+		m_max_material_removal_rate.SetTitle(_("Maximum Material Removal Rate (inches^3/min)"));
+		m_max_material_removal_rate = m_max_material_removal_rate / cubic_mm_per_cubic_inch;
 	} // End if - else
 
 	HeeksObj::GetProperties(list);

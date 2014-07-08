@@ -58,7 +58,7 @@ public:
 
 	// HeeksObj's virtual functions
 	int GetType()const{return ProgramType;}
-	long GetMarkingMask()const{return 0;}
+	int GetMarkingFilter()const{return UnknownMarkingFilter;}
 	const wxChar* GetTypeString(void)const{return _T("BOM");}
 	const wxBitmap &GetIcon();
 	HeeksObj *MakeACopy(void)const;

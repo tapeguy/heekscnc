@@ -4,8 +4,6 @@
 
 #include "stdafx.h"
 #include "Reselect.h"
-#include "interface/PropertyString.h"
-#include "interface/PropertyInt.h"
 #include "interface/ObjList.h"
 
 static bool GetSketches(std::list<int>& sketches )
@@ -30,7 +28,9 @@ static bool GetSketches(std::list<int>& sketches )
 void ReselectSketches::Run()
 {
 	std::list<int> sketches;
-	heeksCAD->PickObjects(_("Select Sketches"), MARKING_FILTER_SKETCH);
+    MarkingFilter filters[] = { SketchMarkingFilter };
+    std::set<MarkingFilter> filterset ( filters, filters + sizeof(filters) / sizeof(MarkingFilter));
+	heeksCAD->PickObjects(_("Select Sketches"), filterset);
 	if(GetSketches( sketches ))
 	{
 		heeksCAD->CreateUndoPoint();
@@ -72,7 +72,9 @@ static bool GetSolids(std::list<int>& solids )
 void ReselectSolids::Run()
 {
 	std::list<int> solids;
-	heeksCAD->PickObjects(_("Select Solids"), MARKING_FILTER_SOLID | MARKING_FILTER_STL_SOLID);
+	MarkingFilter filters[] = { SolidMarkingFilter, StlSolidMarkingFilter };
+	std::set<MarkingFilter> filterset (filters, filters + sizeof(filters) / sizeof(MarkingFilter));
+	heeksCAD->PickObjects(_("Select Solids"), filterset );
 	if(GetSolids( solids ))
 	{
 		heeksCAD->CreateUndoPoint();

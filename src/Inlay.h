@@ -25,9 +25,12 @@
 
 class CInlay;
 
-class CInlayParams{
+class CInlayParams : public MutableObject {
+private:
+	CInlay * parent;
+
 public:
-    typedef enum {
+	typedef enum {
 		eFemale,		// No mirroring and take depths from DepthOp settings.
 		eMale,			// Reverse depth values (bottom up measurement)
 		eBoth
@@ -38,9 +41,9 @@ public:
 	    eYAxis
 	} eAxis_t;
 
-public:
-	CInlayParams()
+	CInlayParams(CInlay * parent)
 	{
+		this->parent = parent;
 		m_border_width = 25.4; // 1 inch.
 		m_clearance_tool = 0;
 		m_pass = eBoth;
@@ -48,20 +51,23 @@ public:
 		m_min_cornering_angle = 30.0;   // degrees.
 	}
 
+	void InitializeProperties();
 	void set_initial_values();
 	void write_values_to_config();
-	void GetProperties(CInlay* parent, std::list<Property *> *list);
+	void GetProperties(std::list<Property *> *list);
 	void WriteXMLAttributes(TiXmlNode* pElem);
 	void ReadParametersFromXMLElement(TiXmlElement* pElem);
 
 	const wxString ConfigPrefix(void)const{return _T("Inlay");}
 
-	double m_border_width;
-	CTool::ToolNumber_t  m_clearance_tool;
-	eInlayPass_t    m_pass;
-	eAxis_t         m_mirror_axis;
-	bool			m_female_before_male_fixtures;
-	double          m_min_cornering_angle;
+	PropertyLength m_border_width;
+	PropertyChoice m_clearance_tool;
+	PropertyChoice m_pass;
+	PropertyChoice m_mirror_axis;
+	PropertyDouble m_min_cornering_angle;
+	PropertyChoice m_female_fixture;
+	PropertyChoice m_male_fixture;
+	bool           m_female_before_male_fixtures;
 
 	bool operator== ( const CInlayParams & rhs ) const;
 	bool operator!= ( const CInlayParams & rhs ) const { return(! (*this == rhs)); }
@@ -87,60 +93,6 @@ public:
  */
 
 class CInlay: public CDepthOp {
-private:
-	class CDouble
-	{
-	public:
-		CDouble(const double value)
-		{
-			m_value = value;
-		}
-
-		~CDouble() { }
-
-		CDouble( const CDouble & rhs )
-		{
-			*this = rhs;
-		}
-
-		CDouble & operator= ( const CDouble & rhs )
-		{
-			if (this != &rhs)
-			{
-				m_value = rhs.m_value;
-			}
-
-			return(*this);
-		}
-
-		bool operator==( const CDouble & rhs ) const
-		{
-			if (fabs(m_value - rhs.m_value) < (2.0 * heeksCAD->GetTolerance())) return(true);
-			return(false);
-		}
-
-		bool operator< (const CDouble & rhs ) const
-		{
-			if (*this == rhs) return(false);
-			return(m_value < rhs.m_value);
-		}
-
-		bool operator<= (const CDouble & rhs ) const
-		{
-			if (*this == rhs) return(true);
-			return(m_value < rhs.m_value);
-		}
-
-		bool operator> (const CDouble & rhs ) const
-		{
-			if (*this == rhs) return(false);
-			return(m_value > rhs.m_value);
-		}
-
-	private:
-		double	m_value;
-	};
-
 private:
     class Path
     {
@@ -227,16 +179,16 @@ public:
 
 	Symbols_t m_symbols;
 	CInlayParams m_params;
-	static double max_deviation_for_spline_to_arc;
+	static PropertyDouble max_deviation_for_spline_to_arc;
 
 	//	Constructors.
-	CInlay():CDepthOp(GetTypeString(), 0, InlayType)
+	CInlay() : CDepthOp(GetTypeString(), 0, InlayType), m_params(this)
 	{
 		m_params.set_initial_values();
 	}
 	CInlay(	const Symbols_t &symbols,
 			const int tool_number )
-		: CDepthOp(GetTypeString(), NULL, tool_number, InlayType), m_symbols(symbols)
+		: CDepthOp(GetTypeString(), NULL, tool_number, InlayType), m_symbols(symbols), m_params(this)
 	{
 		m_params.set_initial_values();
 		ReloadPointers();
@@ -247,13 +199,12 @@ public:
 		    double radius = pChamferingBit->m_params.m_diameter / 2.0;
 		    m_depth_op_params.m_step_down = radius / tan(theta);
 		}
-
 	}
 
 	CInlay( const CInlay & rhs );
 	CInlay & operator= ( const CInlay & rhs );
 
-	bool operator==( const CInlay & rhs ) const;
+	bool operator== ( const CInlay & rhs ) const;
 	bool operator!= ( const CInlay & rhs ) const { return(! (*this == rhs)); }
 
 	bool IsDifferent( HeeksObj *other ) { return(*this != (*(CInlay *)other)); }
@@ -290,7 +241,6 @@ public:
 
 	static bool Clockwise( const gp_Circ & circle );
 	void ReloadPointers();
-	static void GetOptions(std::list<Property *> *list);
 
 	static std::vector<TopoDS_Edge> SortEdges( const TopoDS_Wire & wire );
 	static bool DirectionTowarardsNextEdge( const TopoDS_Edge &from, const TopoDS_Edge &to );
@@ -317,7 +267,7 @@ public:
 
 public:
 	static gp_Pnt GetStart(const TopoDS_Edge &edge);
-    static gp_Pnt GetEnd(const TopoDS_Edge &edge);
+	static gp_Pnt GetEnd(const TopoDS_Edge &edge);
 };
 
 

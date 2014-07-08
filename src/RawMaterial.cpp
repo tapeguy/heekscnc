@@ -4,8 +4,6 @@
 #include "RawMaterial.h"
 
 #include "interface/Property.h"
-#include "interface/PropertyChoice.h"
-#include "interface/PropertyDouble.h"
 #include "interface/HeeksObj.h"
 #include "ProgramCanvas.h"
 #include "interface/strconv.h"
@@ -17,51 +15,6 @@
 #include <list>
 #include <algorithm>
 #include <vector>
-
-
-static void on_set_raw_material(int zero_based_choice, HeeksObj* object)
-{
-	if (zero_based_choice < 0) return;	// An error has occured.
-
-	CProgram *pProgram = (CProgram *)object;
-	std::set<wxString> materials = CSpeedReferences::GetMaterials();
-	std::vector<wxString> copy;
-
-	std::copy( materials.begin(), materials.end(), std::inserter(copy,copy.end()));
-
-	CNCConfig config(CRawMaterial::ConfigScope());
-	if (zero_based_choice <= int(copy.size()-1))
-	{
-		pProgram->m_raw_material.m_material_name = copy[zero_based_choice];
-		config.Write(_T("RawMaterial_MaterialName"), pProgram->m_raw_material.m_material_name );
-
-		std::set<double> choices = CSpeedReferences::GetHardnessForMaterial( copy[zero_based_choice] );
-		if (choices.size() > 0)
-		{
-			pProgram->m_raw_material.m_brinell_hardness = *(choices.begin());
-			config.Write(_T("RawMaterial_BrinellHardness"), pProgram->m_raw_material.m_brinell_hardness );
-		} // End if - then
-	} // End if - then
-	heeksCAD->Changed();
-}
-
-static void on_set_brinell_hardness(int zero_based_choice, HeeksObj *object)
-{
-	if (zero_based_choice < 0) return;	// An error has occured.
-
-	CProgram *pProgram = (CProgram *)object;
-	std::set<double> choices = CSpeedReferences::GetHardnessForMaterial( pProgram->m_raw_material.m_material_name );
-	std::vector<double> choice_array;
-	std::copy( choices.begin(), choices.end(), std::inserter( choice_array, choice_array.begin() ) );
-	if (zero_based_choice <= int(choice_array.size()))
-	{
-		pProgram->m_raw_material.m_brinell_hardness = choice_array[zero_based_choice];
-		heeksCAD->Changed();
-	} // End if - then
-
-	CNCConfig config(CRawMaterial::ConfigScope());
-	config.Write(_T("RawMaterial_BrinellHardness"), pProgram->m_raw_material.m_brinell_hardness );
-} // End on_set_brinell_hardness() routine
 
 
 /**
@@ -83,51 +36,103 @@ double CRawMaterial::Hardness() const
 } // End Hardness() method
 
 
-void CRawMaterial::GetProperties(CProgram *parent, std::list<Property *> *list)
+void CRawMaterial::InitializeProperties ( )
 {
-	if ((theApp.m_program != NULL) && (theApp.m_program->SpeedReferences() != NULL))
-	{
-		std::list< wxString > choices;
-		int choice = -1;
-		std::set< wxString > materials = theApp.m_program->SpeedReferences()->GetMaterials();
+    if ((theApp.m_program == NULL) || (theApp.m_program->SpeedReferences() == NULL))
+        return;
 
-		for (std::set<wxString>::iterator l_itMaterial = materials.begin();
-			l_itMaterial != materials.end(); l_itMaterial++)
-		{
-			choices.push_back(*l_itMaterial);
-			if (*l_itMaterial == m_material_name)
-			{
-				choice = std::distance( materials.begin(), l_itMaterial );
-			} // End if - then
-		} // End for
-		list->push_back(new PropertyChoice(_("Raw Material"), choices, choice, parent, on_set_raw_material));
-	} // End if - then
+    {
+        std::list< wxString > choices;
+        int choice = -1;
+        std::set< wxString > materials = theApp.m_program->SpeedReferences()->GetMaterials();
 
-	if ((theApp.m_program != NULL) && (theApp.m_program->SpeedReferences() != NULL))
-	{
-		std::set<double> hardness_values = theApp.m_program->SpeedReferences()->GetHardnessForMaterial(m_material_name);
-		std::list<wxString> choices;
+        for (std::set<wxString>::iterator l_itMaterial = materials.begin();
+            l_itMaterial != materials.end(); l_itMaterial++)
+        {
+            choices.push_back(*l_itMaterial);
+            if (*l_itMaterial == m_material_name)
+            {
+                choice = std::distance( materials.begin(), l_itMaterial );
+            } // End if - then
+        } // End for
+        raw_material_choice.Initialize (_("Raw Material"), this);
+        raw_material_choice.m_choices = choices;
+    }
 
-		int choice = -1;
-		for (std::set<double>::iterator l_itChoice = hardness_values.begin(); l_itChoice != hardness_values.end(); l_itChoice++)
-		{
-#ifdef UNICODE
-			std::wostringstream l_ossChoice;
-#else
-			std::ostringstream l_ossChoice;
-#endif
-			l_ossChoice << *l_itChoice;
-			if (m_brinell_hardness == *l_itChoice)
-			{
-				choice = int(std::distance( hardness_values.begin(), l_itChoice ));
-			} // End if - then
+    {
+        std::set<double> hardness_values = theApp.m_program->SpeedReferences()->GetHardnessForMaterial(m_material_name);
+        std::list<wxString> choices;
 
-			choices.push_back( l_ossChoice.str().c_str() );
-		} // End for
+        int choice = -1;
+        for (std::set<double>::iterator l_itChoice = hardness_values.begin(); l_itChoice != hardness_values.end(); l_itChoice++)
+        {
+    #ifdef UNICODE
+            std::wostringstream l_ossChoice;
+    #else
+            std::ostringstream l_ossChoice;
+    #endif
+            l_ossChoice << *l_itChoice;
+            if (m_brinell_hardness == *l_itChoice)
+            {
+                choice = int(std::distance( hardness_values.begin(), l_itChoice ));
+            } // End if - then
 
-		list->push_back(new PropertyChoice(_("Brinell Hardness of raw material"), choices, choice, parent, on_set_brinell_hardness));
-	} // End if - then
-} // End GetProperties() method
+            choices.push_back( l_ossChoice.str().c_str() );
+        } // End for
+        hardness_choice.Initialize (_("Brinell Hardness of raw material"), this);
+        hardness_choice.m_choices = choices;
+    }
+}
+
+void CRawMaterial::OnPropertyEdit(Property *prop)
+{
+    if ((theApp.m_program == NULL) || (theApp.m_program->SpeedReferences() == NULL))
+        return;
+
+    CProgram *pProgram = theApp.m_program;
+    int zero_based_choice;
+
+    if (prop == &raw_material_choice) {
+
+        zero_based_choice = raw_material_choice;
+        std::set<wxString> materials = CSpeedReferences::GetMaterials();
+        std::vector<wxString> copy;
+
+        std::copy( materials.begin(), materials.end(), std::inserter(copy,copy.end()));
+
+        CNCConfig config(CRawMaterial::ConfigScope());
+        if (zero_based_choice <= int(copy.size()-1))
+        {
+            pProgram->m_raw_material.m_material_name = copy[zero_based_choice];
+            config.Write(_T("RawMaterial_MaterialName"), pProgram->m_raw_material.m_material_name );
+
+            std::set<double> choices = CSpeedReferences::GetHardnessForMaterial( copy[zero_based_choice] );
+            if (choices.size() > 0)
+            {
+                pProgram->m_raw_material.m_brinell_hardness = *(choices.begin());
+                config.Write(_T("RawMaterial_BrinellHardness"), pProgram->m_raw_material.m_brinell_hardness );
+            } // End if - then
+        } // End if - then
+        heeksCAD->Changed();
+    }
+
+    else if (prop == &hardness_choice)
+    {
+        zero_based_choice = raw_material_choice;
+
+        std::set<double> choices = CSpeedReferences::GetHardnessForMaterial( pProgram->m_raw_material.m_material_name );
+        std::vector<double> choice_array;
+        std::copy( choices.begin(), choices.end(), std::inserter( choice_array, choice_array.begin() ) );
+        if (zero_based_choice <= int(choice_array.size()))
+        {
+            pProgram->m_raw_material.m_brinell_hardness = choice_array[zero_based_choice];
+            heeksCAD->Changed();
+        } // End if - then
+
+        CNCConfig config(CRawMaterial::ConfigScope());
+        config.Write(_T("RawMaterial_BrinellHardness"), pProgram->m_raw_material.m_brinell_hardness );
+    }
+}
 
 void CRawMaterial::WriteBaseXML(TiXmlElement *element)
 {

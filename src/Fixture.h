@@ -22,26 +22,31 @@
 class CFixture;
 class Python;
 
-class CFixtureParams {
+class CFixtureParams : public MutableObject {
+
+private:
+	CFixture * parent;
+
 public:
-	double m_yz_plane;	// i.e. rotation angle around x axis - in degrees
-	double m_xz_plane;	// i.e. rotation angle around y axis - in degrees
-	double m_xy_plane;	// i.e. rotation angle around z axis - in degrees
+	PropertyDouble m_yz_plane;			// i.e. rotation angle around x axis - in degrees
+	PropertyDouble m_xz_plane;			// i.e. rotation angle around y axis - in degrees
+	PropertyDouble m_xy_plane;			// i.e. rotation angle around z axis - in degrees
 
-	gp_Pnt m_pivot_point;	// Fixture's pivot point for rotation.
+	PropertyVertex m_pivot_point;			// Fixture's pivot point for rotation.
 
-	bool m_safety_height_defined;
-	double m_safety_height;	// defined in G53 (machine) coordinates for inter-fixture movements.
-	double m_clearance_height; // defined in local coordinates (G54 etc.) for inter-operation movements.
+	PropertyCheck m_safety_height_defined;
+	PropertyLength m_safety_height;			// defined in G53 (machine) coordinates for inter-fixture movements.
+	PropertyLength m_clearance_height; 		// defined in local coordinates (G54 etc.) for inter-operation movements.
 
-	bool m_touch_off_point_defined;	// Is the m_touch_off_point valid?
-	gp_Pnt m_touch_off_point;	// Coordinate in the local coordinate system for safe starting point
+	PropertyCheck m_touch_off_point_defined;	// Is the m_touch_off_point valid?
+	PropertyVertex2d m_touch_off_point;		// Coordinate in the local coordinate system for safe starting point
 								// when switching to this fixture.
-	wxString m_touch_off_description;	// Tell the operator what to do when setting up this fixture.
-										// eg: "touch off 0,0,0 at bottom left corner".
+	PropertyString m_touch_off_description;		// Tell the operator what to do when setting up this fixture.
+							// eg: "touch off 0,0,0 at bottom left corner".
 
-	CFixtureParams()
+	CFixtureParams(CFixture * parent)
 	{
+		this->parent = parent;
 		m_yz_plane = 0.0;
 		m_xz_plane = 0.0;
 		m_xy_plane = 0.0;
@@ -55,9 +60,10 @@ public:
 		m_touch_off_description = _T("");
 	} // End constructor.
 
+	void InitializeProperties();
 	void set_initial_values(const bool safety_height_defined, const double safety_height);
 	void write_values_to_config();
-	void GetProperties(CFixture* parent, std::list<Property *> *list);
+	void GetProperties(std::list<Property *> *list);
 	void WriteXMLAttributes(TiXmlNode* pElem);
 	void ReadParametersFromXMLElement(TiXmlElement* pElem);
 
@@ -165,13 +171,14 @@ public:
 
 
 	eCoordinateSystemNumber_t m_coordinate_system_number;
+	PropertyChoice m_coordinate_system_number_choice;
 
 	//	Constructors.
 	CFixture(const wxChar *title,
 			const eCoordinateSystemNumber_t coordinate_system_number,
 			const bool safety_height_defined,
 			const double safety_height )
-				: m_coordinate_system_number(coordinate_system_number)
+				:  m_params(this), m_coordinate_system_number(coordinate_system_number)
 	{
 		m_params.set_initial_values(safety_height_defined, safety_height);
 		if (title != NULL)
@@ -200,15 +207,17 @@ public:
 	// program whose job is to generate RS-274 GCode.
 	Python AppendTextToProgram() const;
 
+	void InitializeProperties();
+	void OnPropertyEdit(Property * prop);
 	void GetProperties(std::list<Property *> *list);
 	void CopyFrom(const HeeksObj* object);
 	bool CanAddTo(HeeksObj* owner);
 	const wxBitmap &GetIcon();
-    const wxChar* GetShortString(void)const{return m_title.c_str();}
+	const wxChar* GetShortString(void)const{return m_title.c_str();}
 	void glCommands(bool select, bool marked, bool no_color);
 
-    bool CanEditString(void)const{return true;}
-    void OnEditString(const wxChar* str);
+	bool CanEditString(void)const{return true;}
+	void OnEditString(const wxChar* str);
 
 	// static CFixture *Find( const eCoordinateSystemNumber_t coordinate_system_number );
 	// static int GetNextFixture();

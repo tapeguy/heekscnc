@@ -154,9 +154,10 @@ Python CMachineState::Fixture( CFixture new_fixture )
 			// We must be moving between fixtures rather than an initial fixture setup.
 
 			// Now move to above the touch-off point so that, when we plunge down, we won't hit the old fixture.
-			if (new_fixture.m_params.m_touch_off_description.Length() > 0)
+			const wxString& description = new_fixture.m_params.m_touch_off_description;
+			if (description.Length() > 0)
 			{
-				python << _T("comment(") << PythonString(new_fixture.m_params.m_touch_off_description) << _T(")\n");
+				python << _T("comment(") << PythonString(description) << _T(")\n");
 			}
 
 			if (new_fixture.m_params.m_touch_off_point_defined)

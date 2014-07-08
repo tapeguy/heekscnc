@@ -11,9 +11,7 @@
 #include "OutputCanvas.h"
 #include "interface/Geom.h"
 #include "interface/MarkedObject.h"
-#include "interface/PropertyColor.h"
 #include "interface/PropertyList.h"
-#include "interface/PropertyInt.h"
 #include "interface/Tool.h"
 #include "CNCConfig.h"
 #include "CTool.h"
@@ -648,7 +646,7 @@ void on_set_prep_color		(HeeksColor value, HeeksObj* object)	{CNCCode::Color(Col
 void on_set_axis_color		(HeeksColor value, HeeksObj* object)	{CNCCode::Color(ColorAxisType		) = value;}
 void on_set_rapid_color		(HeeksColor value, HeeksObj* object)	{CNCCode::Color(ColorRapidType		) = value;}
 void on_set_feed_color		(HeeksColor value, HeeksObj* object)	{CNCCode::Color(ColorFeedType		) = value;}
-
+/*
 // static
 void CNCCode::GetOptions(std::list<Property *> *list)
 {
@@ -670,7 +668,7 @@ void CNCCode::GetOptions(std::list<Property *> *list)
 
 	list->push_back(nc_options);
 }
-
+*/
 CNCCode::CNCCode():m_gl_list(0), m_highlighted_block(NULL), m_user_edited(false)
 {
 	CNCConfig config(ConfigScope());
@@ -746,7 +744,7 @@ void CNCCode::GetBox(CBox &box)
 
 	box.Insert(m_box);
 }
-
+/*
 void on_set_arc_interpolation_count(int value, HeeksObj*object)
 {
 	CNCCode::s_arc_interpolation_count = value;
@@ -759,6 +757,7 @@ void CNCCode::GetProperties(std::list<Property *> *list)
 	list->push_back( new PropertyInt(_("Arc Interpolation Count"), CNCCode::s_arc_interpolation_count, this, on_set_arc_interpolation_count) );
 	HeeksObj::GetProperties(list);
 }
+*/
 
 /**
 	Define an 'apply' button class so that we can apply a combination
@@ -890,7 +889,7 @@ class ApplyNCCode: public Tool{
 				std::ostringstream l_ossTitle;
 #endif
 				l_ossTitle << "Machined " << solids[ l_itShape->first ]->GetShortString();
-				HeeksObj *pNewSolid = heeksCAD->NewSolid( *((TopoDS_Solid *) &(l_itShape->second)), l_ossTitle.str().c_str(), (*(solids[ l_itShape->first ]->GetColor())) );
+				HeeksObj *pNewSolid = heeksCAD->NewSolid( *((TopoDS_Solid *) &(l_itShape->second)), l_ossTitle.str().c_str(), solids[ l_itShape->first ]->GetColor());
 				if (pNewSolid != NULL)
 				{
 					heeksCAD->Add( pNewSolid, NULL );		// Add the machined solid

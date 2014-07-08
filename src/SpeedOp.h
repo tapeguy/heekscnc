@@ -14,17 +14,21 @@
 
 class CSpeedOp;
 
-class CSpeedOpParams{
-public:
-	double m_horizontal_feed_rate;
-	double m_vertical_feed_rate;
-	double m_spindle_speed;
+class CSpeedOpParams : public MutableObject
+{
+private:
+    CSpeedOp * parent;
 
-	CSpeedOpParams();
+public:
+    PropertyLength m_horizontal_feed_rate;
+    PropertyLength m_vertical_feed_rate;
+    PropertyDouble m_spindle_speed;
+
+	CSpeedOpParams(CSpeedOp * parent);
 	bool operator== ( const CSpeedOpParams & rhs ) const;
 	bool operator!= ( const CSpeedOpParams & rhs ) const { return(! (*this == rhs)); }
 
-	void GetProperties(CSpeedOp* parent, std::list<Property *> *list);
+	void InitializeProperties();
 	void WriteXMLAttributes(TiXmlNode* pElem);
 	void ReadFromXMLElement(TiXmlElement* pElem);
 	void ResetSpeeds(const int tool_number);
@@ -36,10 +40,10 @@ class CSpeedOp : public COp
 public:
 	CSpeedOpParams m_speed_op_params;
 
-	static bool m_auto_set_speeds_feeds;
+	static PropertyCheck m_auto_set_speeds_feeds;
 
 	CSpeedOp(const wxString& title, const int tool_number = -1, const int operation_type = UnknownType )
-            :COp(title, tool_number, operation_type)
+     : COp(title, tool_number, operation_type), m_speed_op_params(this)
     {
         ReadDefaultValues();
     }

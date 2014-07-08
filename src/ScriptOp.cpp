@@ -12,7 +12,6 @@
 #include "Program.h"
 #include "interface/HeeksObj.h"
 #include "interface/PropertyList.h"
-#include "interface/PropertyCheck.h"
 #include "tinyxml/tinyxml.h"
 #include "PythonStuff.h"
 #include "MachineState.h"
@@ -52,6 +51,11 @@ CScriptOp & CScriptOp::operator= ( const CScriptOp & rhs )
 	}
 
 	return(*this);
+}
+
+void CScriptOp::InitializeProperties ( )
+{
+    m_emit_depthop_params.Initialize(_("emit_depthop_params"), this);
 }
 
 const wxBitmap &CScriptOp::GetIcon()
@@ -171,26 +175,23 @@ This is a simple way to insert datum parameters for translating gcode around lat
 		{
 
 
-		case CoordinateSystemType:			
+		case CoordinateSystemType:
 			// you can paste in new datum/coordinate system parameters with this
 			python << _T("translate(")<< heeksCAD->GetDatumPosX(*itObject)/ theApp.m_program->m_units << _T(",") << heeksCAD->GetDatumPosY(*itObject)/ theApp.m_program->m_units << _T(",") << heeksCAD->GetDatumPosZ(*itObject)/ theApp.m_program->m_units<< _T(")\n");
 
 			//python << _T("datumX_dir(")<< heeksCAD->GetDatumDirx_X(*itObject)/ theApp.m_program->m_units << _T(",") << heeksCAD->GetDatumDirx_Y(*itObject)/ theApp.m_program->m_units << _T(",") << heeksCAD->GetDatumDirx_Z(*itObject)/ theApp.m_program->m_units<< _T(")\n");
-			
+
 			//python << _T("datumY_dir(")<< heeksCAD->GetDatumDiry_X(*itObject)/ theApp.m_program->m_units << _T(",") << heeksCAD->GetDatumDiry_Y(*itObject)/ theApp.m_program->m_units << _T(",") << heeksCAD->GetDatumDiry_Z(*itObject)/ theApp.m_program->m_units<< _T(")\n");
 
 			break;
 
-			
+
 			} // End switch
     } // End for
 
     return(python);
 
 }
-
-
-
 
 
 /**
@@ -297,7 +298,7 @@ Python CScriptOp::AppendTextToProgram(CMachineState *pMachineState)
 	{
 		python << CDepthOp::AppendTextToProgram(pMachineState);
 	} else 	{
-		if(m_comment.Len() > 0)
+		if(((const wxString&)m_comment).Len() > 0)
 		{
 		  python << _T("comment(") << PythonString(m_comment) << _T(")\n");
 		}
@@ -325,21 +326,6 @@ Python CScriptOp::AppendTextToProgram(CMachineState *pMachineState)
 
 	return python;
 } // End AppendTextToProgram() method
-
-
-
-
-static void on_set_emit_depthop_params(bool value, HeeksObj* object)
-{
-	((CScriptOp*)object)->m_emit_depthop_params = (value ? 1:0);
-	((CScriptOp*)object)->WriteDefaultValues();
-}
-
-void CScriptOp::GetProperties(std::list<Property *> *list)
-{
-    list->push_back(new PropertyCheck(_("emit_depthop_params"), m_emit_depthop_params != 0, this, on_set_emit_depthop_params));
-    CDepthOp::GetProperties(list);
-}
 
 ObjectCanvas* CScriptOp::GetDialog(wxWindow* parent)
 {
@@ -387,7 +373,12 @@ HeeksObj* CScriptOp::ReadFromXMLElement(TiXmlElement* element)
 	CScriptOp* new_object = new CScriptOp;
 
 	new_object->m_str = wxString(Ctt(element->Attribute("script")));
-	if (element->Attribute("emit_depthop_params")) element->Attribute("emit_depthop_params", &new_object->m_emit_depthop_params);
+	if (element->Attribute("emit_depthop_params"))
+	{
+	    int i;
+	    element->Attribute("emit_depthop_params", &i);
+	    new_object->m_emit_depthop_params.SetValue( i != 0 );
+	}
 
 	// read common parameters
 	new_object->ReadBaseXML(element);

@@ -6,7 +6,9 @@
 
 #pragma once
 
+#include "interface/HeeksObj.h"
 #include "interface/HeeksCADInterface.h"
+#include "interface/PropertyList.h"
 #include <list>
 #include <wx/string.h>
 
@@ -18,7 +20,7 @@ class CProgramCanvas;
 class COutputCanvas;
 class Tool;
 
-class CHeeksCNCApp{
+class CHeeksCNCApp : public MutableObject {
 public:
 	bool m_draw_cutter_radius; // applies to all operations
 	CProgram* m_program;
@@ -32,12 +34,16 @@ public:
 	int m_icon_texture_number;
 	std::list< void(*)() > m_OnRewritePython_list;
 	std::set<int> m_external_op_types;
-	bool m_use_Clipper_not_Boolean;
-	bool m_use_DOS_not_Unix;
+
+	PropertyList machining_options;
+	PropertyCheck m_use_Clipper_not_Boolean;
+	PropertyCheck m_use_DOS_not_Unix;
+	PropertyList excellon_options;
 
 	CHeeksCNCApp();
 	~CHeeksCNCApp();
 
+	void InitializeProperties();
 	void OnStartUp(CHeeksCADInterface* h, const wxString& dll_path);
 	void OnNewOrOpen(bool open, int res);
 	void OnInitDLL();

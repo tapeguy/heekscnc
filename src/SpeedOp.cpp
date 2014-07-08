@@ -10,18 +10,15 @@
 #include "CNCConfig.h"
 #include "ProgramCanvas.h"
 #include "Program.h"
-#include "interface/PropertyInt.h"
-#include "interface/PropertyDouble.h"
-#include "interface/PropertyLength.h"
 #include "interface/PropertyList.h"
-#include "interface/PropertyCheck.h"
 #include "tinyxml/tinyxml.h"
 #include "interface/Tool.h"
 #include "CTool.h"
 #include "MachineState.h"
 
-CSpeedOpParams::CSpeedOpParams()
+CSpeedOpParams::CSpeedOpParams(CSpeedOp * parent)
 {
+    this->parent = parent;
 	m_horizontal_feed_rate = 0.0;
 	m_vertical_feed_rate = 0.0;
 	m_spindle_speed = 0.0;
@@ -156,7 +153,8 @@ void CSpeedOpParams::ResetSpeeds(const int tool_number)
                 (theApp.m_program->m_machine.m_max_spindle_speed < fabs(m_spindle_speed)))
             {
                 // Reduce the speed to match the machine's maximum setting.
-	        m_spindle_speed = (m_spindle_speed < 0) ? -theApp.m_program->m_machine.m_max_spindle_speed : theApp.m_program->m_machine.m_max_spindle_speed;
+                double max_spindle_speed = theApp.m_program->m_machine.m_max_spindle_speed;
+                m_spindle_speed = (m_spindle_speed < 0) ? -max_spindle_speed : max_spindle_speed;
             } // End if - then
 		} // End if - then
 	} // End if - then
@@ -181,11 +179,11 @@ static void on_set_spindle_speed(double value, HeeksObj* object)
 	((CSpeedOp*)object)->WriteDefaultValues();
 }
 
-void CSpeedOpParams::GetProperties(CSpeedOp* parent, std::list<Property *> *list)
+void CSpeedOpParams::InitializeProperties()
 {
-	list->push_back(new PropertyLength(_("horizontal feed rate"), m_horizontal_feed_rate, parent, on_set_horizontal_feed_rate));
-	list->push_back(new PropertyLength(_("vertical feed rate"), m_vertical_feed_rate, parent, on_set_vertical_feed_rate));
-	list->push_back(new PropertyDouble(_("spindle speed"), m_spindle_speed, parent, on_set_spindle_speed));
+    m_horizontal_feed_rate.Initialize(_("horizontal feed rate"), parent);
+    m_vertical_feed_rate.Initialize(_("vertical feed rate"), parent);
+    m_spindle_speed.Initialize(_("spindle speed"), parent);
 }
 
 void CSpeedOpParams::WriteXMLAttributes(TiXmlNode* pElem)
@@ -199,12 +197,16 @@ void CSpeedOpParams::WriteXMLAttributes(TiXmlNode* pElem)
 
 void CSpeedOpParams::ReadFromXMLElement(TiXmlElement* pElem)
 {
+    double d;
 	TiXmlElement* speedop = heeksCAD->FirstNamedXMLChildElement(pElem, "speedop");
 	if(speedop)
 	{
-		speedop->Attribute("hfeed", &m_horizontal_feed_rate);
-		speedop->Attribute("vfeed", &m_vertical_feed_rate);
-		speedop->Attribute("spin", &m_spindle_speed);
+		speedop->Attribute("hfeed", &d);
+		m_horizontal_feed_rate = d;
+		speedop->Attribute("vfeed", &d);
+		m_vertical_feed_rate = d;
+		speedop->Attribute("spin", &d);
+		m_spindle_speed = d;
 
 		heeksCAD->RemoveXMLChild(pElem, speedop);
 	}
@@ -228,13 +230,11 @@ CSpeedOp & CSpeedOp::operator= ( const CSpeedOp & rhs )
 	return(*this);
 }
 
-CSpeedOp::CSpeedOp( const CSpeedOp & rhs ) : COp(rhs)
+CSpeedOp::CSpeedOp( const CSpeedOp & rhs )
+ : COp(rhs), m_speed_op_params(this)
 {
 	m_speed_op_params = rhs.m_speed_op_params;
 }
-
-// static
-bool CSpeedOp::m_auto_set_speeds_feeds = false;
 
 void CSpeedOp::WriteBaseXML(TiXmlElement *element)
 {
@@ -263,9 +263,9 @@ void CSpeedOp::ReadDefaultValues()
 	COp::ReadDefaultValues();
 
 	CNCConfig config(CSpeedOp::ConfigScope());
-	config.Read(_T("SpeedOpHorizFeed"), &m_speed_op_params.m_horizontal_feed_rate, 100.0);
-	config.Read(_T("SpeedOpVertFeed"), &m_speed_op_params.m_vertical_feed_rate, 100.0);
-	config.Read(_T("SpeedOpSpindleSpeed"), &m_speed_op_params.m_spindle_speed, 7000);
+	config.Read(_T("SpeedOpHorizFeed"), m_speed_op_params.m_horizontal_feed_rate, 100.0);
+	config.Read(_T("SpeedOpVertFeed"), m_speed_op_params.m_vertical_feed_rate, 100.0);
+	config.Read(_T("SpeedOpSpindleSpeed"), m_speed_op_params.m_spindle_speed, 7000);
 
 	if(m_auto_set_speeds_feeds)
 	{
@@ -276,7 +276,7 @@ void CSpeedOp::ReadDefaultValues()
 
 void CSpeedOp::GetProperties(std::list<Property *> *list)
 {
-	m_speed_op_params.GetProperties(this, list);
+	m_speed_op_params.GetProperties(list);
 	COp::GetProperties(list);
 }
 
@@ -298,19 +298,20 @@ Python CSpeedOp::AppendTextToProgram(CMachineState *pMachineState)
     return(python);
 }
 
-static void on_set_auto_speeds(bool value, HeeksObj* object){CSpeedOp::m_auto_set_speeds_feeds = value;}
+/* static */ PropertyCheck CSpeedOp::m_auto_set_speeds_feeds = false;
+
 
 // static
 void CSpeedOp::GetOptions(std::list<Property *> *list)
 {
-	list->push_back ( new PropertyCheck ( _("auto set speeds for new operation"), m_auto_set_speeds_feeds, NULL, on_set_auto_speeds ) );
+	list->push_back ( &m_auto_set_speeds_feeds );
 }
 
 // static
 void CSpeedOp::ReadFromConfig()
 {
 	CNCConfig config(ConfigScope());
-	config.Read(_T("SpeedOpAutoSetSpeeds"), &m_auto_set_speeds_feeds,true);
+	config.Read(_T("SpeedOpAutoSetSpeeds"), m_auto_set_speeds_feeds, true);
 }
 
 // static

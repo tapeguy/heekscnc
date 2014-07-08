@@ -17,21 +17,24 @@
 
 class CDrilling;
 
-class CDrillingParams{
-
-public:
-	double m_standoff;		// This is the height above the staring Z position that forms the Z retract height (R word)
-	double m_dwell;			// If dwell_bottom is non-zero then we're using the G82 drill cycle rather than G83 peck drill cycle.  This is the 'P' word
-	double m_depth;			// Incremental length down from 'z' value at which the bottom of the hole can be found
-	double m_peck_depth;		// This is the 'Q' word in the G83 cycle.  How deep to peck each time.
-	int    m_sort_drilling_locations;	// Perform a location-based sort before generating GCode?
-	int    m_retract_mode;	// boring - 0 - rapid retract, 1 - feed retract
-	int    m_spindle_mode;	// boring - if true, stop spindle at bottom
+class CDrillingParams : public MutableObject {
 
 private:
-	double m_clearance_height; // The tool moves to this height between drill locations and then rapidly moves down to the m_standoff height.
+	CDrilling * parent;
+	PropertyLength m_clearance_height;		// The tool moves to this height between drill locations and then rapidly moves down to the m_standoff height.
+	PropertyString m_clearance_height_string;
 
 public:
+	PropertyLength m_standoff;			// This is the height above the staring Z position that forms the Z retract height (R word)
+	PropertyDouble m_dwell;				// If dwell_bottom is non-zero then we're using the G82 drill cycle rather than G83 peck drill cycle.  This is the 'P' word
+	PropertyLength m_depth;				// Incremental length down from 'z' value at which the bottom of the hole can be found
+	PropertyLength m_peck_depth;			// This is the 'Q' word in the G83 cycle.  How deep to peck each time.
+	PropertyChoice m_sort_drilling_locations;	// Perform a location-based sort before generating GCode?
+	PropertyChoice m_retract_mode;			// boring - 0 - rapid retract, 1 - feed retract
+	PropertyChoice m_spindle_mode;			// boring - if true, stop spindle at bottom
+
+	CDrillingParams(CDrilling * parent);
+
 	double ClearanceHeight() const;
 	void   ClearanceHeight(const double value) { m_clearance_height = value; }
 
@@ -41,9 +44,10 @@ public:
 	// def drill(x=None, y=None, z=None, depth=None, standoff=None, dwell=None, peck_depth=None, retract_mode=None, spindle_mode=None):
 
 
+	void InitializeProperties();
 	void set_initial_values( const double depth, const int tool_number );
 	void write_values_to_config();
-	void GetProperties(CDrilling* parent, std::list<Property *> *list);
+	void GetProperties(std::list<Property *> *list);
 	void WriteXMLAttributes(TiXmlNode* pElem);
 	void ReadParametersFromXMLElement(TiXmlElement* pElem);
 
@@ -102,7 +106,7 @@ public:
 	CDrillingParams m_params;
 
 	//	Constructors.
-	CDrilling():CSpeedOp(GetTypeString(), 0){}
+	CDrilling();
 	CDrilling(	const Symbols_t &symbols,
 			const int tool_number,
 			const double depth );

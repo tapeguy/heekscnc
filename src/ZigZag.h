@@ -8,15 +8,29 @@
 
 class CZigZag;
 
-class CZigZagParams{
-public:
-	CBox m_box; // z values ignored ( use start_depth, final_depth instead )
-	double m_step_over;
-	int m_direction; // 0 = x, 1 = y
-	double m_material_allowance;
-	int m_style; // 0 = one way, 1 = two ways
+class CZigZagParams : public MutableObject
+{
+private:
 
-	void GetProperties(CZigZag* parent, std::list<Property *> *list);
+    CZigZag * parent;
+
+public:
+
+	CBox m_box; // z values ignored ( use start_depth, final_depth instead )
+    PropertyLength m_min_x;
+    PropertyLength m_min_y;
+    PropertyLength m_max_x;
+    PropertyLength m_max_y;
+    PropertyLength m_step_over;
+    PropertyChoice m_direction; // 0 = x, 1 = y
+	PropertyLength m_material_allowance;
+	PropertyChoice m_style; // 0 = one way, 1 = two ways
+
+    CZigZagParams(CZigZag * parent);
+	void InitializeProperties();
+    void GetProperties(std::list<Property *> *list);
+    void OnPropertyEdit(Property * prop);
+
 	void WriteXMLAttributes(TiXmlNode* pElem);
 	void ReadFromXMLElement(TiXmlElement* pElem);
 
@@ -32,7 +46,11 @@ public:
 	CZigZagParams m_params;
 	static int number_for_stl_file;
 
-	CZigZag():CDepthOp(GetTypeString(), 0, ZigZagType){}
+	CZigZag()
+	 : CDepthOp(GetTypeString(), 0, ZigZagType), m_params(this)
+	{
+	}
+
 	CZigZag(const std::list<int> &solids, const int tool_number = -1);
 	CZigZag( const CZigZag & rhs );
 	CZigZag & operator= ( const CZigZag & rhs );

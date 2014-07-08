@@ -15,9 +15,6 @@
 #include <wx/stdpaths.h>
 #include <wx/dynlib.h>
 #include <wx/aui/aui.h>
-#include "interface/PropertyString.h"
-#include "interface/PropertyCheck.h"
-#include "interface/PropertyList.h"
 #include "interface/Observer.h"
 #include "interface/ToolImage.h"
 #include "PythonStuff.h"
@@ -1525,8 +1522,8 @@ void CHeeksCNCApp::OnStartUp(CHeeksCADInterface* h, const wxString& dll_path)
 	CSpeedOp::ReadFromConfig();
 
 	CSendToMachine::ReadFromConfig();
-	config.Read(_T("UseClipperNotBoolean"), &m_use_Clipper_not_Boolean, false);
-	config.Read(_T("UseDOSNotUnix"), &m_use_DOS_not_Unix, false);
+	config.Read(_T("UseClipperNotBoolean"), m_use_Clipper_not_Boolean, false);
+	config.Read(_T("UseDOSNotUnix"), m_use_DOS_not_Unix, false);
 	aui_manager->GetPane(m_program_canvas).Show(program_visible);
 	aui_manager->GetPane(m_output_canvas).Show(output_visible);
 
@@ -1795,36 +1792,29 @@ void CHeeksCNCApp::OnNewOrOpen(bool open, int res)
 	} // End if - then
 }
 
-void on_set_use_clipper(bool value, HeeksObj* object)
+
+void CHeeksCNCApp::InitializeProperties()
 {
-	theApp.m_use_Clipper_not_Boolean = value;
-}
-
-void on_set_use_DOS(bool value, HeeksObj* object)
-{
-    theApp.m_use_DOS_not_Unix = value;
-
-}
-
-void CHeeksCNCApp::GetOptions(std::list<Property *> *list){
-	PropertyList* machining_options = new PropertyList(_("machining options"));
+	machining_options.Initialize(_("machining options"), this);
+/*
 	CNCCode::GetOptions(&(machining_options->m_list));
 	CSpeedOp::GetOptions(&(machining_options->m_list));
 	CProfile::GetOptions(&(machining_options->m_list));
-	CPocket::GetOptions(&(machining_options->m_list));
-#ifndef STABLE_OPS_ONLY
-	CContour::GetOptions(&(machining_options->m_list));
-	CInlay::GetOptions(&(machining_options->m_list));
-#endif
+*/
+	CContour::max_deviation_for_spline_to_arc.Initialize( _("Contour spline deviation"), &machining_options);
+	CInlay::max_deviation_for_spline_to_arc.Initialize(_("Inlay spline deviation"), &machining_options);
+	CPocket::max_deviation_for_spline_to_arc.Initialize(_("Pocket spline deviation"), &machining_options);
+/*
 	CSendToMachine::GetOptions(&(machining_options->m_list));
-	machining_options->m_list.push_back ( new PropertyCheck ( _("Use Clipper not Boolean"), m_use_Clipper_not_Boolean, NULL, on_set_use_clipper ) );
-	machining_options->m_list.push_back ( new PropertyCheck ( _("Use DOS Line Endings"), m_use_DOS_not_Unix, NULL, on_set_use_DOS ) );
+*/
+	m_use_Clipper_not_Boolean.Initialize(_("Use Clipper not Boolean"), &machining_options);
+	m_use_DOS_not_Unix.Initialize(_("Use DOS Line Endings"), &machining_options);
 
-	list->push_back(machining_options);
+	excellon_options.Initialize(_("Excellon options"), this);
+	Excellon::s_allow_dummy_tool_definitions.Initialize(_("Allow dummy tool definitions"), &excellon_options);
+}
 
-	PropertyList* excellon_options = new PropertyList(_("Excellon options"));
-	Excellon::GetOptions(&(excellon_options->m_list));
-	list->push_back(excellon_options);
+void CHeeksCNCApp::GetOptions(std::list<Property *> *list){
 }
 
 void CHeeksCNCApp::OnFrameDelete()
@@ -1851,20 +1841,21 @@ wxString CHeeksCNCApp::GetDllFolder()
 
 wxString CHeeksCNCApp::GetResFolder()
 { 
-//	wxStandardPaths& sp = wxStandardPaths::Get();
-#if defined(WIN32) || defined(RUNINPLACE) //compile with 'RUNINPLACE=yes make' then skip 'sudo make install'
+#if MACOSX
+	return m_dll_path;
+
+#elif defined(WIN32) || defined(RUNINPLACE) //compile with 'RUNINPLACE=yes make' then skip 'sudo make install'
 	#ifdef CMAKE_UNIX
 		return (m_dll_path + _T("/.."));
 	#else
 		return m_dll_path;
 	#endif
+
 #else
 #ifdef CMAKE_UNIX
-    return (_T("/usr/local/share/heekscnc"));
-    //return sp.GetResourcesDir();
+	return (_T("/usr/local/share/heekscnc"));
 #else
 	return (m_dll_path + _T("/../../share/heekscnc"));
-	//return sp.GetResourcesDir();
 #endif
 #endif
 }

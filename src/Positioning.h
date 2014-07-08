@@ -11,24 +11,28 @@
 
 #include "Op.h"
 #include "HeeksCNCTypes.h"
+#include "interface/Property.h"
 #include <list>
 #include <vector>
 #include "CNCPoint.h"
 
 class CPositioning;
 
-class CPositioningParams{
+class CPositioningParams : public MutableObject {
+private:
+	CPositioning * parent;
 
 public:
-	double m_standoff;		// This is the height above the staring Z position that forms the Z retract height (R word)
-	int    m_sort_locations;	// Perform a location-based sort before generating GCode?
+	PropertyLength m_standoff;		// This is the height above the staring Z position that forms the Z retract height (R word)
+	PropertyChoice m_sort_locations;	// Perform a location-based sort before generating GCode?
 
 	// The following line is the prototype setup in the Python routines for the drill sequence.
 	// def drill(x=None, y=None, z=None, depth=None, standoff=None, dwell=None, peck_depth=None):
 
+	CPositioningParams(CPositioning * parent);
 	void set_initial_values();
 	void write_values_to_config();
-	void GetProperties(CPositioning* parent, std::list<Property *> *list);
+	void InitializeProperties();
 	void WriteXMLAttributes(TiXmlNode* pElem);
 	void ReadParametersFromXMLElement(TiXmlElement* pElem);
 
@@ -78,7 +82,7 @@ public:
 	CPositioningParams m_params;
 
 	//	Constructors.
-	CPositioning():COp(GetTypeString(), 0, PositioningType){}
+	CPositioning():COp(GetTypeString(), 0, PositioningType), m_params(this) {}
 	CPositioning(	const Symbols_t &symbols );
 
 	CPositioning( const CPositioning & rhs );

@@ -11,34 +11,38 @@
 
 class CPocket;
 
-class CPocketParams{
+class CPocketParams : public MutableObject {
+private:
+	CPocket * parent;
+
 public:
-	int m_starting_place;
-	double m_material_allowance;
-	double m_step_over;
-	bool m_keep_tool_down_if_poss;
-	bool m_use_zig_zag;
-	double m_zig_angle;
-	bool m_zig_unidirectional;
+	PropertyChoice m_starting_place;
+	PropertyLength m_material_allowance;
+	PropertyLength m_step_over;
+	PropertyCheck m_keep_tool_down_if_poss;
+	PropertyCheck m_use_zig_zag;
+	PropertyDouble m_zig_angle;
+	PropertyCheck m_zig_unidirectional;
 
 	typedef enum {
-		eConventional,
+		eConventional = 0,
 		eClimb
-	}eCutMode;
+	} eCutMode;
 	eCutMode m_cut_mode;
 
-    typedef enum {
-            ePlunge = 0,
-            eRamp,
-            eHelical,
-            eUndefinedeDescentStrategy
-    } eEntryStyle;
-    eEntryStyle m_entry_move;
+	typedef enum {
+		ePlunge = 0,
+		eRamp,
+		eHelical,
+		eUndefinedeDescentStrategy
+	} eEntryStyle;
+	PropertyChoice m_entry_move;
 
-	CPocketParams();
+	CPocketParams(CPocket* parent);
 
-    void set_initial_values(const CTool::ToolNumber_t tool_number);
-	void GetProperties(CPocket* parent, std::list<Property *> *list);
+	void InitializeProperties();
+	void set_initial_values(const CTool::ToolNumber_t tool_number);
+	void GetProperties(std::list<Property *> *list);
 	void WriteXMLAttributes(TiXmlNode* pElem);
 	void ReadFromXMLElement(TiXmlElement* pElem);
 	static wxString ConfigScope() { return(_T("Pocket")); }
@@ -53,11 +57,12 @@ public:
 	Sketches_t m_sketches;
 	CPocketParams m_pocket_params;
 
-	static double max_deviation_for_spline_to_arc;
+	static PropertyDouble max_deviation_for_spline_to_arc;
 
-	CPocket():CDepthOp(GetTypeString(), 0, PocketType){}
+	CPocket():CDepthOp(GetTypeString(), 0, PocketType), m_pocket_params(this){}
 	CPocket(const std::list<int> &sketches, const int tool_number );
 	CPocket(const std::list<HeeksObj *> &sketches, const int tool_number );
+
 	CPocket( const CPocket & rhs );
 	CPocket & operator= ( const CPocket & rhs );
 
@@ -90,7 +95,6 @@ public:
 
 	std::list<wxString> DesignRulesAdjustment(const bool apply_changes);
 
-	static void GetOptions(std::list<Property *> *list);
 	static void ReadFromConfig();
 	static void WriteToConfig();
 };

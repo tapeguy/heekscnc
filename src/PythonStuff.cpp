@@ -14,7 +14,6 @@
 #include "OutputCanvas.h"
 #include "Program.h"
 #include "CNCConfig.h"
-#include "interface/PropertyString.h"
 
 //static
 bool CPyProcess::redirect = false;
@@ -354,7 +353,7 @@ void CSendToMachine::SendGCode(const wxChar *gcode)
 #ifdef WIN32
         Execute(wxString(_T("\"")) + theApp.GetDllFolder() +wxString(_T("\\")) + m_command + wxString(_T("\" \"")) + ngcpath.GetFullPath() + wxString(_T("\"")));
 #else
-        wxString sendto_cmdline = m_command + wxString(_T(" ")) + ngcpath.GetFullPath();
+        wxString sendto_cmdline = (const wxChar *)m_command + wxString(_T(" ")) + ngcpath.GetFullPath();
         wxLogDebug(_T("executing '%s')"), sendto_cmdline.c_str());
 		Execute(sendto_cmdline);
 #endif
@@ -362,7 +361,7 @@ void CSendToMachine::SendGCode(const wxChar *gcode)
 
 
 int CSendToMachine::m_serial;
-wxString CSendToMachine::m_command;
+PropertyString CSendToMachine::m_command;
 
 static void on_set_to_machine_command(const wxChar *value, HeeksObj* object)
 {
@@ -373,20 +372,20 @@ static void on_set_to_machine_command(const wxChar *value, HeeksObj* object)
 // static
 void CSendToMachine::GetOptions(std::list<Property *> *list)
 {
-	list->push_back(new PropertyString(_("send-to-machine command"), m_command, NULL, on_set_to_machine_command));
+	list->push_back(&m_command);
 }
 
 // static
 void CSendToMachine::ReadFromConfig()
 {
         CNCConfig config(CSendToMachine::ConfigScope());
-        config.Read(_T("SendToMachineCommand"), &m_command , _T("axis-remote"));
+        config.Read(_T("SendToMachineCommand"), m_command , _T("axis-remote"));
 }
 // static
 void CSendToMachine::WriteToConfig()
 {
         CNCConfig config(CSendToMachine::ConfigScope());
-        config.Write(_T("SendToMachineCommand"), m_command);
+        config.Write(_T("SendToMachineCommand"), (const wxChar *)m_command);
 }
 
 

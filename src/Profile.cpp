@@ -11,11 +11,6 @@
 #include "ProgramCanvas.h"
 #include "Program.h"
 #include "interface/HeeksObj.h"
-#include "interface/PropertyLength.h"
-#include "interface/PropertyChoice.h"
-#include "interface/PropertyVertex.h"
-#include "interface/PropertyCheck.h"
-#include "interface/PropertyInt.h"
 #include "tinyxml/tinyxml.h"
 #include "interface/Tool.h"
 #include "CTool.h"
@@ -34,10 +29,11 @@
 #include <iomanip>
 
 // static
-double CProfile::max_deviation_for_spline_to_arc = 0.1;
+PropertyDouble CProfile::max_deviation_for_spline_to_arc = 0.1;
 
-CProfileParams::CProfileParams()
+CProfileParams::CProfileParams(CProfile * parent)
 {
+    this->parent = parent;
 	m_tool_on_side = eOn;
 	m_cut_mode = eConventional;
 	m_auto_roll_radius = 2.0;
@@ -50,8 +46,8 @@ CProfileParams::CProfileParams()
 	m_start[0] = m_start[1] = m_start[2] = 0.0;
 	m_end[0] = m_end[1] = m_end[2] = 0.0;
 
-    m_extend_at_start = 0.0; 
-    m_extend_at_end = 0.0; 
+    m_extend_at_start = 0.0;
+    m_extend_at_end = 0.0;
 
     m_lead_in_line_len = 1.0;
     m_lead_out_line_len= 1.0;
@@ -133,99 +129,101 @@ static void on_set_finish_step_down(double value, HeeksObj* object)
 	((CProfile*)object)->WriteDefaultValues();
 }
 
-void CProfileParams::GetProperties(CProfile* parent, std::list<Property *> *list)
+void CProfileParams::InitializeProperties()
 {
-	{
-		std::list< wxString > choices;
+/*
+    {
+        std::list< wxString > choices;
 
-		SketchOrderType order = SketchOrderTypeUnknown;
+        SketchOrderType order = SketchOrderTypeUnknown;
 
-		if(parent->GetNumSketches() == 1)
-		{
+        if(parent->GetNumSketches() == 1)
+        {
 #ifdef OP_SKETCHES_AS_CHILDREN
-			HeeksObj* sketch = parent->GetFirstChild();
+            HeeksObj* sketch = parent->GetFirstChild();
 #else
-			HeeksObj* sketch = heeksCAD->GetIDObject(SketchType, parent->m_sketches.front());
+            HeeksObj* sketch = heeksCAD->GetIDObject(SketchType, parent->m_sketches.front());
 #endif
-			if((sketch) && (sketch->GetType() == SketchType))
-			{
-				order = heeksCAD->GetSketchOrder(sketch);
-			}
-		}
+            if((sketch) && (sketch->GetType() == SketchType))
+            {
+                order = heeksCAD->GetSketchOrder(sketch);
+            }
+        }
 
-		switch(order)
-		{
-		case SketchOrderTypeOpen:
-			choices.push_back(_("Left"));
-			choices.push_back(_("Right"));
-			break;
+        switch(order)
+        {
+        case SketchOrderTypeOpen:
+            choices.push_back(_("Left"));
+            choices.push_back(_("Right"));
+            break;
 
-		case SketchOrderTypeCloseCW:
-		case SketchOrderTypeCloseCCW:
-			choices.push_back(_("Outside"));
-			choices.push_back(_("Inside"));
-			break;
+        case SketchOrderTypeCloseCW:
+        case SketchOrderTypeCloseCCW:
+            choices.push_back(_("Outside"));
+            choices.push_back(_("Inside"));
+            break;
 
-		default:
-			choices.push_back(_("Outside or Left"));
-			choices.push_back(_("Inside or Right"));
-			break;
-		}
-		choices.push_back(_("On"));
+        default:
+            choices.push_back(_("Outside or Left"));
+            choices.push_back(_("Inside or Right"));
+            break;
+        }
+        choices.push_back(_("On"));
 
-		int choice = int(eOn);
-		switch (m_tool_on_side)
-		{
-			case eRightOrInside:	choice = 1;
-					break;
+        int choice = int(eOn);
+        switch (m_tool_on_side)
+        {
+            case eRightOrInside:    choice = 1;
+                    break;
 
-			case eOn:	choice = 2;
-					break;
+            case eOn:   choice = 2;
+                    break;
 
-			case eLeftOrOutside:	choice = 0;
-					break;
-		} // End switch
+            case eLeftOrOutside:    choice = 0;
+                    break;
+        } // End switch
 
-		list->push_back(new PropertyChoice(_("tool on side"), choices, choice, parent, on_set_tool_on_side));
-	}
+        list->push_back(new PropertyChoice(_("tool on side"), choices, choice, parent, on_set_tool_on_side));
+    }
 
-	{
-		std::list< wxString > choices;
-		choices.push_back(_("Conventional"));
-		choices.push_back(_("Climb"));
-		list->push_back(new PropertyChoice(_("cut mode"), choices, m_cut_mode, parent, on_set_cut_mode));
-	}
+    {
+        std::list< wxString > choices;
+        choices.push_back(_("Conventional"));
+        choices.push_back(_("Climb"));
+        m_cut_mode.Initialize(_("cut mode"), parent);
+        m_cut_mode.m_choices = choices;
+    }
 
-	if(parent->GetNumSketches() == 1) // multiple sketches must use auto roll on, and can not have start and end points specified
-	{
-		list->push_back(new PropertyCheck(_("auto roll on"), m_auto_roll_on, parent, on_set_auto_roll_on));
-		if(!m_auto_roll_on)list->push_back(new PropertyVertex(_("roll on point"), m_roll_on_point, parent, on_set_roll_on_point));
-		list->push_back(new PropertyCheck(_("auto roll off"), m_auto_roll_off, parent, on_set_auto_roll_off));
-		if(!m_auto_roll_off)list->push_back(new PropertyVertex(_("roll off point"), m_roll_off_point, parent, on_set_roll_off_point));
-		if(m_auto_roll_on || m_auto_roll_off)list->push_back(new PropertyLength(_("roll radius"), m_auto_roll_radius, parent, on_set_roll_radius));
-		list->push_back(new PropertyCheck(_("use start point"), m_start_given, parent, on_set_start_given));
-		if(m_start_given)list->push_back(new PropertyVertex(_("start point"), m_start, parent, on_set_start));
-		list->push_back(new PropertyCheck(_("use end point"), m_end_given, parent, on_set_end_given));
-		if(m_end_given)
-		{
-			list->push_back(new PropertyVertex(_("end point"), m_end, parent, on_set_end));
-			list->push_back(new PropertyCheck(_("end beyond full profile"), m_end_beyond_full_profile, parent, on_set_end_beyond_full_profile));
-		}
-	}
-	else
-	{
-		std::list< wxString > choices;
+    if(parent->GetNumSketches() == 1) // multiple sketches must use auto roll on, and can not have start and end points specified
+    {
+        list->push_back(new PropertyCheck(_("auto roll on"), m_auto_roll_on, parent, on_set_auto_roll_on));
+        if(!m_auto_roll_on)list->push_back(new PropertyVertex(_("roll on point"), m_roll_on_point, parent, on_set_roll_on_point));
+        list->push_back(new PropertyCheck(_("auto roll off"), m_auto_roll_off, parent, on_set_auto_roll_off));
+        if(!m_auto_roll_off)list->push_back(new PropertyVertex(_("roll off point"), m_roll_off_point, parent, on_set_roll_off_point));
+        if(m_auto_roll_on || m_auto_roll_off)list->push_back(new PropertyLength(_("roll radius"), m_auto_roll_radius, parent, on_set_roll_radius));
+        list->push_back(new PropertyCheck(_("use start point"), m_start_given, parent, on_set_start_given));
+        if(m_start_given)list->push_back(new PropertyVertex(_("start point"), m_start, parent, on_set_start));
+        list->push_back(new PropertyCheck(_("use end point"), m_end_given, parent, on_set_end_given));
+        if(m_end_given)
+        {
+            list->push_back(new PropertyVertex(_("end point"), m_end, parent, on_set_end));
+            list->push_back(new PropertyCheck(_("end beyond full profile"), m_end_beyond_full_profile, parent, on_set_end_beyond_full_profile));
+        }
+    }
+    else
+    {
+        std::list< wxString > choices;
 
-		choices.push_back(_("Respect existing order"));	// Must be 'false' (0)
-		choices.push_back(_("True"));			// Must be 'true' (non-zero)
+        choices.push_back(_("Respect existing order")); // Must be 'false' (0)
+        choices.push_back(_("True"));           // Must be 'true' (non-zero)
 
-		int choice = int(m_sort_sketches);
-		list->push_back(new PropertyChoice(_("sort_sketches"), choices, choice, parent, on_set_sort_sketches));
+        int choice = int(m_sort_sketches);
+        list->push_back(new PropertyChoice(_("sort_sketches"), choices, choice, parent, on_set_sort_sketches));
 
-		// roll on radius
-		list->push_back(new PropertyLength(_("roll radius"), m_auto_roll_radius, parent, on_set_roll_radius));
-	} // End if - else
-    
+        // roll on radius
+        list->push_back(new PropertyLength(_("roll radius"), m_auto_roll_radius, parent, on_set_roll_radius));
+    } // End if - else
+
     list->push_back(new PropertyLength(_("extend before start"), m_extend_at_start, parent, on_set_extend_at_start));
     list->push_back(new PropertyLength(_("extend past end"), m_extend_at_end, parent, on_set_extend_at_end));
 
@@ -233,21 +231,27 @@ void CProfileParams::GetProperties(CProfile* parent, std::list<Property *> *list
     list->push_back(new PropertyLength(_("lead in line length"), m_lead_in_line_len, parent, on_set_lead_in_line_len));
     list->push_back(new PropertyLength(_("lead out line length"), m_lead_out_line_len, parent, on_set_lead_out_line_len));
 
-	list->push_back(new PropertyLength(_("offset_extra"), m_offset_extra, parent, on_set_offset_extra));
-	list->push_back(new PropertyCheck(_("do finishing pass"), m_do_finishing_pass, parent, on_set_do_finishing_pass));
-	if(m_do_finishing_pass)
-	{
-		list->push_back(new PropertyCheck(_("only finishing pass"), m_only_finishing_pass, parent, on_set_only_finishing_pass));
-		list->push_back(new PropertyLength(_("finishing feed rate"), m_finishing_h_feed_rate, parent, on_set_finishing_h_feed_rate));
+    list->push_back(new PropertyLength(_("offset_extra"), m_offset_extra, parent, on_set_offset_extra));
+    list->push_back(new PropertyCheck(_("do finishing pass"), m_do_finishing_pass, parent, on_set_do_finishing_pass));
+    if(m_do_finishing_pass)
+    {
+        list->push_back(new PropertyCheck(_("only finishing pass"), m_only_finishing_pass, parent, on_set_only_finishing_pass));
+        list->push_back(new PropertyLength(_("finishing feed rate"), m_finishing_h_feed_rate, parent, on_set_finishing_h_feed_rate));
 
-		{
-			std::list< wxString > choices;
-			choices.push_back(_("Conventional"));
-			choices.push_back(_("Climb"));
-			list->push_back(new PropertyChoice(_("finish cut mode"), choices, m_finishing_cut_mode, parent, on_set_finish_cut_mode));
-		}
-		list->push_back(new PropertyLength(_("finishing step down"), m_finishing_step_down, parent, on_set_finish_step_down));
-	}
+        {
+            std::list< wxString > choices;
+            choices.push_back(_("Conventional"));
+            choices.push_back(_("Climb"));
+            list->push_back(new PropertyChoice(_("finish cut mode"), choices, m_finishing_cut_mode, parent, on_set_finish_cut_mode));
+        }
+        list->push_back(new PropertyLength(_("finishing step down"), m_finishing_step_down, parent, on_set_finish_step_down));
+    }
+*/
+}
+
+void CProfileParams::GetProperties(CProfile* parent, std::list<Property *> *list)
+{
+
 }
 
 void CProfileParams::WriteXMLAttributes(TiXmlNode *root)
@@ -348,7 +352,8 @@ void CProfileParams::ReadFromXMLElement(TiXmlElement* pElem)
 
 }
 
-CProfile::CProfile( const CProfile & rhs ) : CDepthOp(rhs)
+CProfile::CProfile( const CProfile & rhs )
+ : CDepthOp(rhs), m_profile_params(this)
 {
 	m_tags = new CTags;
 	Add( m_tags, NULL );
@@ -359,8 +364,8 @@ CProfile::CProfile( const CProfile & rhs ) : CDepthOp(rhs)
 }
 
 CProfile::CProfile(const std::list<int> &sketches, const int tool_number )
-		: 	CDepthOp(GetTypeString(), &sketches, tool_number, ProfileType),
-			m_tags(NULL), m_sketches(sketches)
+ : CDepthOp(GetTypeString(), &sketches, tool_number, ProfileType),
+   m_tags(NULL), m_sketches(sketches), m_profile_params(this)
 {
     ReadDefaultValues();
 #ifdef OP_SKETCHES_AS_CHILDREN
@@ -756,7 +761,11 @@ Python CProfile::AppendTextForOneSketch(HeeksObj* object, CMachineState *pMachin
 		{
 			if(!tags_cleared)python << _T("kurve_funcs.clear_tags()\n");
 			tags_cleared = true;
-			python << _T("kurve_funcs.add_tag(area.Point(") << tag->m_pos[0] / theApp.m_program->m_units << _T(", ") << tag->m_pos[1] / theApp.m_program->m_units << _T("), ") << tag->m_width / theApp.m_program->m_units << _T(", ") << tag->m_angle * PI/180 << _T(", ") << tag->m_height / theApp.m_program->m_units << _T(")\n");
+			python << _T("kurve_funcs.add_tag(area.Point(") << tag->m_pos.X() / theApp.m_program->m_units
+			       << _T(", ") << tag->m_pos.Y() / theApp.m_program->m_units
+			       << _T("), ") << tag->m_width / theApp.m_program->m_units
+			       << _T(", ") << tag->m_angle * PI/180
+			       << _T(", ") << tag->m_height / theApp.m_program->m_units << _T(")\n");
 		}
         //extend_at_start, extend_at_end
         python << _T("extend_at_start= ") << m_profile_params.m_extend_at_start / theApp.m_program->m_units << _T("\n");
@@ -878,7 +887,8 @@ Python CProfile::AppendTextToProgram(CMachineState *pMachineState, bool finishin
 		python << _T("offset_extra = ") << m_profile_params.m_offset_extra / theApp.m_program->m_units << _T("\n");
 	}
 
-	CProfileParams::eCutMode cut_mode = finishing_pass ? m_profile_params.m_finishing_cut_mode : m_profile_params.m_cut_mode;
+	CProfileParams::eCutMode cut_mode = finishing_pass ? CProfileParams::eCutMode((int)m_profile_params.m_finishing_cut_mode)
+	                                                   : CProfileParams::eCutMode((int)m_profile_params.m_cut_mode);
 
 #ifdef OP_SKETCHES_AS_CHILDREN
 	for(std::list<HeeksObj*>::iterator It = m_objects.begin(); It != m_objects.end(); It++)
@@ -1352,14 +1362,16 @@ static void on_set_spline_deviation(double value, HeeksObj* object){
 // static
 void CProfile::GetOptions(std::list<Property *> *list)
 {
-	list->push_back ( new PropertyDouble ( _("Profile spline deviation"), max_deviation_for_spline_to_arc, NULL, on_set_spline_deviation ) );
+    list->push_back ( &m_auto_set_speeds_feeds );
 }
+//	list->push_back ( new PropertyDouble ( _("Profile spline deviation"), max_deviation_for_spline_to_arc, NULL, on_set_spline_deviation ) );
+
 
 // static
 void CProfile::ReadFromConfig()
 {
 	CNCConfig config(CProfileParams::ConfigScope());
-	config.Read(_T("ProfileSplineDeviation"), &max_deviation_for_spline_to_arc, 0.01);
+	config.Read(_T("ProfileSplineDeviation"), max_deviation_for_spline_to_arc, 0.01);
 }
 
 // static

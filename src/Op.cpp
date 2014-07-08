@@ -8,10 +8,6 @@
 
 #include <stdafx.h>
 #include "Op.h"
-#include "interface/PropertyInt.h"
-#include "interface/PropertyString.h"
-#include "interface/PropertyCheck.h"
-#include "interface/PropertyChoice.h"
 #include "interface/Tool.h"
 #include "tinyxml/tinyxml.h"
 #include "HeeksCNCTypes.h"
@@ -43,9 +39,12 @@ const wxBitmap& COp::GetInactiveIcon()
 
 void COp::WriteBaseXML(TiXmlElement *element)
 {
-	if(m_comment.Len() > 0)element->SetAttribute( "comment", m_comment.utf8_str());
+	const wxString& comment = m_comment;
+	if(comment.Len() > 0) {
+		element->SetAttribute( "comment", comment.utf8_str());
+	}
 	element->SetAttribute( "active", m_active);
-	element->SetAttribute( "title", m_title.utf8_str());
+	element->SetAttribute( "title", ((const wxString&)m_title).utf8_str());
 	element->SetAttribute( "tool_number", m_tool_number);
 
 	ObjList::WriteBaseXML(element);
@@ -54,10 +53,11 @@ void COp::WriteBaseXML(TiXmlElement *element)
 void COp::ReadBaseXML(TiXmlElement* element)
 {
 	const char* comment = element->Attribute("comment");
-	if(comment)m_comment.assign(Ctt(comment));
+	if(comment) {
+		m_comment = Ctt(comment);
+	}
 	const char* active = element->Attribute("active");
-	if(active)
-	{
+	if(active) {
 		int int_active;
 		element->Attribute("active", &int_active);
 		m_active = (int_active != 0);
@@ -91,46 +91,41 @@ void COp::ReadBaseXML(TiXmlElement* element)
 	ObjList::ReadBaseXML(element);
 }
 
-static void on_set_comment(const wxChar* value, HeeksObj* object){((COp*)object)->m_comment = value;}
-static void on_set_active(bool value, HeeksObj* object){((COp*)object)->m_active = value;heeksCAD->Changed();}
-
-static void on_set_tool_number(int zero_based_choice, HeeksObj* object)
+void COp::InitializeProperties()
 {
-	if (zero_based_choice < 0) return;	// An error has occured.
+	m_comment.Initialize(_("comment"), this);
+	m_active.Initialize(_("active"), this);
+	m_tool_number_choice.Initialize(_("tool"), this);
+}
 
-	std::vector< std::pair< int, wxString > > tools = FIND_ALL_TOOLS();
 
-	if ((zero_based_choice >= int(0)) && (zero_based_choice <= int(tools.size()-1)))
-	{
-                ((COp *)object)->m_tool_number = tools[zero_based_choice].first;	// Convert the choice offset to the tool number for that choice
-	} // End if - then
+void COp::OnPropertyEdit(Property * prop)
+{
+	if (prop == &m_tool_number_choice) {
+		std::vector< std::pair< int, wxString > > tools = FIND_ALL_TOOLS();
 
-	((COp*)object)->WriteDefaultValues();
+		if ((m_tool_number_choice >= 0) && (m_tool_number_choice <= int(tools.size()-1))) {
+			m_tool_number = tools[m_tool_number_choice].first;       // Convert the choice offset to the tool number for that choice
+		} // End if - then
+	}
 
-} // End on_set_tool_number() routine
+	WriteDefaultValues();
+}
 
 
 void COp::GetProperties(std::list<Property *> *list)
 {
-	list->push_back(new PropertyString(_("comment"), m_comment, this, on_set_comment));
-	list->push_back(new PropertyCheck(_("active"), m_active, this, on_set_active));
 
-	if(UsesTool()){
+	if(UsesTool()) {
+		m_tool_number_choice.SetVisible(true);
+		m_tool_number_choice.m_choices.clear();
 		std::vector< std::pair< int, wxString > > tools = FIND_ALL_TOOLS();
-
-		int choice = 0;
-                std::list< wxString > choices;
-		for (std::vector< std::pair< int, wxString > >::size_type i=0; i<tools.size(); i++)
-		{
-                	choices.push_back(tools[i].second);
-
-			if (m_tool_number == tools[i].first)
-			{
-                		choice = int(i);
-			} // End if - then
+		for (std::vector< std::pair< int, wxString > >::size_type i=0; i<tools.size(); i++) {
+			m_tool_number_choice.m_choices.push_back(tools[i].second);
 		} // End for
-
-		list->push_back(new PropertyChoice(_("tool"), choices, choice, this, on_set_tool_number));
+	}
+	else {
+		m_tool_number_choice.SetVisible(false);
 	}
 
 	ObjList::GetProperties(list);
@@ -259,9 +254,10 @@ Python COp::AppendTextToProgram(CMachineState *pMachineState )
 {
     Python python;
 
-	if(m_comment.Len() > 0)
+	const wxString& comment = m_comment;
+	if(comment.Len() > 0)
 	{
-		python << _T("comment(") << PythonString(m_comment) << _T(")\n");
+		python << _T("comment(") << PythonString(comment) << _T(")\n");
 	}
 
 	if(UsesTool())python << MACHINE_STATE_TOOL(m_tool_number);  // Select the correct  tool.
@@ -282,11 +278,6 @@ Python COp::AppendTextToProgram(CMachineState *pMachineState )
 #endif
 
 	return(python);
-}
-
-void COp::OnEditString(const wxChar* str){
-	m_title.assign(str);
-	heeksCAD->Changed();
 }
 
 #ifdef HEEKSCNC
@@ -365,9 +356,9 @@ void COp::GetTools(std::list<Tool*>* t_list, const wxPoint* p)
 
 bool COp::operator==(const COp & rhs) const
 {
-	if (m_comment != rhs.m_comment) return(false);
+	if ((const wxString&)m_comment != (const wxString&)rhs.m_comment) return(false);
 	if (m_active != rhs.m_active) return(false);
-	if (m_title != rhs.m_title) return(false);
+	if ((const wxString&)m_title != (const wxString&)rhs.m_title) return(false);
 	if (m_tool_number != rhs.m_tool_number) return(false);
 	if (m_operation_type != rhs.m_operation_type) return(false);
 

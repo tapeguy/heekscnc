@@ -14,9 +14,6 @@
 #include "ProgramCanvas.h"
 #include "Program.h"
 #include "interface/HeeksObj.h"
-#include "interface/PropertyLength.h"
-#include "interface/PropertyCheck.h"
-#include "interface/PropertyString.h"
 #include "tinyxml/tinyxml.h"
 #include "interface/Tool.h"
 #include "CTool.h"
@@ -26,8 +23,9 @@
 #include <sstream>
 #include <iomanip>
 
-CTurnRoughParams::CTurnRoughParams()
+CTurnRoughParams::CTurnRoughParams(CTurnRough * parent)
 {
+    this->parent = parent;
 	m_outside = true;
 	m_front = true;
 	m_facing = false;
@@ -37,10 +35,10 @@ CTurnRoughParams::CTurnRoughParams()
 void CTurnRoughParams::set_initial_values()
 {
 	CNCConfig config(ConfigScope());
-	config.Read(_T("TurnRoughOutside"), &m_outside, true);
-	config.Read(_T("TurnRoughFront"), &m_front, true);
-	config.Read(_T("TurnRoughFacing"), &m_facing, false);
-	config.Read(_T("TurnRoughClearance"), &m_clearance, 2.0);
+	config.Read(_T("TurnRoughOutside"), m_outside, true);
+	config.Read(_T("TurnRoughFront"), m_front, true);
+	config.Read(_T("TurnRoughFacing"), m_facing, false);
+	config.Read(_T("TurnRoughClearance"), m_clearance, 2.0);
 }
 
 void CTurnRoughParams::write_values_to_config()
@@ -52,17 +50,12 @@ void CTurnRoughParams::write_values_to_config()
 	config.Write(_T("TurnRoughClearance"), m_clearance);
 }
 
-static void on_set_outside(bool value, HeeksObj* object){((CTurnRough*)object)->m_turn_rough_params.m_outside = value;}
-static void on_set_front(bool value, HeeksObj* object){((CTurnRough*)object)->m_turn_rough_params.m_front = value;}
-static void on_set_facing(bool value, HeeksObj* object){((CTurnRough*)object)->m_turn_rough_params.m_facing = value;}
-static void on_set_clearance(double value, HeeksObj* object){((CTurnRough*)object)->m_turn_rough_params.m_clearance = value;}
-
-void CTurnRoughParams::GetProperties(CTurnRough* parent, std::list<Property *> *list)
+void CTurnRoughParams::InitializeProperties()
 {
-	list->push_back(new PropertyCheck(_T("outside"), m_outside, parent, on_set_outside));
-	list->push_back(new PropertyCheck(_T("front"), m_front, parent, on_set_front));
-	list->push_back(new PropertyCheck(_T("facing"), m_facing, parent, on_set_facing));
-	list->push_back(new PropertyLength(_T("clearance"), m_clearance, parent, on_set_clearance));
+    m_outside.Initialize(_T("outside"), parent);
+    m_front.Initialize(_T("front"), parent);
+    m_facing.Initialize(_T("facing"), parent);
+    m_clearance.Initialize(_T("clearance"), parent);
 }
 
 void CTurnRoughParams::WriteXMLAttributes(TiXmlNode *root)
@@ -79,10 +72,14 @@ void CTurnRoughParams::WriteXMLAttributes(TiXmlNode *root)
 void CTurnRoughParams::ReadFromXMLElement(TiXmlElement* pElem)
 {
 	int int_for_bool;
+	double d;
 	if(pElem->Attribute("outside", &int_for_bool))m_outside = (int_for_bool != 0);
 	if(pElem->Attribute("front", &int_for_bool))m_front = (int_for_bool != 0);
 	if(pElem->Attribute("facing", &int_for_bool))m_facing = (int_for_bool != 0);
-	pElem->Attribute("clearance", &m_clearance);
+	if(pElem->Attribute("clearance")) {
+	    pElem->Attribute("clearance", &d);
+	    m_clearance = d;
+	}
 }
 
 const wxBitmap &CTurnRough::GetIcon()
@@ -102,10 +99,10 @@ Python CTurnRough::WriteSketchDefn(HeeksObj* sketch, int id_to_use, CMachineStat
 		python << wxString::Format(_T("comment(R'%s')\n"), wxString(sketch->GetShortString()).c_str());
 	}
 
-	python << wxString::Format(_T("k%d = kurve.new()\n"), id_to_use > 0 ? id_to_use : sketch->m_id);
+	python << wxString::Format(_T("k%d = kurve.new()\n"), id_to_use > 0 ? id_to_use : (int)sketch->m_id);
 
 	bool started = false;
-	int sketch_id = (id_to_use > 0 ? id_to_use : sketch->m_id);
+	int sketch_id = (id_to_use > 0 ? id_to_use : (int)sketch->m_id);
 
 	for(HeeksObj* span_object = sketch->GetFirstChild(); span_object; span_object = sketch->GetNextChild())
 	{
@@ -276,10 +273,10 @@ void CTurnRough::glCommands(bool select, bool marked, bool no_color)
 
 void CTurnRough::GetProperties(std::list<Property *> *list)
 {
-	list->push_back(new PropertyString(_T("TO DO!"), _T("THIS OPERATION DOESN'T WORK YET!"), this, NULL));
-	AddSketchesProperties(list, this);
+//	list->push_back(new PropertyString(_T("TO DO!"), _T("THIS OPERATION DOESN'T WORK YET!"), this, NULL));
+//	AddSketchesProperties(list, this);
 
-	m_turn_rough_params.GetProperties(this, list);
+	m_turn_rough_params.GetProperties(list);
 
 	CSpeedOp::GetProperties(list);
 }
@@ -294,7 +291,8 @@ void CTurnRough::CopyFrom(const HeeksObj* object)
 	operator=(*((CTurnRough*)object));
 }
 
-CTurnRough::CTurnRough( const CTurnRough & rhs ) : CSpeedOp(rhs)
+CTurnRough::CTurnRough( const CTurnRough & rhs )
+ : CSpeedOp(rhs), m_turn_rough_params(this)
 {
 	m_sketches.clear();
     std::copy( rhs.m_sketches.begin(), rhs.m_sketches.end(), std::inserter( m_sketches, m_sketches.begin() ) );
@@ -387,7 +385,7 @@ bool CTurnRoughParams::operator==( const CTurnRoughParams & rhs ) const
 bool CTurnRough::operator==( const CTurnRough & rhs ) const
 {
 	if (m_turn_rough_params != rhs.m_turn_rough_params) return(false);
-	
+
 	return(CSpeedOp::operator==(rhs));
 }
 

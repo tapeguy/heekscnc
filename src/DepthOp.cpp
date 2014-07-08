@@ -10,18 +10,15 @@
 #include "CNCConfig.h"
 #include "ProgramCanvas.h"
 #include "Program.h"
-#include "interface/PropertyInt.h"
-#include "interface/PropertyDouble.h"
-#include "interface/PropertyLength.h"
-#include "interface/PropertyString.h"
 #include "tinyxml/tinyxml.h"
 #include "interface/Tool.h"
 #include "CTool.h"
 #include "MachineState.h"
 
 
-CDepthOpParams::CDepthOpParams()
+CDepthOpParams::CDepthOpParams(CDepthOp * parent)
 {
+	this->parent = parent;
 	m_abs_mode = eAbsolute;
 	m_clearance_height = 0.0;
 	m_start_depth = 0.0;
@@ -42,7 +39,21 @@ CDepthOp & CDepthOp::operator= ( const CDepthOp & rhs )
 	return(*this);
 }
 
-CDepthOp::CDepthOp( const CDepthOp & rhs ) : CSpeedOp(rhs)
+CDepthOp::CDepthOp(const wxString& title, const std::list<int> *sketches, const int tool_number, const int operation_type)
+ : CSpeedOp(title, tool_number, operation_type), m_depth_op_params(this)
+{
+	ReadDefaultValues();
+	SetDepthsFromSketchesAndTool(sketches);
+}
+
+CDepthOp::CDepthOp(const wxString& title, const std::list<HeeksObj *> sketches, const int tool_number, const int operation_type)
+ : CSpeedOp(title, tool_number, operation_type), m_depth_op_params(this)
+{
+	ReadDefaultValues();
+	SetDepthsFromSketchesAndTool(sketches);
+}
+
+CDepthOp::CDepthOp( const CDepthOp & rhs ) : CSpeedOp(rhs), m_depth_op_params(this)
 {
 	m_depth_op_params = rhs.m_depth_op_params;
 }
@@ -57,87 +68,59 @@ static double degrees_to_radians( const double degrees )
 	return( (degrees / 360.0) * (2 * PI) );
 } // End degrees_to_radians() routine
 
-/**
-	Set the starting depth to match the Z values on the sketches.
-
-	If we've selected a chamfering bit then set the final depth such
-	that a 1 mm chamfer is applied.  These are only starting points but
-	we should make them as convenient as possible.
- */
-static void on_set_clearance_height(double value, HeeksObj* object)
+void CDepthOp::OnPropertyEdit(Property * prop)
 {
-	((CDepthOp*)object)->m_depth_op_params.ClearanceHeight( value );
-	((CDepthOp*)object)->WriteDefaultValues();
+	this->WriteDefaultValues();
 }
 
-static void on_set_step_down(double value, HeeksObj* object)
+void CDepthOpParams::InitializeProperties()
 {
-	((CDepthOp*)object)->m_depth_op_params.m_step_down = value;
-	((CDepthOp*)object)->WriteDefaultValues();
-}
+	m_abs_mode.Initialize(_("ABS/INCR mode"), parent);
+	m_abs_mode.m_choices.push_back(_("Absolute"));
+	m_abs_mode.m_choices.push_back(_("Incremental"));
 
-static void on_set_start_depth(double value, HeeksObj* object)
-{
-	((CDepthOp*)object)->m_depth_op_params.m_start_depth = value;
-	((CDepthOp*)object)->WriteDefaultValues();
-}
+	m_clearance_height.Initialize(_("Clearance height"), parent);		// Either/Or
+	m_clearance_height_string.Initialize(_("Clearance height"), parent);
+	m_clearance_height_string.SetReadOnly(true);
 
-static void on_set_final_depth(double value, HeeksObj* object)
-{
-	((CDepthOp*)object)->m_depth_op_params.m_final_depth = value;
-	((CDepthOp*)object)->WriteDefaultValues();
-}
-
-static void on_set_rapid_safety_space(double value, HeeksObj* object)
-{
-	((CDepthOp*)object)->m_depth_op_params.m_rapid_safety_space = value;
-	((CDepthOp*)object)->WriteDefaultValues();
-}
-
-static void on_set_abs_mode(int value, HeeksObj* object) {
-
-	((CDepthOp*)object)->m_depth_op_params.m_abs_mode = (CDepthOpParams::eAbsMode)value;
-	((CDepthOp*)object)->WriteDefaultValues();
-
-}
-
-
-void CDepthOpParams::GetProperties(CDepthOp* parent, std::list<Property *> *list)
-{
-	{
-		std::list< wxString > choices;
-		choices.push_back(_("Absolute"));
-		choices.push_back(_("Incremental"));
-		list->push_back(new PropertyChoice(_("ABS/INCR mode"), choices, m_abs_mode, parent, on_set_abs_mode));
-	}
-
-	switch(theApp.m_program->m_clearance_source)
-	{
-	case CProgram::eClearanceDefinedByFixture:
-		list->push_back(new PropertyString(_("clearance height"), _("Defined in fixture definition"), NULL, NULL));
-		break;
-
-	case CProgram::eClearanceDefinedByMachine:
-		list->push_back(new PropertyString(_("clearance height"), _("Defined in Program properties for whole machine"), NULL, NULL));
-		break;
-
-	case CProgram::eClearanceDefinedByOperation:
-	default:
-		list->push_back(new PropertyLength(_("clearance height"), m_clearance_height, parent, on_set_clearance_height));
-	} // End switch
-
-	list->push_back(new PropertyLength(_("rapid safety space"), m_rapid_safety_space, parent, on_set_rapid_safety_space));
+	m_rapid_safety_space.Initialize(_("rapid safety space"), parent);
 
 	//My initial thought was that extrusion operatons would always start at z=0 and end at z=top of object.  I'm now thinking it might be desireable to preserve this as an option.
 	//It might be good to run an operation that prints the bottom half of the object, pauses to allow insertion of something.  Then another operation could print the top half.
 
-	list->push_back(new PropertyLength(_("start depth"), m_start_depth, parent, on_set_start_depth));
-	list->push_back(new PropertyLength(_("final depth"), m_final_depth, parent, on_set_final_depth));
+	m_start_depth.Initialize(_("start depth"), parent);
+	m_final_depth.Initialize(_("final depth"), parent);
 
-   //Step down doesn't make much sense for extrusion.  The amount the z axis steps up or down is equal to the layer thickness of the slice which
-   //is determined by the thickness of an extruded filament.  Step up is very important since it is directly related to the resolution of the final
-   //produce.
-   	list->push_back(new PropertyLength(_("step down"), m_step_down, parent, on_set_step_down));
+	//Step down doesn't make much sense for extrusion.  The amount the z axis steps up or down is equal to the layer thickness of the slice which
+	//is determined by the thickness of an extruded filament.  Step up is very important since it is directly related to the resolution of the final
+	//produce.
+	m_step_down.Initialize(_("step down"), parent);
+}
+
+void CDepthOpParams::GetProperties(std::list<Property *> *list)
+{
+	switch(theApp.m_program->m_clearance_source)
+	{
+	case CProgram::eClearanceDefinedByFixture:
+		m_clearance_height_string = _("Defined in fixture definition");
+		m_clearance_height_string.SetVisible(true);
+		m_clearance_height.SetVisible(false);
+		break;
+
+	case CProgram::eClearanceDefinedByMachine:
+		m_clearance_height_string = _("Defined in Program properties for whole machine");
+		m_clearance_height_string.SetVisible(true);
+		m_clearance_height.SetVisible(false);
+		break;
+
+	case CProgram::eClearanceDefinedByOperation:
+	default:
+		m_clearance_height_string.SetVisible(false);
+		m_clearance_height.SetVisible(true);
+		break;
+	} // End switch
+
+	MutableObject::GetProperties(list);
 }
 
 void CDepthOpParams::WriteXMLAttributes(TiXmlNode* pElem)
@@ -157,14 +140,22 @@ void CDepthOpParams::ReadFromXMLElement(TiXmlElement* pElem)
 	TiXmlElement* depthop = heeksCAD->FirstNamedXMLChildElement(pElem, "depthop");
 	if(depthop)
 	{	int int_for_enum;
-		depthop->Attribute("clear", &m_clearance_height);
-		depthop->Attribute("down", &m_step_down);
-		depthop->Attribute("startdepth", &m_start_depth);
-		depthop->Attribute("depth", &m_final_depth);
-		depthop->Attribute("r", &m_rapid_safety_space);
-		if(pElem->Attribute("abs_mode", &int_for_enum))m_abs_mode = (eAbsMode)int_for_enum;
+		double clearance_height, step_down, start_depth, final_depth, rapid_safety_space;
+		depthop->Attribute("clear", &clearance_height);
+		m_clearance_height = clearance_height;
+		depthop->Attribute("down", &step_down);
+		m_step_down = step_down;
+		depthop->Attribute("startdepth", &start_depth);
+		m_start_depth = start_depth;
+		depthop->Attribute("depth", &final_depth);
+		m_final_depth = final_depth;
+		depthop->Attribute("r", &rapid_safety_space);
+		m_rapid_safety_space = rapid_safety_space;
+		if(pElem->Attribute("abs_mode", &int_for_enum)) {
+			m_abs_mode = (eAbsMode)int_for_enum;
+		}
 		heeksCAD->RemoveXMLChild(pElem, depthop);	// We don't want to interpret this again when
-										// the ObjList::ReadBaseXML() method gets to it.
+								// the ObjList::ReadBaseXML() method gets to it.
 	}
 }
 
@@ -187,7 +178,7 @@ void CDepthOp::ReadBaseXML(TiXmlElement* element)
 
 void CDepthOp::GetProperties(std::list<Property *> *list)
 {
-	m_depth_op_params.GetProperties(this, list);
+	m_depth_op_params.GetProperties(list);
 	CSpeedOp::GetProperties(list);
 }
 
@@ -214,10 +205,10 @@ void CDepthOp::ReadDefaultValues()
 	config.Read(_T("ClearanceHeight"), &clearance_height, 5.0);
 	m_depth_op_params.ClearanceHeight(clearance_height);
 
-	config.Read(_T("StartDepth"), &m_depth_op_params.m_start_depth, 0.0);
-	config.Read(_T("StepDown"), &m_depth_op_params.m_step_down, 1.0);
-	config.Read(_T("FinalDepth"), &m_depth_op_params.m_final_depth, -1.0);
-	config.Read(_T("RapidDown"), &m_depth_op_params.m_rapid_safety_space, 2.0);
+	config.Read(_T("StartDepth"), m_depth_op_params.m_start_depth, 0.0);
+	config.Read(_T("StepDown"), m_depth_op_params.m_step_down, 1.0);
+	config.Read(_T("FinalDepth"), m_depth_op_params.m_final_depth, -1.0);
+	config.Read(_T("RapidDown"), m_depth_op_params.m_rapid_safety_space, 2.0);
 	int int_mode = m_depth_op_params.m_abs_mode;
 	config.Read(_T("ABSMode"), &int_mode, CDepthOpParams::eAbsolute);
 	m_depth_op_params.m_abs_mode = (CDepthOpParams::eAbsMode)int_mode;
@@ -401,7 +392,7 @@ std::list<wxString> CDepthOp::DesignRulesAdjustment(const bool apply_changes)
 
         if (apply_changes)
         {
-            m_depth_op_params.m_step_down *= -1.0;
+            m_depth_op_params.m_step_down = m_depth_op_params.m_step_down * -1.0;
         }
     }
 

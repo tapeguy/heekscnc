@@ -25,13 +25,34 @@ HeeksObj *CTools::MakeACopy(void) const
 CTools::CTools()
 {
     CNCConfig config(CTools::ConfigScope());
-	config.Read(_T("title_format"), (int *) (&m_title_format), int(eGuageReplacesSize) );
+	config.Read(_T("title_format"), (int *) (&m_title_format), int(eGaugeReplacesSize) );
 }
 
 
 CTools::CTools( const CTools & rhs ) : ObjList(rhs)
 {
     m_title_format = rhs.m_title_format;
+}
+
+void CTools::InitializeProperties()
+{
+    {
+        std::list< wxString > choices;
+        choices.push_back( _("Gauge number replaces size") );
+        choices.push_back( _("Include gauge number and size") );
+
+        m_title_format.Initialize(_("Title Format"), this);
+        m_title_format.m_choices = choices;
+    }
+}
+
+void CTools::OnPropertyEdit(Property *prop)
+{
+    if (prop == &m_title_format)
+    {
+        CNCConfig config(CTools::ConfigScope());
+        config.Write(_T("title_format"), m_title_format);
+    }
 }
 
 CTools & CTools::operator= ( const CTools & rhs )
@@ -203,27 +224,6 @@ void CTools::OnChangeUnits(const double units)
     {
         ((CTool *) *l_itObject)->ResetTitle();
     } // End for
-}
-
-
-static void on_set_title_format(int value, HeeksObj* object)
-{
-	((CTools *)object)->m_title_format = CTools::TitleFormat_t(value);
-
-	CNCConfig config(CTools::ConfigScope());
-	config.Write(_T("title_format"), ((CTools *)object)->m_title_format);
-}
-
-void CTools::GetProperties(std::list<Property *> *list)
-{
-	{
-		std::list< wxString > choices;
-		choices.push_back( _("Guage number replaces size") );
-		choices.push_back( _("Include guage number and size") );
-
-		list->push_back ( new PropertyChoice ( _("Title Format"),  choices, m_title_format, this, on_set_title_format ) );
-	}
-	HeeksObj::GetProperties(list);
 }
 
 

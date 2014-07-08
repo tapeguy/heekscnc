@@ -80,8 +80,7 @@ class Excellon
 		Points_t	m_existing_points;
 
 public:
-		static void GetOptions(std::list<Property *> *list);
-		static bool s_allow_dummy_tool_definitions;
+		static PropertyCheck s_allow_dummy_tool_definitions;
 };
 
 

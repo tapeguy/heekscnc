@@ -11,15 +11,17 @@
 class CAttachOp: public COp{
 public:
 	std::list<int> m_solids;
-	double m_tolerance;
-	double m_min_z;
-	double m_material_allowance;
+	PropertyLength m_tolerance;
+	PropertyLength m_min_z;
+	PropertyLength m_material_allowance;
 	static int number_for_stl_file;
 
 	CAttachOp();
 	CAttachOp(const std::list<int> &solids, double tol, double min_z);
 	CAttachOp( const CAttachOp & rhs );
 	CAttachOp & operator= ( const CAttachOp & rhs );
+
+	void InitializeProperties();
 
 	bool operator==( const CAttachOp & rhs ) const;
 	bool operator!=( const CAttachOp & rhs ) const { return(! (*this == rhs)); }

@@ -13,6 +13,8 @@
 
 class CSpeedReferences: public ObjList{
 public:
+    PropertyChoice m_estimate_when_possible_choices;
+
 	bool m_estimate_when_possible;	// flag to turn feeds and speeds estimation on and off.
 	static wxString ConfigScope(void) {return _T("SpeedReferences");}
 
@@ -23,6 +25,10 @@ public:
                 config.Read(_T("SpeedReferences_m_estimate_when_possible"), &value, 1);
                 m_estimate_when_possible = (value != 0);
 	}
+
+	void InitializeProperties();
+    void GetProperties(std::list<Property *> *list);
+    void OnPropertyEdit(Property *prop);
 
 	bool operator==( const CSpeedReferences & rhs ) const;
 	bool operator!=( const CSpeedReferences & rhs ) const { return(! (*this == rhs)); }
@@ -41,7 +47,6 @@ public:
 	bool CanBeRemoved(){return false;}
 	void WriteXML(TiXmlNode *root);
 	bool AutoExpand(){return false;}
-	void GetProperties(std::list<Property *> *list);
 	void GetTools(std::list<Tool*>* t_list, const wxPoint* p);
 	void CopyFrom(const HeeksObj* object);
 

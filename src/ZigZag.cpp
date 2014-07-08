@@ -11,8 +11,6 @@
 #include "ZigZag.h"
 #include "CNCConfig.h"
 #include "ProgramCanvas.h"
-#include "interface/PropertyLength.h"
-#include "interface/PropertyChoice.h"
 #include "tinyxml/tinyxml.h"
 #include "Reselect.h"
 #include <wx/stdpaths.h>
@@ -26,35 +24,53 @@
 
 int CZigZag::number_for_stl_file = 1;
 
-static void on_set_minx(double value, HeeksObj* object){((CZigZag*)object)->m_params.m_box.m_x[0] = value;}
-static void on_set_maxx(double value, HeeksObj* object){((CZigZag*)object)->m_params.m_box.m_x[3] = value;}
-static void on_set_miny(double value, HeeksObj* object){((CZigZag*)object)->m_params.m_box.m_x[1] = value;}
-static void on_set_maxy(double value, HeeksObj* object){((CZigZag*)object)->m_params.m_box.m_x[4] = value;}
-static void on_set_step_over(double value, HeeksObj* object){((CZigZag*)object)->m_params.m_step_over = value;}
-static void on_set_direction(int value, HeeksObj* object){((CZigZag*)object)->m_params.m_direction = value;}
-static void on_set_material_allowance(double value, HeeksObj* object){((CZigZag*)object)->m_params.m_material_allowance = value;}
-static void on_set_style(int value, HeeksObj* object){((CZigZag*)object)->m_params.m_style = value;}
 
-void CZigZagParams::GetProperties(CZigZag* parent, std::list<Property *> *list)
+CZigZagParams::CZigZagParams ( CZigZag * parent )
 {
-	list->push_back(new PropertyLength(_("minimum x"), m_box.m_x[0], parent, on_set_minx));
-	list->push_back(new PropertyLength(_("maximum x"), m_box.m_x[3], parent, on_set_maxx));
-	list->push_back(new PropertyLength(_("minimum y"), m_box.m_x[1], parent, on_set_miny));
-	list->push_back(new PropertyLength(_("maximum y"), m_box.m_x[4], parent, on_set_maxy));
-	list->push_back(new PropertyLength(_("step over"), m_step_over, parent, on_set_step_over));
+    this->parent = parent;
+}
+
+
+void CZigZagParams::InitializeProperties()
+{
+    m_min_x.Initialize(_("minimum x"), parent);
+    m_min_y.Initialize(_("minimum y"), parent);
+    m_max_x.Initialize(_("maximum x"), parent);
+    m_max_y.Initialize(_("maximum y"), parent);
+    m_step_over.Initialize(_("step over"), parent);
 	{
 		std::list< wxString > choices;
 		choices.push_back(_("X"));
 		choices.push_back(_("Y"));
-		list->push_back(new PropertyChoice(_("direction"), choices, m_direction, parent, on_set_direction));
+		m_direction.Initialize(_("direction"), parent);
+		m_direction.m_choices = choices;
 	}
-	list->push_back(new PropertyLength(_("material allowance"), m_material_allowance, parent, on_set_material_allowance));
+	m_material_allowance.Initialize(_("material allowance"), parent);
 	{
 		std::list< wxString > choices;
 		choices.push_back(_("one way"));
 		choices.push_back(_("back and forth"));
-		list->push_back(new PropertyChoice(_("style"), choices, m_style, parent, on_set_style));
+		m_style.Initialize(_("style"), parent);
+		m_style.m_choices = choices;
 	}
+}
+
+void CZigZagParams::GetProperties(std::list<Property *> *list)
+{
+    m_min_x = m_box.MinX();
+    m_min_y = m_box.MinY();
+    m_max_x = m_box.MaxX();
+    m_max_y = m_box.MaxY();
+    MutableObject::GetProperties(list);
+}
+
+void CZigZagParams::OnPropertyEdit(Property * prop)
+{
+    m_box.m_x[0] = m_min_x;
+    m_box.m_x[1] = m_min_y;
+    m_box.m_x[3] = m_max_x;
+    m_box.m_x[4] = m_max_y;
+    MutableObject::OnPropertyEdit(prop);
 }
 
 void CZigZagParams::WriteXMLAttributes(TiXmlNode *root)
@@ -75,18 +91,35 @@ void CZigZagParams::WriteXMLAttributes(TiXmlNode *root)
 void CZigZagParams::ReadFromXMLElement(TiXmlElement* pElem)
 {
 	// get the attributes
-	pElem->Attribute("minx", &m_box.m_x[0]);
-	pElem->Attribute("maxx", &m_box.m_x[3]);
-	pElem->Attribute("miny", &m_box.m_x[1]);
-	pElem->Attribute("maxy", &m_box.m_x[4]);
-	pElem->Attribute("step_over", &m_step_over);
-	pElem->Attribute("dir", &m_direction);
-	pElem->Attribute("material_allowance", &m_material_allowance);
-	pElem->Attribute("style", &m_style);
+    double d;
+    int i;
+
+    // get the attributes
+    pElem->Attribute("minx", &d);
+    m_min_x = d;
+    pElem->Attribute("miny", &d);
+    m_min_y = d;
+    pElem->Attribute("maxx", &d);
+    m_max_x = d;
+    pElem->Attribute("maxy", &d);
+    m_max_y = d;
+    pElem->Attribute("step_over", &d);
+    m_step_over = d;
+	pElem->Attribute("dir", &i);
+	m_direction = i;
+	pElem->Attribute("material_allowance", &d);
+	m_material_allowance = d;
+	pElem->Attribute("style", &i);
+	m_style = i;
+
+    m_box.m_x[0] = m_min_x;
+    m_box.m_x[1] = m_min_y;
+    m_box.m_x[3] = m_max_x;
+    m_box.m_x[4] = m_max_y;
 }
 
 CZigZag::CZigZag(const std::list<int> &solids, const int tool_number)
-    :CDepthOp(GetTypeString(), NULL, tool_number, ZigZagType), m_solids(solids)
+    :CDepthOp(GetTypeString(), NULL, tool_number, ZigZagType), m_solids(solids), m_params(this)
 {
 	ReadDefaultValues();
 
@@ -132,7 +165,7 @@ CZigZag::CZigZag(const std::list<int> &solids, const int tool_number)
 	}
 }
 
-CZigZag::CZigZag( const CZigZag & rhs ) : CDepthOp(rhs)
+CZigZag::CZigZag( const CZigZag & rhs ) : CDepthOp(rhs), m_params(this)
 {
 	m_solids.clear();
     std::copy( rhs.m_solids.begin(), rhs.m_solids.end(), std::inserter( m_solids, m_solids.begin() ) );
@@ -291,8 +324,8 @@ void CZigZag::glCommands(bool select, bool marked, bool no_color)
 
 void CZigZag::GetProperties(std::list<Property *> *list)
 {
-	AddSolidsProperties(list, this);
-	m_params.GetProperties(this, list);
+//	AddSolidsProperties(list, this);
+	m_params.GetProperties(list);
 	CDepthOp::GetProperties(list);
 }
 
@@ -374,7 +407,7 @@ bool CZigZag::CanAdd(HeeksObj* object)
 
 	switch (object->GetType())
 	{
-	case StlSolidType:  
+	case StlSolidType:
 	case SolidType:
 	case SketchType:
 	case FixtureType:
@@ -409,10 +442,10 @@ void CZigZag::ReadDefaultValues()
 	config.Read(wxString(GetTypeString()) + _T("BoxYMin"), &m_params.m_box.m_x[1], -7.0);
 	config.Read(wxString(GetTypeString()) + _T("BoxXMax"), &m_params.m_box.m_x[3], 7.0);
 	config.Read(wxString(GetTypeString()) + _T("BoxYMax"), &m_params.m_box.m_x[4], 7.0);
-	config.Read(wxString(GetTypeString()) + _T("StepOver"), &m_params.m_step_over, 1.0);
-	config.Read(wxString(GetTypeString()) + _T("Direction"), &m_params.m_direction, 0);
-	config.Read(wxString(GetTypeString()) + _T("MatAllowance"), &m_params.m_material_allowance, 0.0);
-	config.Read(wxString(GetTypeString()) + _T("Style"), &m_params.m_style, 0);
+	config.Read(wxString(GetTypeString()) + _T("StepOver"), m_params.m_step_over, 1.0);
+	config.Read(wxString(GetTypeString()) + _T("Direction"), m_params.m_direction, 0);
+	config.Read(wxString(GetTypeString()) + _T("MatAllowance"), m_params.m_material_allowance, 0.0);
+	config.Read(wxString(GetTypeString()) + _T("Style"), m_params.m_style, 0);
 }
 
 

@@ -12,9 +12,6 @@
 #include "interface/Tool.h"
 #include "interface/InputMode.h"
 #include "interface/LeftAndRight.h"
-#include "interface/PropertyInt.h"
-#include "interface/PropertyDouble.h"
-#include "interface/PropertyChoice.h"
 
 #include <sstream>
 #include <iomanip>

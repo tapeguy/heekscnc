@@ -15,29 +15,32 @@
 
 class CDepthOp;
 
-class CDepthOpParams{
+class CDepthOpParams : public MutableObject {
 private:
-	double m_clearance_height;
+	CDepthOp * parent;
+	PropertyLength m_clearance_height;
+	PropertyString m_clearance_height_string;
 
 public:
-	double m_start_depth;
-	double m_step_down;
-	double m_final_depth;
-	double m_rapid_safety_space;
+	PropertyLength m_start_depth;
+	PropertyLength m_step_down;
+	PropertyLength m_final_depth;
+	PropertyLength m_rapid_safety_space;
 	//check to see if in Absolute or Incremental mode for moves
 	typedef enum {
-		eAbsolute,
+		eAbsolute = 0,
 		eIncremental
 	}eAbsMode;
-	eAbsMode m_abs_mode;
+	PropertyChoice m_abs_mode;
 
-	CDepthOpParams();
+	CDepthOpParams(CDepthOp * parent);
 	bool operator== ( const CDepthOpParams & rhs ) const;
 	bool operator!= ( const CDepthOpParams & rhs ) const { return(! (*this == rhs)); }
 
+	void InitializeProperties();
 	void set_initial_values(const std::list<int> *sketches = NULL, const int tool_number = -1);
 	void write_values_to_config();
-	void GetProperties(CDepthOp* parent, std::list<Property *> *list);
+	void GetProperties(std::list<Property *> *list);
 	void WriteXMLAttributes(TiXmlNode* pElem);
 	void ReadFromXMLElement(TiXmlElement* pElem);
 
@@ -50,24 +53,16 @@ class CDepthOp : public CSpeedOp
 public:
 	CDepthOpParams m_depth_op_params;
 
-	CDepthOp(const wxString& title, const std::list<int> *sketches = NULL, const int tool_number = -1, const int operation_type = UnknownType )
-		: CSpeedOp(title, tool_number, operation_type)
-	{
-		ReadDefaultValues();
-		SetDepthsFromSketchesAndTool(sketches);
-	}
+	CDepthOp(const wxString& title, const std::list<int> *sketches = NULL, const int tool_number = -1, const int operation_type = UnknownType );
 
-	CDepthOp(const wxString& title, const std::list<HeeksObj *> sketches, const int tool_number = -1, const int operation_type = UnknownType )
-		: CSpeedOp(title, tool_number, operation_type)
-	{
-		ReadDefaultValues();
-		SetDepthsFromSketchesAndTool(sketches);
-	}
+	CDepthOp(const wxString& title, const std::list<HeeksObj *> sketches, const int tool_number = -1, const int operation_type = UnknownType );
 
-	CDepthOp & operator= ( const CDepthOp & rhs );
 	CDepthOp( const CDepthOp & rhs );
 
+	CDepthOp & operator= ( const CDepthOp & rhs );
+
 	// HeeksObj's virtual functions
+	void OnPropertyEdit(Property * prop);
 	void GetProperties(std::list<Property *> *list);
 	void WriteBaseXML(TiXmlElement *element);
 	void ReadBaseXML(TiXmlElement* element);

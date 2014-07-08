@@ -13,10 +13,6 @@
 #include "CNCConfig.h"
 #include "ProgramCanvas.h"
 #include "interface/HeeksObj.h"
-#include "interface/PropertyInt.h"
-#include "interface/PropertyDouble.h"
-#include "interface/PropertyLength.h"
-#include "interface/PropertyChoice.h"
 #include "tinyxml/tinyxml.h"
 #include "Operations.h"
 #include "CTool.h"
@@ -58,38 +54,24 @@ extern CHeeksCADInterface* heeksCAD;
 
 using namespace std;
 
-/* static */ double CContour::max_deviation_for_spline_to_arc = 0.1;
+/* static */ PropertyDouble CContour::max_deviation_for_spline_to_arc;
 
 
-static void on_set_tool_on_side(int value, HeeksObj* object){
-	switch(value)
-	{
-	case 0:
-		((CContour*)object)->m_params.m_tool_on_side = CContourParams::eLeftOrOutside;
-		break;
-	case 1:
-		((CContour*)object)->m_params.m_tool_on_side = CContourParams::eRightOrInside;
-		break;
-	default:
-		((CContour*)object)->m_params.m_tool_on_side = CContourParams::eOn;
-		break;
-	}
-	((CContour*)object)->WriteDefaultValues();
+void CContourParams::InitializeProperties()
+{
+        m_tool_on_side_choice.Initialize(_("Tool on Side"), parent);
+        m_entry_move_type.Initialize(_("Entry move type"), parent);
+
+        for (CContourParams::EntryMove_t move = CContourParams::ePlunge; move <= CContourParams::eRamp; move = CContourParams::EntryMove_t(int(move) + 1))
+        {
+	    wxString description;
+            description << move;
+            m_entry_move_type.m_choices.push_back( description );
+        }
 }
 
-static void on_set_entry_move_type(int value, HeeksObj *object)
+void CContourParams::GetProperties(std::list<Property *> *list)
 {
-    ((CContour*)object)->m_params.m_entry_move_type = CContourParams::EntryMove_t(value);
-    ((CContour*)object)->WriteDefaultValues();
-}
-
-void CContourParams::GetProperties(CContour* parent, std::list<Property *> *list)
-{
-    {
-        std::list< wxString > choices;
-
-        SketchOrderType order = SketchOrderTypeUnknown;
-
         if(parent->GetNumChildren() > 0)
         {
             HeeksObj* sketch = NULL;
@@ -104,84 +86,74 @@ void CContourParams::GetProperties(CContour* parent, std::list<Property *> *list
 
             if(sketch != NULL)
             {
-                order = heeksCAD->GetSketchOrder(sketch);
-                switch(order)
+		m_tool_on_side_choice.SetVisible(true);
+		m_tool_on_side_choice.m_choices.clear();
+                switch(heeksCAD->GetSketchOrder(sketch))
                 {
                 case SketchOrderTypeOpen:
-                    choices.push_back(_("Left"));
-                    choices.push_back(_("Right"));
+                    m_tool_on_side_choice.m_choices.push_back(_("Left"));
+                    m_tool_on_side_choice.m_choices.push_back(_("Right"));
                     break;
 
                 case SketchOrderTypeCloseCW:
                 case SketchOrderTypeCloseCCW:
-                    choices.push_back(_("Outside"));
-                    choices.push_back(_("Inside"));
+                    m_tool_on_side_choice.m_choices.push_back(_("Outside"));
+                    m_tool_on_side_choice.m_choices.push_back(_("Inside"));
                     break;
 
                 default:
-                    choices.push_back(_("Outside or Left"));
-                    choices.push_back(_("Inside or Right"));
+                    m_tool_on_side_choice.m_choices.push_back(_("Outside or Left"));
+                    m_tool_on_side_choice.m_choices.push_back(_("Inside or Right"));
                     break;
                 }
             }
 
-            choices.push_back(_("On"));
+            m_tool_on_side_choice.m_choices.push_back(_("On"));
 
-            int choice = int(CContourParams::eOn);
-            switch (parent->m_params.m_tool_on_side)
+            switch (m_tool_on_side_choice)
             {
-                case CContourParams::eRightOrInside:	choice = 1;
+                case CContourParams::eRightOrInside:
+			m_tool_on_side_choice = 1;
                         break;
 
-                case CContourParams::eOn:	choice = 2;
+		default:
+                case CContourParams::eOn:
+			m_tool_on_side_choice = 2;
                         break;
 
-                case CContourParams::eLeftOrOutside:	choice = 0;
+                case CContourParams::eLeftOrOutside:
+			m_tool_on_side_choice = 0;
                         break;
             } // End switch
-
-            list->push_back(new PropertyChoice(_("tool on side"), choices, choice, parent, on_set_tool_on_side));
         }
-    }
-
-    {
-        int choice = int(parent->m_params.m_entry_move_type);
-        std::list<wxString> choices;
-        for (CContourParams::EntryMove_t move = CContourParams::ePlunge; move <= CContourParams::eRamp; move = CContourParams::EntryMove_t(int(move) + 1))
-        {
-            wxString description;
-            description << move;
-            choices.push_back( description );
+        else {
+	    m_tool_on_side_choice.SetVisible(false);
         }
-
-        list->push_back(new PropertyChoice(_("entry move type"), choices, choice, parent, on_set_entry_move_type));
-    }
-
 }
 
 void CContourParams::WriteDefaultValues()
 {
 	CNCConfig config(ConfigPrefix());
 	config.Write(_T("ToolOnSide"), (int) m_tool_on_side);
-	config.Write(_T("EntryMoveType"), (int) m_entry_move_type);
+	config.Write(_T("EntryMoveType"), m_entry_move_type);
 }
 
 void CContourParams::ReadDefaultValues()
 {
 	CNCConfig config(ConfigPrefix());
 	config.Read(_T("ToolOnSide"), (int *) &m_tool_on_side, (int) eOn);
-	config.Read(_T("EntryMoveType"), (int *) &m_entry_move_type, (int) ePlunge);
+	config.Read(_T("EntryMoveType"), m_entry_move_type, (int) ePlunge);
 }
 
 void CContour::WriteDefaultValues()
 {
-    m_params.WriteDefaultValues();
+	m_params.WriteDefaultValues();
 	CDepthOp::WriteDefaultValues();
 }
 
 void CContour::ReadDefaultValues()
 {
-    m_params.ReadDefaultValues();
+	m_params.ReadDefaultValues();
 	CDepthOp::ReadDefaultValues();
 }
 
@@ -198,7 +170,11 @@ void CContourParams::WriteXMLAttributes(TiXmlNode *root)
 void CContourParams::ReadParametersFromXMLElement(TiXmlElement* pElem)
 {
 	if(pElem->Attribute("side")) pElem->Attribute("side", (int *) &m_tool_on_side);
-	if (pElem->Attribute("entry_move_type")) pElem->Attribute("entry_move_type", (int *) &m_entry_move_type);
+	if (pElem->Attribute("entry_move_type")) {
+		int entry_move_type;
+		pElem->Attribute("entry_move_type", &entry_move_type);
+		m_entry_move_type = entry_move_type;
+	}
 }
 
 
@@ -693,7 +669,7 @@ struct EdgeComparison : public binary_function<const TopoDS_Edge &, const TopoDS
 	const double clearance_height,
 	const double rapid_down_to_height,
 	const double start_depth,
-	const CContourParams::EntryMove_t entry_move_type )
+	const PropertyChoice& entry_move_type )
 {
 	Python python;
 
@@ -1092,7 +1068,7 @@ Python CContour::AppendTextToProgram( CMachineState *pMachineState )
                             transform.Perform(tool_path_wire, false); // notice false as second parameter
                             tool_path_wire = TopoDS::Wire(transform.Shape());
 
-                            python << GeneratePathFromWire(	tool_path_wire,
+                            python << GeneratePathFromWire( tool_path_wire,
                                                             pMachineState,
                                                             m_depth_op_params.ClearanceHeight(),
                                                             m_depth_op_params.m_rapid_safety_space,
@@ -1145,12 +1121,15 @@ void CContour::glCommands(bool select, bool marked, bool no_color)
 	CDepthOp::glCommands( select, marked, no_color );
 }
 
-
-
+void CContour::OnPropertyEdit(Property *prop)
+{
+	WriteDefaultValues();
+	CContour::WriteToConfig();
+}
 
 void CContour::GetProperties(std::list<Property *> *list)
 {
-	m_params.GetProperties(this, list);
+	m_params.GetProperties(list);
 	CDepthOp::GetProperties(list);
 }
 
@@ -1269,16 +1248,6 @@ void CContour::GetTools(std::list<Tool*>* t_list, const wxPoint* p)
     CDepthOp::GetTools( t_list, p );
 }
 
-static void on_set_spline_deviation(double value, HeeksObj* object){
-	CContour::max_deviation_for_spline_to_arc = value;
-	CContour::WriteToConfig();
-}
-
-// static
-void CContour::GetOptions(std::list<Property *> *list)
-{
-	list->push_back ( new PropertyDouble ( _("Contour spline deviation"), max_deviation_for_spline_to_arc, NULL, on_set_spline_deviation ) );
-}
 
 
 void CContour::ReloadPointers()
@@ -1296,10 +1265,10 @@ void CContour::ReloadPointers()
 }
 
 
-CContour::CContour( const CContour & rhs ) : CDepthOp( rhs )
+CContour::CContour( const CContour & rhs ) : CDepthOp( rhs ), m_params(this)
 {
-    m_params = rhs.m_params;
-    m_symbols.clear();
+	m_params = rhs.m_params;
+	m_symbols.clear();
 	std::copy( rhs.m_symbols.begin(), rhs.m_symbols.end(), std::inserter( m_symbols, m_symbols.begin() ) );
 }
 

@@ -1,7 +1,5 @@
 
 #include "interface/HeeksObj.h"
-#include "interface/PropertyChoice.h"
-#include "interface/PropertyDouble.h"
 #include "tinyxml/tinyxml.h"
 #include "PythonStuff.h"
 
@@ -20,17 +18,21 @@ class CProgram;
 	\brief Defines material hardness of the raw material being machined.  This value helps
 		to determine recommended feed and speed settings.
  */
-class CRawMaterial
+class CRawMaterial : public MutableObject
 {
 public:
 	CRawMaterial();
+
+	PropertyChoice raw_material_choice;
+	PropertyChoice hardness_choice;
 
 	wxString m_material_name;
 	double m_brinell_hardness;
 
 	double Hardness() const;
 
-	void GetProperties(CProgram *parent, std::list<Property *> *list);
+	void InitializeProperties();
+    void OnPropertyEdit(Property *prop);
 
 	void WriteBaseXML(TiXmlElement *element);
 	void ReadBaseXML(TiXmlElement* element);

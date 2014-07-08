@@ -15,18 +15,25 @@
 
 class CTurnRough;
 
-class CTurnRoughParams{
-public:
-	bool m_outside;
-	bool m_front;
-	bool m_facing;
-	double m_clearance;
+class CTurnRoughParams : public MutableObject
+{
+private:
 
-	CTurnRoughParams();
+    CTurnRough * parent;
+
+public:
+
+    PropertyCheck m_outside;
+    PropertyCheck m_front;
+    PropertyCheck m_facing;
+    PropertyLength m_clearance;
+
+    CTurnRoughParams(CTurnRough * parent);
+
+    void InitializeProperties();
 
 	void set_initial_values();
 	void write_values_to_config();
-	void GetProperties(CTurnRough* parent, std::list<Property *> *list);
 	void WriteXMLAttributes(TiXmlNode* pElem);
 	void ReadFromXMLElement(TiXmlElement* pElem);
 
@@ -41,13 +48,18 @@ public:
 	std::list<int> m_sketches;
 	CTurnRoughParams m_turn_rough_params;
 
-	CTurnRough():CSpeedOp(GetTypeString(),0, TurnRoughType){}
+	CTurnRough()
+	 : CSpeedOp(GetTypeString(), 0, TurnRoughType), m_turn_rough_params(this)
+	{
+	}
+
 	CTurnRough(const std::list<int> &sketches, const int tool_number )
-		: 	CSpeedOp(GetTypeString(), tool_number, TurnRoughType),
-			m_sketches(sketches)
+	 : CSpeedOp(GetTypeString(), tool_number, TurnRoughType),
+			m_sketches(sketches), m_turn_rough_params(this)
 	{
 		m_turn_rough_params.set_initial_values();
-	} // End constructor
+	}
+
 	CTurnRough( const CTurnRough & rhs );
 	CTurnRough & operator= ( const CTurnRough & rhs );
 

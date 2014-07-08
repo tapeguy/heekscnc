@@ -5,44 +5,61 @@
 #include "stdafx.h"
 #include "Tag.h"
 #include "tinyxml/tinyxml.h"
-#include "interface/PropertyVertex.h"
-#include "interface/PropertyLength.h"
 #include "interface/Tool.h"
 #include "CNCConfig.h"
 
-CTag::CTag(): m_width(10.0),	m_angle(45.0), m_height(4.0){
-	m_pos[0] = m_pos[1] = 0.0;
-	ReadDefaultValues();
+CTag::CTag ( )
+        : m_width ( 10.0 ), m_angle ( 45.0 ), m_height ( 4.0 )
+{
+    m_pos.SetX ( 0.0 );
+    m_pos.SetY ( 0.0 );
+    ReadDefaultValues ( );
 }
 
-CTag::CTag( const CTag & rhs ) : HeeksObj(rhs)
+CTag::CTag ( const CTag & rhs )
+ : HeeksObj ( rhs )
 {
-	for (::size_t i=0; i<sizeof(m_pos)/sizeof(m_pos[0]); i++) m_pos[i] = rhs.m_pos[i];
-	m_width = rhs.m_width;
-	m_angle = rhs.m_angle;
-	m_height = rhs.m_height;
+    m_pos = rhs.m_pos;
+    m_width = rhs.m_width;
+    m_angle = rhs.m_angle;
+    m_height = rhs.m_height;
 }
+
 
 CTag& CTag::operator= ( const CTag & rhs )
 {
-	if (this != &rhs)
-	{
-		HeeksObj::operator=( rhs );
+    if ( this != &rhs )
+    {
+        HeeksObj::operator= ( rhs );
 
-		for (::size_t i=0; i<sizeof(m_pos)/sizeof(m_pos[0]); i++) m_pos[i] = rhs.m_pos[i];
+        m_pos = rhs.m_pos;
         m_width = rhs.m_width;
         m_angle = rhs.m_angle;
         m_height = rhs.m_height;
-	}
+    }
 
-	return(*this);
+    return ( *this );
 }
+
+void CTag::InitializeProperties()
+{
+    m_pos.Initialize(_("position"), this);
+    m_width.Initialize(_("width"), this);
+    m_angle.Initialize(_("angle"), this);
+    m_height.Initialize(_("height"), this);
+}
+
+void CTag::OnPropertyEdit(Property *prop)
+{
+    this->WriteDefaultValues();
+}
+
 
 const wxBitmap &CTag::GetIcon()
 {
-	static wxBitmap* icon = NULL;
-	if(icon == NULL)icon = new wxBitmap(wxImage(theApp.GetResFolder() + _T("/icons/tag.png")));
-	return *icon;
+    static wxBitmap* icon = NULL;
+    if(icon == NULL)icon = new wxBitmap(wxImage(theApp.GetResFolder() + _T("/icons/tag.png")));
+    return *icon;
 }
 
 static unsigned char cross16[32] = {0x80, 0x01, 0x40, 0x02, 0x20, 0x04, 0x10, 0x08, 0x08, 0x10, 0x04, 0x20, 0x02, 0x40, 0x01, 0x80, 0x01, 0x80, 0x02, 0x40, 0x04, 0x20, 0x08, 0x10, 0x10, 0x08, 0x20, 0x04, 0x40, 0x02, 0x80, 0x01};
@@ -52,27 +69,17 @@ void CTag::glCommands(bool select, bool marked, bool no_color)
 {
 	if(marked)
 	{
+	    double pos[2];
+	    pos[0] = m_pos.X();
+	    pos[1] = m_pos.Y();
 		glColor3ub(0, 0, 0);
-		glRasterPos2dv(m_pos);
+		glRasterPos2dv(pos);
 		glBitmap(16, 5, 8, 3, 10.0, 0.0, bmp16);
 
 		glColor3ub(0, 0, 255);
-		glRasterPos2dv(m_pos);
+		glRasterPos2dv(pos);
 		glBitmap(16, 16, 8, 8, 10.0, 0.0, cross16);
 	}
-}
-
-static void on_set_pos(const double* vt, HeeksObj* object){memcpy(((CTag*)object)->m_pos, vt, 2*sizeof(double));}
-static void on_set_width(double value, HeeksObj* object){((CTag*)object)->m_width = value; ((CTag*)object)->WriteDefaultValues();}
-static void on_set_angle(double value, HeeksObj* object){((CTag*)object)->m_angle = value; ((CTag*)object)->WriteDefaultValues();}
-static void on_set_height(double value, HeeksObj* object){((CTag*)object)->m_height = value; ((CTag*)object)->WriteDefaultValues();}
-
-void CTag::GetProperties(std::list<Property *> *list)
-{
-	list->push_back(new PropertyVertex2d(_("position"), m_pos, this, on_set_pos));
-	list->push_back(new PropertyLength(_("width"), m_width, this, on_set_width));
-	list->push_back(new PropertyDouble(_("angle"), m_angle, this, on_set_angle));
-	list->push_back(new PropertyLength(_("height"), m_height, this, on_set_height));
 }
 
 static CTag* object_for_tools = NULL;
@@ -82,7 +89,10 @@ class PickPos: public Tool{
 	const wxChar* GetTitle(){return _("Pick position");}
 	void Run(){
 		heeksCAD->CreateUndoPoint();
-		heeksCAD->PickPosition(_("Pick position"), object_for_tools->m_pos);
+		double pos[3];
+		heeksCAD->PickPosition(_("Pick position"), pos);
+		object_for_tools->m_pos.SetX(pos[0]);
+		object_for_tools->m_pos.SetY(pos[1]);
 		heeksCAD->Changed();
 	}
 	wxString BitmapPath(){ return theApp.GetResFolder() + _T("/bitmaps/tagpos.png"); }
@@ -102,8 +112,8 @@ void CTag::WriteXML(TiXmlNode *root)
 	TiXmlElement * element;
 	element = heeksCAD->NewXMLElement( "Tag" );
 	heeksCAD->LinkXMLEndChild( root,  element );
-	element->SetDoubleAttribute( "x", m_pos[0]);
-	element->SetDoubleAttribute( "y", m_pos[1]);
+	element->SetDoubleAttribute( "x", m_pos.X());
+	element->SetDoubleAttribute( "y", m_pos.Y());
 	element->SetDoubleAttribute( "width", m_width);
 	element->SetDoubleAttribute( "angle", m_angle);
 	element->SetDoubleAttribute( "height", m_height);
@@ -113,13 +123,19 @@ void CTag::WriteXML(TiXmlNode *root)
 //static
 HeeksObj* CTag::ReadFromXMLElement(TiXmlElement* pElem)
 {
+    double d;
 	CTag* new_object = new CTag;
 	new_object->ReadBaseXML(pElem);
-	pElem->Attribute("x", &new_object->m_pos[0]);
-	pElem->Attribute("y", &new_object->m_pos[1]);
-	pElem->Attribute("width", &new_object->m_width);
-	pElem->Attribute("angle", &new_object->m_angle);
-	pElem->Attribute("height", &new_object->m_height);
+	pElem->Attribute("x", &d);
+    new_object->m_pos.SetX(d);
+    pElem->Attribute("y", &d);
+    new_object->m_pos.SetY(d);
+	pElem->Attribute("width", &d);
+	new_object->m_width = d;
+	pElem->Attribute("angle", &d);
+	new_object->m_angle = d;
+	pElem->Attribute("height", &d);
+	new_object->m_height = d;
 	return new_object;
 }
 
@@ -134,14 +150,14 @@ void CTag::WriteDefaultValues()
 void CTag::ReadDefaultValues()
 {
 	CNCConfig config(ConfigScope());
-	config.Read(_T("Width"), &m_width);
-	config.Read(_T("Angle"), &m_angle);
-	config.Read(_T("Height"), &m_height);
+	config.Read(_T("Width"), m_width);
+	config.Read(_T("Angle"), m_angle);
+	config.Read(_T("Height"), m_height);
 }
 
 bool CTag::operator==( const CTag & rhs ) const
 {
-	for (::size_t i=0; i<sizeof(m_pos)/sizeof(m_pos[0]); i++) if (m_pos[i] != rhs.m_pos[i]) return(false);
+	if (m_pos.X() != rhs.m_pos.X() || m_pos.Y() != rhs.m_pos.Y()) return(false);
 	if (m_width != rhs.m_width) return(false);
 	if (m_angle != rhs.m_width) return(false);
 	if (m_height != rhs.m_width) return(false);

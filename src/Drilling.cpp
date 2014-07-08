@@ -10,11 +10,6 @@
 #include "CNCConfig.h"
 #include "ProgramCanvas.h"
 #include "interface/HeeksObj.h"
-#include "interface/PropertyInt.h"
-#include "interface/PropertyDouble.h"
-#include "interface/PropertyLength.h"
-#include "interface/PropertyChoice.h"
-#include "interface/PropertyString.h"
 #include "tinyxml/tinyxml.h"
 #include "Operations.h"
 #include "CTool.h"
@@ -33,18 +28,23 @@
 extern CHeeksCADInterface* heeksCAD;
 
 
+CDrillingParams::CDrillingParams(CDrilling * parent)
+{
+	this->parent = parent;
+}
+
 void CDrillingParams::set_initial_values( const double depth, const int tool_number )
 {
 	CNCConfig config(ConfigScope());
 
-	config.Read(_T("m_standoff"), &m_standoff, (25.4 / 4));	// Quarter of an inch
-	config.Read(_T("m_dwell"), &m_dwell, 1);
-	config.Read(_T("m_depth"), &m_depth, 25.4);		// One inch
-	config.Read(_T("m_peck_depth"), &m_peck_depth, (25.4 / 10));	// One tenth of an inch
-	config.Read(_T("m_sort_drilling_locations"), &m_sort_drilling_locations, 1);
-	config.Read(_T("m_retract_mode"), &m_retract_mode, 0);
-	config.Read(_T("m_spindle_mode"), &m_spindle_mode, 0);
-	config.Read(_T("m_clearance_height"), &m_clearance_height, 25.4);		// One inch
+	config.Read(_T("m_standoff"), m_standoff, (25.4 / 4));	// Quarter of an inch
+	config.Read(_T("m_dwell"), m_dwell, 1);
+	config.Read(_T("m_depth"), m_depth, 25.4);		// One inch
+	config.Read(_T("m_peck_depth"), m_peck_depth, (25.4 / 10));	// One tenth of an inch
+	config.Read(_T("m_sort_drilling_locations"), m_sort_drilling_locations, 1);
+	config.Read(_T("m_retract_mode"), m_retract_mode, 0);
+	config.Read(_T("m_spindle_mode"), m_spindle_mode, 0);
+	config.Read(_T("m_clearance_height"), m_clearance_height, 25.4);		// One inch
 
 	if (depth > 0)
 	{
@@ -90,105 +90,55 @@ void CDrillingParams::write_values_to_config()
 
 }
 
-
-static void on_set_spindle_mode(int value, HeeksObj* object)
+void CDrillingParams::InitializeProperties()
 {
-	((CDrilling*)object)->m_params.m_spindle_mode = value;
-	((CDrilling*)object)->m_params.write_values_to_config();
+	m_standoff.Initialize(_("standoff"), parent);
+
+        m_clearance_height.Initialize(_("Clearance height"), parent);           // Either/Or
+        m_clearance_height_string.Initialize(_("Clearance height"), parent);
+        m_clearance_height_string.SetReadOnly(true);
+
+	m_dwell.Initialize(_("Dwell"), parent);
+	m_depth.Initialize(_("Depth"), parent);
+	m_peck_depth.Initialize(_("Peck Depth"), parent);
+
+	m_retract_mode.Initialize(_("Retract Mode"), parent);
+	m_retract_mode.m_choices.push_back(_("Rapid retract"));		// Must be 'false' (0)
+	m_retract_mode.m_choices.push_back(_("Feed retract"));		// Must be 'true' (non-zero)
+
+	m_spindle_mode.Initialize(_("Spindle Mode"), parent);
+	m_spindle_mode.m_choices.push_back(_("Keep running"));		// Must be 'false' (0)
+	m_spindle_mode.m_choices.push_back(_("Stop at bottom"));	// Must be 'true' (non-zero)
+
+	m_sort_drilling_locations.Initialize(_("Sort drilling locations"), parent);
+	m_sort_drilling_locations.m_choices.push_back(_("Respect existing order"));		// Must be 'false' (0)
+	m_sort_drilling_locations.m_choices.push_back(_("True"));					// Must be 'true' (non-zero)
 }
 
-static void on_set_retract_mode(int value, HeeksObj* object)
+void CDrillingParams::GetProperties(std::list<Property *> *list)
 {
-	((CDrilling*)object)->m_params.m_retract_mode = value;
-	((CDrilling*)object)->m_params.write_values_to_config();
-}
+        switch(theApp.m_program->m_clearance_source)
+        {
+        case CProgram::eClearanceDefinedByFixture:
+                m_clearance_height_string = _("Defined in fixture definition");
+                m_clearance_height_string.SetVisible(true);
+                m_clearance_height.SetVisible(false);
+                break;
 
-static void on_set_standoff(double value, HeeksObj* object)
-{
-	((CDrilling*)object)->m_params.m_standoff = value;
-	((CDrilling*)object)->m_params.write_values_to_config();
-}
+        case CProgram::eClearanceDefinedByMachine:
+                m_clearance_height_string = _("Defined in Program properties for whole machine");
+                m_clearance_height_string.SetVisible(true);
+                m_clearance_height.SetVisible(false);
+                break;
 
-static void on_set_dwell(double value, HeeksObj* object)
-{
-	((CDrilling*)object)->m_params.m_dwell = value;
-	((CDrilling*)object)->m_params.write_values_to_config();
-}
+        case CProgram::eClearanceDefinedByOperation:
+        default:
+                m_clearance_height_string.SetVisible(false);
+                m_clearance_height.SetVisible(true);
+                break;
+        } // End switch
 
-static void on_set_depth(double value, HeeksObj* object)
-{
-	((CDrilling*)object)->m_params.m_depth = value;
-	((CDrilling*)object)->m_params.write_values_to_config();
-}
-
-static void on_set_peck_depth(double value, HeeksObj* object)
-{
-	((CDrilling*)object)->m_params.m_peck_depth = value;
-	((CDrilling*)object)->m_params.write_values_to_config();
-}
-
-static void on_set_sort_drilling_locations(int value, HeeksObj* object)
-{
-	((CDrilling*)object)->m_params.m_sort_drilling_locations = value;
-	((CDrilling*)object)->m_params.write_values_to_config();
-}
-
-static void on_set_clearance_height(double value, HeeksObj* object)
-{
-	((CDrilling*)object)->m_params.ClearanceHeight( value );
-	((CDrilling*)object)->m_params.write_values_to_config();
-}
-
-void CDrillingParams::GetProperties(CDrilling* parent, std::list<Property *> *list)
-{
-	list->push_back(new PropertyLength(_("standoff"), m_standoff, parent, on_set_standoff));
-
-	switch(theApp.m_program->m_clearance_source)
-	{
-	case CProgram::eClearanceDefinedByFixture:
-		list->push_back(new PropertyString(_("clearance height"), _("Defined in fixture definition"), NULL, NULL));
-		break;
-
-	case CProgram::eClearanceDefinedByMachine:
-		list->push_back(new PropertyString(_("clearance height"), _("Defined in Program properties for whole machine"), NULL, NULL));
-		break;
-
-	case CProgram::eClearanceDefinedByOperation:
-	default:
-		list->push_back(new PropertyLength(_("clearance height"), m_clearance_height, parent, on_set_clearance_height));
-	} // End switch
-
-	list->push_back(new PropertyDouble(_("dwell"), m_dwell, parent, on_set_dwell));
-	list->push_back(new PropertyLength(_("depth"), m_depth, parent, on_set_depth));
-	list->push_back(new PropertyLength(_("peck_depth"), m_peck_depth, parent, on_set_peck_depth));
-	{ // Begin choice scope
-		std::list< wxString > choices;
-
-		choices.push_back(_("Rapid retract"));	// Must be 'false' (0)
-		choices.push_back(_("Feed retract"));	// Must be 'true' (non-zero)
-
-		int choice = int(m_retract_mode);
-		list->push_back(new PropertyChoice(_("retract_mode"), choices, choice, parent, on_set_retract_mode));
-	} // End choice scope
-	{ // Begin choice scope
-		std::list< wxString > choices;
-
-		choices.push_back(_("Keep running"));	// Must be 'false' (0)
-		choices.push_back(_("Stop at bottom"));	// Must be 'true' (non-zero)
-
-		int choice = int(m_spindle_mode);
-		list->push_back(new PropertyChoice(_("spindle_mode"), choices, choice, parent, on_set_spindle_mode));
-	} // End choice scope
-	{ // Begin choice scope
-		std::list< wxString > choices;
-
-		choices.push_back(_("Respect existing order"));	// Must be 'false' (0)
-		choices.push_back(_("True"));			// Must be 'true' (non-zero)
-
-		int choice = int(m_sort_drilling_locations);
-		list->push_back(new PropertyChoice(_("sort_drilling_locations"), choices, choice, parent, on_set_sort_drilling_locations));
-	} // End choice scope
-
+        MutableObject::GetProperties(list);
 }
 
 void CDrillingParams::WriteXMLAttributes(TiXmlNode *root)
@@ -210,15 +160,43 @@ void CDrillingParams::WriteXMLAttributes(TiXmlNode *root)
 
 void CDrillingParams::ReadParametersFromXMLElement(TiXmlElement* pElem)
 {
-	if (pElem->Attribute("standoff")) pElem->Attribute("standoff", &m_standoff);
-	m_clearance_height = m_standoff;  // Default if the clearance_height parameter is not found.
-	if (pElem->Attribute("dwell")) pElem->Attribute("dwell", &m_dwell);
-	if (pElem->Attribute("depth")) pElem->Attribute("depth", &m_depth);
-	if (pElem->Attribute("peck_depth")) pElem->Attribute("peck_depth", &m_peck_depth);
-	if (pElem->Attribute("sort_drilling_locations")) pElem->Attribute("sort_drilling_locations", &m_sort_drilling_locations);
-	if (pElem->Attribute("retract_mode")) pElem->Attribute("retract_mode", &m_retract_mode);
-	if (pElem->Attribute("spindle_mode")) pElem->Attribute("spindle_mode", &m_spindle_mode);
-	if (pElem->Attribute("clearance_height")) pElem->Attribute("clearance_height", &m_clearance_height);
+	double standoff, dwell, depth, peck_depth, clearance_height;
+	if (pElem->Attribute("standoff")) {
+		pElem->Attribute("standoff", &standoff);
+		m_standoff = standoff;
+		m_clearance_height = m_standoff;  // Default if the clearance_height parameter is not found.
+	}
+	if (pElem->Attribute("dwell")) {
+		pElem->Attribute("dwell", &dwell);
+		m_dwell = dwell;
+	}
+	if (pElem->Attribute("depth")) {
+		pElem->Attribute("depth", &depth);
+		m_depth = depth;
+	}
+	if (pElem->Attribute("peck_depth")) {
+		pElem->Attribute("peck_depth", &peck_depth);
+		m_peck_depth = peck_depth;
+	}
+	if (pElem->Attribute("sort_drilling_locations")) {
+		int sort_drilling_locations;
+		pElem->Attribute("sort_drilling_locations", &sort_drilling_locations);
+		m_sort_drilling_locations = sort_drilling_locations;
+	}
+	if (pElem->Attribute("retract_mode")) {
+		int retract_mode;
+		pElem->Attribute("retract_mode", &retract_mode);
+		m_retract_mode = retract_mode;
+	}
+	if (pElem->Attribute("spindle_mode")) {
+		int spindle_mode;
+		pElem->Attribute("spindle_mode", &spindle_mode);
+		m_spindle_mode = spindle_mode;
+	}
+	if (pElem->Attribute("clearance_height")) {
+		pElem->Attribute("clearance_height", &clearance_height);
+		m_clearance_height = clearance_height;
+	}
 }
 
 const wxBitmap &CDrilling::GetIcon()
@@ -438,7 +416,7 @@ void CDrilling::glCommands(bool select, bool marked, bool no_color)
 
 void CDrilling::GetProperties(std::list<Property *> *list)
 {
-	m_params.GetProperties(this, list);
+	m_params.GetProperties(list);
 	CSpeedOp::GetProperties(list);
 }
 
@@ -455,10 +433,16 @@ void CDrilling::CopyFrom(const HeeksObj* object)
 	}
 }
 
+CDrilling::CDrilling()
+ : CSpeedOp(GetTypeString(), 0), m_params(this)
+{
+}
+
+
 CDrilling::CDrilling(	const Symbols_t &symbols,
         const int tool_number,
         const double depth )
-    : CSpeedOp(GetTypeString(), tool_number, DrillingType), m_symbols(symbols)
+ : CSpeedOp(GetTypeString(), tool_number, DrillingType), m_symbols(symbols), m_params(this)
 {
     m_params.set_initial_values(depth, tool_number);
     for (Symbols_t::iterator itSymbol = m_symbols.begin(); itSymbol != m_symbols.end(); itSymbol++)
@@ -473,10 +457,10 @@ CDrilling::CDrilling(	const Symbols_t &symbols,
 }
 
 
-CDrilling::CDrilling( const CDrilling & rhs ) : CSpeedOp( rhs )
+CDrilling::CDrilling( const CDrilling & rhs ) : CSpeedOp( rhs ), m_params(this)
 {
 	std::copy( rhs.m_symbols.begin(), rhs.m_symbols.end(), std::inserter( m_symbols, m_symbols.begin() ));
-    m_params = rhs.m_params;
+	m_params = rhs.m_params;
 }
 
 CDrilling & CDrilling::operator= ( const CDrilling & rhs )

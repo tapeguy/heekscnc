@@ -22,20 +22,22 @@ extern "C" {
 #include <GL/glu.h>
 }
 
+#include <gp_Circ.hxx>
+#include <gp_Dir.hxx>
+#include <gp_Elips.hxx>
+#include <gp_Lin.hxx>
+#include <gp_Pln.hxx>
+#include <gp_Pnt.hxx>
+#include <gp_Vec.hxx>
+
 #include "HeeksCNC.h"
 #include "interface/strconv.h"
 #include "interface/HeeksObj.h"
 #include "interface/ObjectCanvas.h"
 
-#include "gp_Pnt.hxx"
-#include <gp_Dir.hxx>
-#include "gp_Lin.hxx"
-#include "gp_Circ.hxx"
-#include "gp_Pln.hxx"
 #include "Geom_Plane.hxx"
 #include "GeomAPI_IntSS.hxx"
 #include "Geom_Line.hxx"
-#include "gp_Elips.hxx"
 #include "TopoDS_Shape.hxx"
 #include "TopoDS_Face.hxx"
 

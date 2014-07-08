@@ -20,15 +20,19 @@
 
 class CCounterBore;
 
-class CCounterBoreParams{
+class CCounterBoreParams : public MutableObject {
 
+private:
+	CCounterBore * parent;
 public:
-	double m_diameter;
-	int m_sort_locations;		// '1' = sort location points prior to generating GCode (to optimize paths)
+	PropertyLength m_diameter;
+	PropertyChoice m_sort_locations;	// '1' = sort location points prior to generating GCode (to optimize paths)
 
+	CCounterBoreParams(CCounterBore * parent);
+
+	void InitializeProperties();
 	void set_initial_values( const int tool_number );
 	void write_values_to_config();
-	void GetProperties(CCounterBore* parent, std::list<Property *> *list);
 	void WriteXMLAttributes(TiXmlNode* pElem);
 	void ReadParametersFromXMLElement(TiXmlElement* pElem);
 
@@ -88,7 +92,7 @@ public:
 	static std::pair< double, double > SelectSizeForHead( const double drill_hole_diameter );
 
 	//	Constructors.
-	CCounterBore():CDepthOp(GetTypeString(), 0, CounterBoreType){}
+	CCounterBore();
 	CCounterBore(	const Symbols_t &symbols,
 			const int tool_number );
 

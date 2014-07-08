@@ -13,10 +13,6 @@
 #include "CNCConfig.h"
 #include "ProgramCanvas.h"
 #include "interface/HeeksObj.h"
-#include "interface/PropertyInt.h"
-#include "interface/PropertyDouble.h"
-#include "interface/PropertyLength.h"
-#include "interface/PropertyChoice.h"
 #include "tinyxml/tinyxml.h"
 #include "CTool.h"
 #include "Drilling.h"
@@ -31,13 +27,26 @@
 
 extern CHeeksCADInterface* heeksCAD;
 
+CCounterBoreParams::CCounterBoreParams(CCounterBore * parent) {
+	this->parent = parent;
+}
+
+
+void CCounterBoreParams::InitializeProperties()
+{
+	m_diameter.Initialize(_("Diameter"), parent);
+	m_sort_locations.Initialize(_("Sort Locations"), parent);
+
+	m_sort_locations.m_choices.push_back(_("Respect existing order"));	// Must be 'false' (0)
+	m_sort_locations.m_choices.push_back(_("True"));			// Must be 'true' (non-zero)
+}
 
 void CCounterBoreParams::set_initial_values( const int tool_number )
 {
 	CNCConfig config(ConfigScope());
 
-	config.Read(_T("m_diameter"), &m_diameter, (25.4 / 10));	// One tenth of an inch
-	config.Read(_T("m_sort_locations"), &m_sort_locations, 1);
+	config.Read(_T("m_diameter"), m_diameter, (25.4 / 10));	// One tenth of an inch
+	config.Read(_T("m_sort_locations"), m_sort_locations, 1);
 
 	if (tool_number > 0)
 	{
@@ -60,25 +69,6 @@ void CCounterBoreParams::write_values_to_config()
 }
 
 
-static void on_set_diameter(double value, HeeksObj*  object){((CCounterBore*)object)->m_params.m_diameter = value;}
-static void on_set_sort_locations(int value, HeeksObj*  object){((CCounterBore*)object)->m_params.m_sort_locations = value;}
-
-
-void CCounterBoreParams::GetProperties(CCounterBore* parent, std::list<Property *> *list)
-{
-	list->push_back(new PropertyLength(_("diameter"), m_diameter, parent, on_set_diameter));
-
-	{ // Begin choice scope
-		std::list< wxString > choices;
-
-		choices.push_back(_("Respect existing order"));	// Must be 'false' (0)
-		choices.push_back(_("True"));			// Must be 'true' (non-zero)
-
-		int choice = int(m_sort_locations);
-		list->push_back(new PropertyChoice(_("Sort Locations"), choices, choice, parent, on_set_sort_locations));
-	} // End choice scope
-}
-
 void CCounterBoreParams::WriteXMLAttributes(TiXmlNode *root)
 {
 	TiXmlElement * element;
@@ -90,8 +80,16 @@ void CCounterBoreParams::WriteXMLAttributes(TiXmlNode *root)
 
 void CCounterBoreParams::ReadParametersFromXMLElement(TiXmlElement* pElem)
 {
-	if (pElem->Attribute("diameter")) pElem->Attribute("diameter", &m_diameter);
-	if (pElem->Attribute("sort_locations")) pElem->Attribute("sort_locations", &m_sort_locations);
+	if (pElem->Attribute("diameter")) {
+		double diameter;
+		pElem->Attribute("diameter", &diameter);
+		m_diameter = diameter;
+	}
+	if (pElem->Attribute("sort_locations")) {
+		int sort_locations;
+		pElem->Attribute("sort_locations", &sort_locations);
+		m_sort_locations = sort_locations;
+	}
 }
 
 
@@ -477,10 +475,11 @@ void CCounterBore::glCommands(bool select, bool marked, bool no_color)
 		} // End for
 	} // End if - then
 }
-CCounterBore::CCounterBore( const CCounterBore & rhs ) : CDepthOp(rhs)
+
+CCounterBore::CCounterBore( const CCounterBore & rhs ) : CDepthOp(rhs), m_params(this)
 {
 	std::copy( rhs.m_symbols.begin(), rhs.m_symbols.end(), std::inserter( m_symbols, m_symbols.begin() ) );
-    m_params = rhs.m_params;
+	m_params = rhs.m_params;
 }
 
 CCounterBore & CCounterBore::operator= ( const CCounterBore & rhs )
@@ -500,7 +499,7 @@ CCounterBore & CCounterBore::operator= ( const CCounterBore & rhs )
 
 void CCounterBore::GetProperties(std::list<Property *> *list)
 {
-	m_params.GetProperties(this, list);
+	m_params.GetProperties(list);
 	CDepthOp::GetProperties(list);
 }
 
@@ -639,10 +638,14 @@ void CCounterBore::GetTools(std::list<Tool*>* t_list, const wxPoint* p)
     CDepthOp::GetTools( t_list, p );
 }
 
+CCounterBore::CCounterBore()
+ : CDepthOp(GetTypeString(), 0, CounterBoreType), m_params(this)
+{
+}
 
-CCounterBore::CCounterBore(	const Symbols_t &symbols,
-			const int tool_number )
-		: CDepthOp(GetTypeString(), NULL, tool_number, CounterBoreType), m_symbols(symbols)
+CCounterBore::CCounterBore( const Symbols_t &symbols,
+                            const int tool_number )
+ : CDepthOp(GetTypeString(), NULL, tool_number, CounterBoreType), m_symbols(symbols), m_params(this)
 {
     for (Symbols_t::iterator symbol = m_symbols.begin(); symbol != m_symbols.end(); symbol++)
     {

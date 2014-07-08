@@ -35,6 +35,7 @@ if( APPLE )
   # Apple includes two different openGL implementations, for Carbon and X11.  We want X11
   set( OSX_INCLUDE_DIRS /usr/X11R6/include )
   set( OSX_LIBS -L/usr/X11R6/lib -lGL -lX11 -lGLU -lglut )
+  add_definitions ( -DRUNINPLACE )
 endif( APPLE )
 
 INCLUDE(${wxWidgets_USE_FILE})

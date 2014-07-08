@@ -10,10 +10,6 @@
 #include "CNCConfig.h"
 #include "ProgramCanvas.h"
 #include "interface/HeeksObj.h"
-#include "interface/PropertyInt.h"
-#include "interface/PropertyDouble.h"
-#include "interface/PropertyLength.h"
-#include "interface/PropertyChoice.h"
 #include "tinyxml/tinyxml.h"
 #include "Operations.h"
 #include "CTool.h"
@@ -30,16 +26,48 @@
 
 extern CHeeksCADInterface* heeksCAD;
 
+CTappingParams::CTappingParams(CTapping * parent)
+{
+    this->parent = parent;
+}
+
+
+void CTappingParams::InitializeProperties()
+{
+    { // Begin choice scope
+        std::list< wxString > choices;
+
+        choices.push_back(_("rigid tapping"));  // Must be 0
+        choices.push_back(_("chuck tapping"));  // Must be 1
+
+        m_tap_mode.Initialize(_("tap_mode"), parent);
+        m_tap_mode.m_choices = choices;
+    } // End choice scope
+
+    m_standoff.Initialize(_("standoff"), parent);
+    m_dwell.Initialize(_("dwell"), parent);
+    m_depth.Initialize(_("depth"), parent);
+
+    { // Begin choice scope
+        std::list< wxString > choices;
+
+        choices.push_back(_("Respect existing order")); // Must be 'false' (0)
+        choices.push_back(_("True"));           // Must be 'true' (non-zero)
+
+        m_sort_tapping_locations.Initialize(_("sort_tapping_locations"), parent);
+        m_sort_tapping_locations.m_choices = choices;
+    } // End choice scope
+}
 
 void CTappingParams::set_initial_values( const double depth, const int tool_number )
 {
 	CNCConfig config(ConfigScope());
 
-	config.Read(_T("m_standoff"), &m_standoff, (25.4 / 4));	// Quarter of an inch
-	config.Read(_T("m_dwell"), &m_dwell, 1);
-	config.Read(_T("m_depth"), &m_depth, 25.4/2);		// half an inch
-	config.Read(_T("m_sort_tapping_locations"), &m_sort_tapping_locations, 1);
-	config.Read(_T("m_tap_mode"), &m_tap_mode, 0);    // 0 -> rigid tap mode, 1 -> chuck tapping
+	config.Read(_T("m_standoff"), m_standoff, (25.4 / 4));	// Quarter of an inch
+	config.Read(_T("m_dwell"), m_dwell, 1);
+	config.Read(_T("m_depth"), m_depth, 25.4/2);		// half an inch
+	config.Read(_T("m_sort_tapping_locations"), m_sort_tapping_locations, 1);
+	config.Read(_T("m_tap_mode"), m_tap_mode, 0);    // 0 -> rigid tap mode, 1 -> chuck tapping
 
 	if (depth > 0)
 	{
@@ -62,66 +90,10 @@ void CTappingParams::write_values_to_config()
 	config.Write(_T("m_tap_mode"), m_tap_mode);
 }
 
-static void on_set_mode(int value, HeeksObj* object)
+void CTappingParams::OnPropertyEdit(Property * prop)
 {
-	((CTapping*)object)->m_params.m_tap_mode = value;
-	((CTapping*)object)->m_params.write_values_to_config();
-}
-
-
-static void on_set_standoff(double value, HeeksObj* object)
-{
-	((CTapping*)object)->m_params.m_standoff = value;
-	((CTapping*)object)->m_params.write_values_to_config();
-}
-
-static void on_set_dwell(double value, HeeksObj* object)
-{
-	((CTapping*)object)->m_params.m_dwell = value;
-	((CTapping*)object)->m_params.write_values_to_config();
-}
-
-static void on_set_depth(double value, HeeksObj* object)
-{
-	((CTapping*)object)->m_params.m_depth = value;
-	((CTapping*)object)->m_params.write_values_to_config();
-}
-
-
-static void on_set_sort_tapping_locations(int value, HeeksObj* object)
-{
-	((CTapping*)object)->m_params.m_sort_tapping_locations = value;
-	((CTapping*)object)->m_params.write_values_to_config();
-}
-
-
-void CTappingParams::GetProperties(CTapping* parent, std::list<Property *> *list)
-{
-	{ // Begin choice scope
-		std::list< wxString > choices;
-
-		choices.push_back(_("rigid tapping"));	// Must be 0
-		choices.push_back(_("chuck tapping"));	// Must be 1
-
-		int choice = int(m_tap_mode);
-		list->push_back(new PropertyChoice(_("tap_mode"), choices, choice, parent, on_set_mode));
-
-	} // End choice scope
-
-	list->push_back(new PropertyLength(_("standoff"), m_standoff, parent, on_set_standoff));
-	list->push_back(new PropertyDouble(_("dwell"), m_dwell, parent, on_set_dwell));
-	list->push_back(new PropertyLength(_("depth"), m_depth, parent, on_set_depth));
-	//	list->push_back(new PropertyLength(_("pitch"), m_pitch, parent, on_set_pitch));
-	{ // Begin choice scope
-		std::list< wxString > choices;
-
-		choices.push_back(_("Respect existing order"));	// Must be 'false' (0)
-		choices.push_back(_("True"));			// Must be 'true' (non-zero)
-
-		int choice = int(m_sort_tapping_locations);
-		list->push_back(new PropertyChoice(_("sort_tapping_locations"), choices, choice, parent, on_set_sort_tapping_locations));
-
-	} // End choice scope
+    write_values_to_config();
+    MutableObject::OnPropertyEdit(prop);
 }
 
 void CTappingParams::WriteXMLAttributes(TiXmlNode *root)
@@ -139,11 +111,28 @@ void CTappingParams::WriteXMLAttributes(TiXmlNode *root)
 
 void CTappingParams::ReadParametersFromXMLElement(TiXmlElement* pElem)
 {
-	if (pElem->Attribute("standoff")) pElem->Attribute("standoff", &m_standoff);
-	if (pElem->Attribute("dwell")) pElem->Attribute("dwell", &m_dwell);
-	if (pElem->Attribute("depth")) pElem->Attribute("depth", &m_depth);
-	if (pElem->Attribute("sort_tapping_locations")) pElem->Attribute("sort_tapping_locations", &m_sort_tapping_locations);
-	if (pElem->Attribute("tap_mode")) pElem->Attribute("tap_mode", &m_tap_mode);
+    int i;
+    double d;
+	if (pElem->Attribute("standoff")) {
+	    pElem->Attribute("standoff", &d);
+	    m_standoff = d;
+	}
+	if (pElem->Attribute("dwell")) {
+	    pElem->Attribute("dwell", &d);
+	    m_dwell = d;
+	}
+	if (pElem->Attribute("depth")) {
+	    pElem->Attribute("depth", &d);
+	    m_depth = d;
+	}
+	if (pElem->Attribute("sort_tapping_locations")) {
+	    pElem->Attribute("sort_tapping_locations", &i);
+	    m_sort_tapping_locations = i;
+	}
+	if (pElem->Attribute("tap_mode")) {
+	    pElem->Attribute("tap_mode", &i);
+	    m_tap_mode = i;
+	}
 }
 
 const wxBitmap &CTapping::GetIcon()
@@ -374,7 +363,7 @@ void CTapping::glCommands(bool select, bool marked, bool no_color)
 
 void CTapping::GetProperties(std::list<Property *> *list)
 {
-	m_params.GetProperties(this, list);
+	m_params.GetProperties(list);
 	CSpeedOp::GetProperties(list);
 }
 
@@ -394,7 +383,7 @@ void CTapping::CopyFrom(const HeeksObj* object)
 CTapping::CTapping(	const Symbols_t &symbols,
         const int tool_number,
         const double depth )
-    : CSpeedOp(GetTypeString(), tool_number, TappingType), m_symbols(symbols)
+    : CSpeedOp(GetTypeString(), tool_number, TappingType), m_symbols(symbols), m_params(this)
 {
     m_params.set_initial_values(depth, tool_number);
     for (Symbols_t::iterator itSymbol = m_symbols.begin(); itSymbol != m_symbols.end(); itSymbol++)
@@ -409,7 +398,7 @@ CTapping::CTapping(	const Symbols_t &symbols,
 }
 
 
-CTapping::CTapping( const CTapping & rhs ) : CSpeedOp( rhs )
+CTapping::CTapping( const CTapping & rhs ) : CSpeedOp( rhs ), m_params(this)
 {
 	std::copy( rhs.m_symbols.begin(), rhs.m_symbols.end(), std::inserter( m_symbols, m_symbols.begin() ));
     m_params = rhs.m_params;
@@ -559,9 +548,9 @@ std::list<wxString> CTapping::DesignRulesAdjustment(const bool apply_changes)
 		        {
 		            changes.push_back(*itChange);
 		        }
-			
+
 			// see wether tapping direction and spindle direction match
-			if (pTool->m_params.m_direction && (m_speed_op_params.m_spindle_speed > 0)) 
+			if (pTool->m_params.m_direction && (m_speed_op_params.m_spindle_speed > 0))
 			{
 			    changes.push_back(_("Left-hand tapping needs a counterclockwise spindle rotation (negative spindle_speed)\n"));
 			    if (apply_changes)

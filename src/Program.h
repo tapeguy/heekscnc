@@ -29,7 +29,7 @@ enum ProgramUserType{
 	ProgramUserTypeNC
 };
 
-class CMachine
+class CMachine : public MutableObject
 {
 public:
 	CMachine();
@@ -39,11 +39,12 @@ public:
 	wxString configuration_file_name;
 	wxString file_name;
 	wxString description;
-	double m_max_spindle_speed;		// in revolutions per minute (RPM)
-	bool m_safety_height_defined;
-	double m_safety_height;
-	double m_clearance_height;		// Default clearance height when CProgram::m_clearance_definition == eClearanceDefinedByMachine
+	PropertyDouble m_max_spindle_speed;		// in revolutions per minute (RPM)
+	PropertyCheck m_safety_height_defined;
+	PropertyDouble m_safety_height;
+	PropertyDouble m_clearance_height;		// Default clearance height when CProgram::m_clearance_definition == eClearanceDefinedByMachine
 
+	void InitializeProperties();
 	void GetProperties(CProgram *parent, std::list<Property *> *list);
 	void WriteBaseXML(TiXmlElement *element);
 	void ReadBaseXML(TiXmlElement* element);

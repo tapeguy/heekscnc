@@ -30,10 +30,11 @@ public:
         wxString m_title;
 
 	// Inputs...
-	double m_brinell_hardness_of_raw_material;			// 15.0 for Al
+	PropertyDouble m_brinell_hardness_of_raw_material;			// 15.0 for Al
+	PropertyChoice m_brinell_hardness_choice;
 	
 	// Output
-	double m_max_material_removal_rate;
+	PropertyDouble m_max_material_removal_rate;
 
 	void ResetTitle();
 	//	Constructors.
@@ -46,6 +47,7 @@ public:
 	} // End constructor
 
 	 // HeeksObj's virtual functions
+	void InitializeProperties();
         int GetType()const{return CuttingRateType;}
 	const wxChar* GetTypeString(void) const{ return _T("CuttingRate"); }
         HeeksObj *MakeACopy(void)const;
@@ -53,6 +55,7 @@ public:
         void WriteXML(TiXmlNode *root);
         static HeeksObj* ReadFromXMLElement(TiXmlElement* pElem);
 
+	void OnPropertyEdit(Property * prop);
 	void GetProperties(std::list<Property *> *list);
 	void CopyFrom(const HeeksObj* object);
 	bool CanAddTo(HeeksObj* owner);

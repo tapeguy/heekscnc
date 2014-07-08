@@ -13,10 +13,6 @@
 #include "ProgramCanvas.h"
 #include "interface/HeeksObj.h"
 #include "interface/ObjList.h"
-#include "interface/PropertyInt.h"
-#include "interface/PropertyDouble.h"
-#include "interface/PropertyLength.h"
-#include "interface/PropertyChoice.h"
 #include "tinyxml/tinyxml.h"
 #include "Operations.h"
 #include "CTool.h"
@@ -51,16 +47,71 @@
 
 extern CHeeksCADInterface* heeksCAD;
 
-/* static */ double CInlay::max_deviation_for_spline_to_arc = 0.1;
+/* static */ PropertyDouble CInlay::max_deviation_for_spline_to_arc = 0.1;
+
+
+class CDouble
+{
+public:
+	CDouble(const double value)
+	{
+		m_value = value;
+	}
+
+	~CDouble() { }
+
+	CDouble( const CDouble & rhs )
+	{
+		*this = rhs;
+	}
+
+	CDouble & operator= ( const CDouble & rhs )
+	{
+		if (this != &rhs)
+		{
+			m_value = rhs.m_value;
+		}
+
+		return(*this);
+	}
+
+	bool operator==( const CDouble & rhs ) const
+	{
+		if (fabs(m_value - rhs.m_value) < (2.0 * heeksCAD->GetTolerance())) return(true);
+		return(false);
+	}
+
+	bool operator< (const CDouble & rhs ) const
+	{
+		if (*this == rhs) return(false);
+		return(m_value < rhs.m_value);
+	}
+
+	bool operator<= (const CDouble & rhs ) const
+	{
+		if (*this == rhs) return(true);
+		return(m_value < rhs.m_value);
+	}
+
+	bool operator> (const CDouble & rhs ) const
+	{
+		if (*this == rhs) return(false);
+		return(m_value > rhs.m_value);
+	}
+
+private:
+	double  m_value;
+};
+
 
 void CInlayParams::set_initial_values()
 {
 	CNCConfig config(ConfigPrefix());
-	config.Read(_T("BorderWidth"), (double *) &m_border_width, 0.0);
-	config.Read(_T("ClearanceTool"), &m_clearance_tool, 0);
-	config.Read(_T("Pass"), (int *) &m_pass, (int) eBoth );
-	config.Read(_T("MirrorAxis"), (int *) &m_mirror_axis, (int) eXAxis );
-	config.Read(_T("MinCorneringAngle"), (double *) &m_min_cornering_angle, 135.0);
+	config.Read(_T("BorderWidth"), m_border_width, 0.0);
+	config.Read(_T("ClearanceTool"), m_clearance_tool, 0);
+	config.Read(_T("Pass"), m_pass, (int) eBoth );
+	config.Read(_T("MirrorAxis"), m_mirror_axis, (int) eXAxis );
+	config.Read(_T("MinCorneringAngle"), m_min_cornering_angle, 135.0);
 
 }
 
@@ -69,21 +120,9 @@ void CInlayParams::write_values_to_config()
 	CNCConfig config(ConfigPrefix());
 	config.Write(_T("BorderWidth"), m_border_width);
 	config.Write(_T("ClearanceTool"), m_clearance_tool);
-	config.Write(_T("Pass"), (int) m_pass );
-	config.Write(_T("MirrorAxis"), (int) m_mirror_axis );
+	config.Write(_T("Pass"), m_pass );
+	config.Write(_T("MirrorAxis"), m_mirror_axis );
 	config.Write(_T("MinCorneringAngle"), m_min_cornering_angle);
-}
-
-static void on_set_border_width(double value, HeeksObj* object)
-{
-	((CInlay*)object)->m_params.m_border_width = value;
-	((CInlay*)object)->WriteDefaultValues();
-}
-
-static void on_set_min_cornering_angle(double value, HeeksObj* object)
-{
-	((CInlay*)object)->m_params.m_min_cornering_angle = value;
-	((CInlay*)object)->WriteDefaultValues();
 }
 
 static void on_set_clearance_tool(int zero_based_choice, HeeksObj* object)
@@ -99,20 +138,6 @@ static void on_set_clearance_tool(int zero_based_choice, HeeksObj* object)
 
 	((CInlay*)object)->WriteDefaultValues();
 }
-
-static void on_set_pass(int value, HeeksObj* object)
-{
-	((CInlay*)object)->m_params.m_pass = CInlayParams::eInlayPass_t(value);
-	((CInlay*)object)->WriteDefaultValues();
-}
-
-static void on_set_mirror_axis(int value, HeeksObj* object)
-{
-	((CInlay*)object)->m_params.m_mirror_axis = CInlayParams::eAxis_t(value);
-	((CInlay*)object)->WriteDefaultValues();
-}
-
-
 
 static void on_set_female_fixture(int value, HeeksObj* object)
 {
@@ -145,83 +170,59 @@ static void on_set_male_fixture(int value, HeeksObj* object)
 }
 
 
-void CInlayParams::GetProperties(CInlay* parent, std::list<Property *> *list)
+void CInlayParams::InitializeProperties()
 {
-    list->push_back(new PropertyLength(_("Border Width"), m_border_width, parent, on_set_border_width));
+	m_border_width.Initialize(_("Border Width"), parent);
+	m_clearance_tool.Initialize(_("Clearance Tool"), parent);
 
-    {
-		std::vector< std::pair< int, wxString > > tools = CTool::FindAllTools();
+	m_pass.Initialize(_("GCode generation"), parent);
+	m_pass.m_choices.push_back(_("Female half"));
+	m_pass.m_choices.push_back(_("Male half"));
+	m_pass.m_choices.push_back(_("Both halves"));
 
-		int choice = 0;
-        std::list< wxString > choices;
-		for (std::vector< std::pair< int, wxString > >::size_type i=0; i<tools.size(); i++)
-		{
-                	choices.push_back(tools[i].second);
+	m_mirror_axis.Initialize(_("Mirror Axis"), parent);
+	m_mirror_axis.m_choices.push_back(_("X Axis"));
+	m_mirror_axis.m_choices.push_back(_("Y Axis"));
 
-			if (m_clearance_tool == tools[i].first)
-			{
-                		choice = int(i);
-			} // End if - then
-		} // End for
+	m_female_fixture.Initialize(_("Female Op Fixture"), parent);
+	m_male_fixture.Initialize(_("Male Op Fixture"), parent);
+	m_min_cornering_angle.Initialize(_("Min Cornering Angle (degrees)"), parent);
 
-		list->push_back(new PropertyChoice(_("Clearance Tool"), choices, choice, parent, on_set_clearance_tool));
-	}
+}
 
+void CInlayParams::GetProperties(std::list<Property *> *list)
+{
+	std::vector< std::pair< int, wxString > > tools = CTool::FindAllTools();
+	m_clearance_tool.m_choices.clear();
+	for (std::vector< std::pair< int, wxString > >::size_type i=0; i<tools.size(); i++)
 	{
-	    // Note: these options MUST be in the same order as they are defined in the enum.
-		int choice = (int) m_pass;
-        std::list< wxString > choices;
-
-		choices.push_back(_("Female half"));
-		choices.push_back(_("Male half"));
-		choices.push_back(_("Both halves"));
-
-		list->push_back(new PropertyChoice(_("GCode generation"), choices, choice, parent, on_set_pass));
-	}
-
-	{
-		int choice = (int) m_mirror_axis;
-        std::list< wxString > choices;
-
-		choices.push_back(_("X Axis"));
-		choices.push_back(_("Y Axis"));
-
-		list->push_back(new PropertyChoice(_("Mirror Axis"), choices, choice, parent, on_set_mirror_axis));
+		m_clearance_tool.m_choices.push_back(tools[i].second);
 	}
 
 	std::list<CFixture> fixtures = parent->PrivateFixtures();
-	if (fixtures.size() == 2)
-	{
+	if (fixtures.size() == 2) {
 		// The user has defined two private fixtures.  Add parameters asking which is to be used for
 		// the female half and which for the male half.
+		m_female_fixture.SetVisible(true);
+		m_male_fixture.SetVisible(true);
+		for (std::list<CFixture>::iterator itFixture = fixtures.begin(); itFixture != fixtures.end(); itFixture++) {
+			m_female_fixture.m_choices.push_back(itFixture->m_title);
+			m_male_fixture.m_choices.push_back(itFixture->m_title);
+		}
 
-		{
-			int female_choice = 0;
-			int male_choice = 1;
-
-			std::list<wxString> choices;
-			for (std::list<CFixture>::iterator itFixture = fixtures.begin(); itFixture != fixtures.end(); itFixture++)
-			{
-				choices.push_back(itFixture->m_title);
-			}
-
-			if (m_female_before_male_fixtures)
-			{
-				female_choice = 0;
-				male_choice = 1;
-			}
-			else
-			{
-				female_choice = 1;
-				male_choice = 0;
-			}
-
-			list->push_back(new PropertyChoice(_("Female Op Fixture"), choices, female_choice, parent, on_set_female_fixture));
-			list->push_back(new PropertyChoice(_("Male Op Fixture"), choices, male_choice, parent, on_set_male_fixture));
+		if (m_female_before_male_fixtures) {
+			m_female_fixture = 0;
+			m_male_fixture = 1;
+		}
+		else {
+			m_female_fixture = 1;
+			m_male_fixture = 0;
 		}
 	}
-
-	list->push_back(new PropertyDouble(_("Min Cornering Angle (degrees)"), m_min_cornering_angle, parent, on_set_min_cornering_angle));
+	else {
+		m_female_fixture.SetVisible(false);
+		m_male_fixture.SetVisible(false);
+	}
 }
 
 void CInlayParams::WriteXMLAttributes(TiXmlNode *root)
@@ -240,16 +241,23 @@ void CInlayParams::WriteXMLAttributes(TiXmlNode *root)
 
 void CInlayParams::ReadParametersFromXMLElement(TiXmlElement* pElem)
 {
-	pElem->Attribute("border", &m_border_width);
-	pElem->Attribute("clearance_tool", &m_clearance_tool);
-	pElem->Attribute("pass", (int *) &m_pass);
-	pElem->Attribute("mirror_axis", (int *) &m_mirror_axis);
-
+	double d;
+	pElem->Attribute("border", &d);
+	m_border_width = d;
 	int temp;
+	pElem->Attribute("clearance_tool", &temp);
+	m_clearance_tool = temp;
+	pElem->Attribute("pass", (int *) &temp);
+	m_pass = temp;
+	pElem->Attribute("mirror_axis", (int *) &temp);
+	m_mirror_axis = temp;
 	pElem->Attribute("female_before_male_fixtures", (int *) &temp);
 	m_female_before_male_fixtures = (temp != 0);
 
-	if (pElem->Attribute("min_cornering_angle")) pElem->Attribute("min_cornering_angle", &m_min_cornering_angle);
+	if (pElem->Attribute("min_cornering_angle")) {
+		pElem->Attribute("min_cornering_angle", &d);
+		m_min_cornering_angle = d;
+	}
 }
 
 
@@ -637,7 +645,6 @@ CInlay::Corners_t CInlay::FindSimilarCorners( const CNCPoint coordinate, CInlay:
 		// Now see how far the other coordinates are away from this line.
 		for (Corners_t::iterator itCorner = corners.begin(); itCorner != corners.end(); itCorner++)
 		{
-			CNCPoint coordinate(itCorner->first);
 			double distance = cutting_line.SquareDistance(itCorner->first);
 
 			CNCPoint previous_coordinate(closest_vertices[itCorner->first.Z()]);
@@ -1069,7 +1076,7 @@ CInlay::Valleys_t CInlay::DefineValleys(CMachineState *pMachineState)
 		} // End if - then
 		else
 		{
-			printf("Could not convert sketch id%d to wire\n", object->m_id );
+			printf("Could not convert sketch id%d to wire\n", (int)object->m_id );
 		}
 	} // End for
 
@@ -1741,7 +1748,7 @@ void CInlay::glCommands(bool select, bool marked, bool no_color)
 
 void CInlay::GetProperties(std::list<Property *> *list)
 {
-	m_params.GetProperties(this, list);
+	m_params.GetProperties(list);
 	CDepthOp::GetProperties(list);
 }
 
@@ -1859,21 +1866,6 @@ void CInlay::GetTools(std::list<Tool*>* t_list, const wxPoint* p)
 }
 
 
-
-
-
-static void on_set_spline_deviation(double value, HeeksObj* object){
-	CInlay::max_deviation_for_spline_to_arc = value;
-	CInlay::WriteToConfig();
-}
-
-// static
-void CInlay::GetOptions(std::list<Property *> *list)
-{
-	list->push_back ( new PropertyDouble ( _("Inlay spline deviation"), max_deviation_for_spline_to_arc, NULL, on_set_spline_deviation ) );
-}
-
-
 void CInlay::ReloadPointers()
 {
 	for (Symbols_t::iterator l_itSymbol = m_symbols.begin(); l_itSymbol != m_symbols.end(); l_itSymbol++)
@@ -1889,7 +1881,7 @@ void CInlay::ReloadPointers()
 }
 
 
-CInlay::CInlay( const CInlay & rhs ) : CDepthOp( rhs )
+CInlay::CInlay( const CInlay & rhs ) : CDepthOp( rhs ), m_params(this)
 {
     m_params = rhs.m_params;
     m_symbols.clear();

@@ -3,7 +3,6 @@
 #ifndef STABLE_OPS_ONLY
 
 #include "Chamfer.h"
-#include "interface/PropertyLength.h"
 #include "CNCPoint.h"
 #include "Drilling.h"
 #include "CounterBore.h"
@@ -35,12 +34,24 @@
 #include <Adaptor3d_HCurve.hxx>
 #include <Adaptor3d_Curve.hxx>
 
+
+CChamferParams::CChamferParams(CChamfer * parent)
+{
+	this->parent = parent;
+}
+
+void CChamferParams::InitializeProperties()
+{
+	m_chamfer_width.Initialize(_("Chamfer Width"), parent);
+	m_tool_on_side_choice.Initialize(_("Tool on Side"), parent);
+}
+
 void CChamferParams::set_initial_values()
 {
 	CNCConfig config(ConfigScope());
 
-	config.Read(_T("m_chamfer_width"), &m_chamfer_width, 1.0);	// 1.0 mm
-	config.Read(_T("ToolOnSide"), (int *) &m_tool_on_side, (int) CChamferParams::eLeftOrOutside);
+	config.Read(_T("chamfer_width"), m_chamfer_width, 1.0);	// 1.0 mm
+	config.Read(_T("ToolOnSide"), (int *)&m_tool_on_side, (int) CChamferParams::eLeftOrOutside);
 }
 
 void CChamferParams::write_values_to_config()
@@ -50,42 +61,12 @@ void CChamferParams::write_values_to_config()
 	CNCConfig config(ConfigScope());
 
 	// These values are in mm.
-	config.Write(_T("m_chamfer_width"), m_chamfer_width);
-	config.Write(_T("ToolOnSide"), (int) m_tool_on_side);
+	config.Write(_T("chamfer_width"), m_chamfer_width);
+	config.Write(_T("ToolOnSide"), m_tool_on_side);
 }
 
-static void on_set_chamfer_width(double value, HeeksObj* object)
+void CChamferParams::GetProperties(std::list<Property *> *list)
 {
-	((CChamfer*)object)->m_params.m_chamfer_width = value;
-	((CChamfer*)object)->m_params.write_values_to_config();
-}
-
-
-static void on_set_tool_on_side(int value, HeeksObj* object){
-	switch(value)
-	{
-	case 0:
-		((CChamfer*)object)->m_params.m_tool_on_side = CChamferParams::eLeftOrOutside;
-		break;
-	case 1:
-		((CChamfer*)object)->m_params.m_tool_on_side = CChamferParams::eRightOrInside;
-		break;
-	default:
-		((CChamfer*)object)->m_params.m_tool_on_side = CChamferParams::eOn;
-		break;
-	}
-	((CChamfer*)object)->m_params.write_values_to_config();
-}
-
-void CChamferParams::GetProperties(CChamfer * parent, std::list<Property *> *list)
-{
-	list->push_back(new PropertyLength(_("Chamfer Width"), m_chamfer_width, parent, on_set_chamfer_width));
-
-	{
-        std::list< wxString > choices;
-
-        SketchOrderType order = SketchOrderTypeUnknown;
-
         if(parent->GetNumChildren() > 0)
         {
             HeeksObj* sketch = NULL;
@@ -98,48 +79,53 @@ void CChamferParams::GetProperties(CChamfer * parent, std::list<Property *> *lis
                 }
             }
 
-            if(sketch != NULL)
+            if (sketch != NULL)
             {
-                order = heeksCAD->GetSketchOrder(sketch);
-                switch(order)
+		m_tool_on_side_choice.SetVisible(true);
+		m_tool_on_side_choice.m_choices.clear();
+                switch(heeksCAD->GetSketchOrder(sketch))
                 {
                 case SketchOrderTypeOpen:
-                    choices.push_back(_("Left"));
-                    choices.push_back(_("Right"));
+                    m_tool_on_side_choice.m_choices.push_back(_("Left"));
+                    m_tool_on_side_choice.m_choices.push_back(_("Right"));
                     break;
 
                 case SketchOrderTypeCloseCW:
                 case SketchOrderTypeCloseCCW:
-                    choices.push_back(_("Outside"));
-                    choices.push_back(_("Inside"));
+                    m_tool_on_side_choice.m_choices.push_back(_("Outside"));
+                    m_tool_on_side_choice.m_choices.push_back(_("Inside"));
                     break;
 
                 default:
-                    choices.push_back(_("Outside or Left"));
-                    choices.push_back(_("Inside or Right"));
+                    m_tool_on_side_choice.m_choices.push_back(_("Outside or Left"));
+                    m_tool_on_side_choice.m_choices.push_back(_("Inside or Right"));
                     break;
                 }
 
-				choices.push_back(_("On"));
+		m_tool_on_side_choice.m_choices.push_back(_("On"));
 
-				int choice = int(CChamferParams::eOn);
-				switch (parent->m_params.m_tool_on_side)
-				{
-					case CChamferParams::eRightOrInside:	choice = 1;
-							break;
+		switch (m_tool_on_side)
+		{
+			case CChamferParams::eRightOrInside:
+				m_tool_on_side_choice = 1;
+			break;
 
-					case CChamferParams::eOn:	choice = 2;
-							break;
+			default:
+			case CChamferParams::eOn:
+				m_tool_on_side_choice = 2;
+			break;
 
-					case CChamferParams::eLeftOrOutside:	choice = 0;
-							break;
-				} // End switch
-
-				list->push_back(new PropertyChoice(_("tool on side"), choices, choice, parent, on_set_tool_on_side));
+			case CChamferParams::eLeftOrOutside:
+				m_tool_on_side_choice = 0;
+			break;
+		} // End switch
+            }
+            else {
+		m_tool_on_side_choice.SetVisible(false);
             }
         }
-    }
 }
+
 
 void CChamferParams::WriteXMLAttributes(TiXmlNode *root)
 {
@@ -147,20 +133,27 @@ void CChamferParams::WriteXMLAttributes(TiXmlNode *root)
 	element = heeksCAD->NewXMLElement( "params" );
 	heeksCAD->LinkXMLEndChild( root,  element );
 
-	element->SetDoubleAttribute( "m_chamfer_width", m_chamfer_width);
+	element->SetDoubleAttribute( "chamfer_width", m_chamfer_width);
 	element->SetAttribute( "side", m_tool_on_side);
 }
 
 void CChamferParams::ReadParametersFromXMLElement(TiXmlElement* pElem)
 {
-	if (pElem->Attribute("m_chamfer_width")) pElem->Attribute("m_chamfer_width", &m_chamfer_width);
+	if (pElem->Attribute("chamfer_width")) {
+		double chamfer_width;
+		pElem->Attribute("chamfer_width", &chamfer_width);
+		m_chamfer_width = chamfer_width;
+	}
 	if(pElem->Attribute("side")) pElem->Attribute("side", (int *) &m_tool_on_side);
 }
 
+CChamfer::CChamfer() 
+ : CDepthOp(GetTypeString(), NULL, 0, ChamferType), m_params(this)
+{
+}
 
-CChamfer::CChamfer(	const Symbols_t &symbols,
-			const int tool_number )
-		: CDepthOp(GetTypeString(), NULL, tool_number, ChamferType), m_symbols(symbols)
+CChamfer::CChamfer( const Symbols_t &symbols, const int tool_number )
+ : CDepthOp(GetTypeString(), NULL, tool_number, ChamferType), m_symbols(symbols), m_params(this)
 {
     for (Symbols_t::iterator symbol = m_symbols.begin(); symbol != m_symbols.end(); symbol++)
     {
@@ -174,7 +167,7 @@ CChamfer::CChamfer(	const Symbols_t &symbols,
     m_params.set_initial_values();
 }
 
-CChamfer::CChamfer( const CChamfer & rhs ) : CDepthOp(rhs)
+CChamfer::CChamfer( const CChamfer & rhs ) : CDepthOp(rhs), m_params(this)
 {
 	std::copy( rhs.m_symbols.begin(), rhs.m_symbols.end(), std::inserter( m_symbols, m_symbols.begin() ) );
 }
@@ -244,9 +237,31 @@ bool CChamfer::CanAdd(HeeksObj* object)
 	} // End switch
 }
 
+void CChamfer::OnPropertyEdit(Property * prop)
+{
+	if (prop == &m_params.m_tool_on_side_choice)
+	{
+		int value = m_params.m_tool_on_side_choice;
+		switch(value)
+		{
+		default:
+		case 0:
+		       m_params.m_tool_on_side = CChamferParams::eLeftOrOutside;
+		       break;
+		case 1:
+		       m_params.m_tool_on_side = CChamferParams::eRightOrInside;
+		       break;
+		case 2:
+		       m_params.m_tool_on_side = CChamferParams::eOn;
+		       break;
+		}
+	}
+	m_params.write_values_to_config();
+}
+
 void CChamfer::GetProperties(std::list<Property *> *list)
 {
-	m_params.GetProperties( this, list );
+	m_params.GetProperties(list);
 	CDepthOp::GetProperties(list);
 }
 
@@ -293,7 +308,7 @@ Python CChamfer::AppendTextForCircularChildren(
 		if (pDrillBit == NULL)
 		{
 			// It's difficult to drill a hole without a drill bit but apparently this file does.
-			printf("Ignoring drilling operation (id=%d) with no  tool defined\n", pDrilling->m_id );
+			printf("Ignoring drilling operation (id=%d) with no  tool defined\n", (int)pDrilling->m_id );
 			return(python);	// Empty.
 		}
 
