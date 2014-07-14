@@ -29,7 +29,7 @@ enum ProgramUserType{
 	ProgramUserTypeNC
 };
 
-class CMachine : public MutableObject
+class CMachine : public DomainObject
 {
 public:
 	CMachine();

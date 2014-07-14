@@ -14,7 +14,7 @@
 
 class CSpeedOp;
 
-class CSpeedOpParams : public MutableObject
+class CSpeedOpParams : public DomainObject
 {
 private:
     CSpeedOp * parent;

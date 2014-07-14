@@ -90,10 +90,10 @@ void CTappingParams::write_values_to_config()
 	config.Write(_T("m_tap_mode"), m_tap_mode);
 }
 
-void CTappingParams::OnPropertyEdit(Property * prop)
+void CTappingParams::OnPropertyEdit(Property& prop)
 {
     write_values_to_config();
-    MutableObject::OnPropertyEdit(prop);
+    DomainObject::OnPropertyEdit(prop);
 }
 
 void CTappingParams::WriteXMLAttributes(TiXmlNode *root)
@@ -619,7 +619,7 @@ std::list<wxString> CTapping::DesignRulesAdjustment(const bool apply_changes)
 								if (pDrilling->m_params.m_depth < m_params.m_depth)
 								{
 								    wxString change;
-								    change << _("ID ") << this->m_id << _(" The tapping operation's depth is greater than the previously drilled hole\n");
+								    change << _("ID ") << this->GetID() << _(" The tapping operation's depth is greater than the previously drilled hole\n");
 								    changes.push_back(change);
 								}
 							} // End if - then
@@ -647,7 +647,7 @@ std::list<wxString> CTapping::DesignRulesAdjustment(const bool apply_changes)
 				std::ostringstream l_ossChange;
 #endif
 
-				l_ossChange << _("Adjusting depth of tapping cycle") << " id='" << m_id << "' " << _("from") << " '"
+				l_ossChange << _("Adjusting depth of tapping cycle") << " id='" << GetID() << "' " << _("from") << " '"
 					<< m_params.m_depth / theApp.m_program->m_units << "' " << _("to") << " "
 					<< pTap->m_params.m_cutting_edge_height / theApp.m_program->m_units << "\n";
 				changes.push_back(l_ossChange.str().c_str());
@@ -662,7 +662,7 @@ std::list<wxString> CTapping::DesignRulesAdjustment(const bool apply_changes)
 				std::ostringstream l_ossChange;
 #endif
 
-				l_ossChange << _("WARNING") << ": " << _("Tapping") << " (id=" << m_id << ").  " << _("Can't tap hole") << " " << m_params.m_depth / theApp.m_program->m_units << " when the tapping bit's cutting length is only " << pTap->m_params.m_cutting_edge_height << " long\n";
+				l_ossChange << _("WARNING") << ": " << _("Tapping") << " (id=" << GetID() << ").  " << _("Can't tap hole") << " " << m_params.m_depth / theApp.m_program->m_units << " when the tapping bit's cutting length is only " << pTap->m_params.m_cutting_edge_height << " long\n";
 				changes.push_back(l_ossChange.str().c_str());
 			} // End if - else
 		} // End if - then

@@ -28,7 +28,7 @@ public:
 
 	void InitializeProperties();
     void GetProperties(std::list<Property *> *list);
-    void OnPropertyEdit(Property *prop);
+    void OnPropertyEdit(Property& prop);
 
 	bool operator==( const CSpeedReferences & rhs ) const;
 	bool operator!=( const CSpeedReferences & rhs ) const { return(! (*this == rhs)); }

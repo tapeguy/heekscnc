@@ -160,12 +160,12 @@ static bool GetSketches(std::list<int>& sketches, std::list<int> &tools )
 		HeeksObj* object = *It;
 		if(object->GetType() == SketchType)
 		{
-			sketches.push_back(object->m_id);
+			sketches.push_back(object->GetID());
 		} // End if - then
 
 		if ((object != NULL) && (object->GetType() == ToolType))
 		{
-			tools.push_back( object->m_id );
+			tools.push_back( object->GetID() );
 		} // End if - then
 	}
 
@@ -226,7 +226,7 @@ static void NewProfileOpMenuCallback(wxCommandEvent &event)
 		heeksCAD->Mark(new_object);
 
 		CDrilling::Symbols_t profiles;
-		profiles.push_back( CDrilling::Symbol_t( new_object->GetType(), new_object->m_id ) );
+		profiles.push_back( CDrilling::Symbol_t( new_object->GetType(), new_object->GetID() ) );
 
 		for (l_itTool = drill_bits.begin(); l_itTool != drill_bits.end(); l_itTool++)
 		{
@@ -272,7 +272,7 @@ static void NewZigZagOpMenuCallback(wxCommandEvent &event)
 	for(std::list<HeeksObj*>::const_iterator It = list.begin(); It != list.end(); It++)
 	{
 		HeeksObj* object = *It;
-		if(object->GetType() == SolidType || object->GetType() == StlSolidType)solids.push_back(object->m_id);
+		if(object->GetType() == SolidType || object->GetType() == StlSolidType)solids.push_back(object->GetID());
 	}
 
 	// if no selected solids,
@@ -281,7 +281,7 @@ static void NewZigZagOpMenuCallback(wxCommandEvent &event)
 		// use all the solids in the drawing
 		for(HeeksObj* object = heeksCAD->GetFirstObject();object; object = heeksCAD->GetNextObject())
 		{
-			if(object->GetType() == SolidType || object->GetType() == StlSolidType)solids.push_back(object->m_id);
+			if(object->GetType() == SolidType || object->GetType() == StlSolidType)solids.push_back(object->GetID());
 		}
 	}
 
@@ -308,7 +308,7 @@ static void NewWaterlineOpMenuCallback(wxCommandEvent &event)
 	for(std::list<HeeksObj*>::const_iterator It = list.begin(); It != list.end(); It++)
 	{
 		HeeksObj* object = *It;
-		if(object->GetType() == SolidType || object->GetType() == StlSolidType)solids.push_back(object->m_id);
+		if(object->GetType() == SolidType || object->GetType() == StlSolidType)solids.push_back(object->GetID());
 	}
 
 	// if no selected solids,
@@ -317,7 +317,7 @@ static void NewWaterlineOpMenuCallback(wxCommandEvent &event)
 		// use all the solids in the drawing
 		for(HeeksObj* object = heeksCAD->GetFirstObject();object; object = heeksCAD->GetNextObject())
 		{
-			if(object->GetType() == SolidType || object->GetType() == StlSolidType)solids.push_back(object->m_id);
+			if(object->GetType() == SolidType || object->GetType() == StlSolidType)solids.push_back(object->GetID());
 		}
 	}
 
@@ -350,14 +350,14 @@ static void NewDrillingOpMenuCallback(wxCommandEvent &event)
 		HeeksObj* object = *It;
 		if (object->GetType() == ToolType)
 		{
-			Tools.push_back( CDrilling::Symbol_t( object->GetType(), object->m_id ) );
+			Tools.push_back( CDrilling::Symbol_t( object->GetType(), object->GetID() ) );
 			tool_number = ((CTool *)object)->m_tool_number;
 		} // End if - then
 		else
 		{
 		    if (CDrilling::ValidType( object->GetType() ))
 		    {
-                symbols.push_back( CDrilling::Symbol_t( object->GetType(), object->m_id ) );
+                symbols.push_back( CDrilling::Symbol_t( object->GetType(), object->GetID() ) );
 		    }
 		} // End if - else
 	} // End for
@@ -412,14 +412,14 @@ static void NewTappingOpMenuCallback(wxCommandEvent &event)
 		HeeksObj* object = *It;
 		if (object->GetType() == ToolType)
 		{
-			Tools.push_back( CTapping::Symbol_t( object->GetType(), object->m_id ) );
+			Tools.push_back( CTapping::Symbol_t( object->GetType(), object->GetID() ) );
 			tool_number = ((CTool *)object)->m_tool_number;
 		} // End if - then
 		else
 		{
 		    if (CTapping::ValidType( object->GetType() ))
 		    {
-                symbols.push_back( CTapping::Symbol_t( object->GetType(), object->m_id ) );
+                symbols.push_back( CTapping::Symbol_t( object->GetType(), object->GetID() ) );
 		    }
 		} // End if - else
 	} // End for
@@ -474,12 +474,12 @@ static void NewChamferOpMenuCallback(wxCommandEvent &event)
 		HeeksObj* object = *It;
 		if (object->GetType() == ToolType)
 		{
-			Tools.push_back( CDrilling::Symbol_t( object->GetType(), object->m_id ) );
+			Tools.push_back( CDrilling::Symbol_t( object->GetType(), object->GetID() ) );
 			tool_number = ((CTool *)object)->m_tool_number;
 		} // End if - then
 		else
 		{
-			symbols.push_back( CChamfer::Symbol_t( object->GetType(), object->m_id ) );
+			symbols.push_back( CChamfer::Symbol_t( object->GetType(), object->GetID() ) );
 		} // End if - else
 	} // End for
 
@@ -507,7 +507,7 @@ static void NewAttachOpMenuCallback(wxCommandEvent &event)
 	for(std::list<HeeksObj*>::const_iterator It = list.begin(); It != list.end(); It++)
 	{
 		HeeksObj* object = *It;
-		if(object->GetType() == SolidType || object->GetType() == StlSolidType)solids.push_back(object->m_id);
+		if(object->GetType() == SolidType || object->GetType() == StlSolidType)solids.push_back(object->GetID());
 	}
 
 	// if no selected solids,
@@ -516,7 +516,7 @@ static void NewAttachOpMenuCallback(wxCommandEvent &event)
 		// use all the solids in the drawing
 		for(HeeksObj* object = heeksCAD->GetFirstObject();object; object = heeksCAD->GetNextObject())
 		{
-			if(object->GetType() == SolidType || object->GetType() == StlSolidType)solids.push_back(object->m_id);
+			if(object->GetType() == SolidType || object->GetType() == StlSolidType)solids.push_back(object->GetID());
 		}
 	}
 
@@ -557,7 +557,7 @@ static void NewPositioningOpMenuCallback(wxCommandEvent &event)
 		{
 		    if (CPositioning::ValidType( object->GetType() ))
 		    {
-                symbols.push_back( CDrilling::Symbol_t( object->GetType(), object->m_id ) );
+                symbols.push_back( CDrilling::Symbol_t( object->GetType(), object->GetID() ) );
 		    }
 		} // End if - then
 	} // End for
@@ -736,14 +736,14 @@ static void NewCounterBoreOpMenuCallback(wxCommandEvent &event)
 		HeeksObj* object = *It;
 		if (object->GetType() == ToolType)
 		{
-			Tools.push_back( CCounterBore::Symbol_t( object->GetType(), object->m_id ) );
+			Tools.push_back( CCounterBore::Symbol_t( object->GetType(), object->GetID() ) );
 			tool_number = ((CTool *)object)->m_tool_number;
 		} // End if - then
 		else
 		{
 		    if (CCounterBore::ValidType( object->GetType() ))
 		    {
-                symbols.push_back( CCounterBore::Symbol_t( object->GetType(), object->m_id ) );
+                symbols.push_back( CCounterBore::Symbol_t( object->GetType(), object->GetID() ) );
 		    }
 		} // End if - else
 	} // End for
@@ -796,12 +796,12 @@ static void NewContourOpMenuCallback(wxCommandEvent &event)
 
 		if (object->GetType() == ToolType)
 		{
-			Tools.push_back( CContour::Symbol_t( object->GetType(), object->m_id ) );
+			Tools.push_back( CContour::Symbol_t( object->GetType(), object->GetID() ) );
 			tool_number = ((CTool *)object)->m_tool_number;
 		} // End if - then
 		else
 		{
-		    symbols.push_back( CContour::Symbol_t( object->GetType(), object->m_id ) );
+		    symbols.push_back( CContour::Symbol_t( object->GetType(), object->GetID() ) );
 		} // End if - else
 	} // End for
 
@@ -825,12 +825,12 @@ static void NewInlayOpMenuCallback(wxCommandEvent &event)
 		HeeksObj* object = *It;
 		if (object->GetType() == ToolType)
 		{
-			Tools.push_back( CInlay::Symbol_t( object->GetType(), object->m_id ) );
+			Tools.push_back( CInlay::Symbol_t( object->GetType(), object->GetID() ) );
 			tool_number = ((CTool *)object)->m_tool_number;
 		} // End if - then
 		else
 		{
-		    symbols.push_back( CInlay::Symbol_t( object->GetType(), object->m_id ) );
+		    symbols.push_back( CInlay::Symbol_t( object->GetType(), object->GetID() ) );
 		} // End if - else
 	} // End for
 
@@ -1178,7 +1178,7 @@ static void SaveNcFileMenuCallback(wxCommandEvent& event)
 	wxFileDialog fd(theApp.m_output_canvas, _("Save NC file"), defaultDir, wxEmptyString, wildcard_string, wxFD_SAVE|wxFD_OVERWRITE_PROMPT);
 	fd.SetFilterIndex(1);
 	if (fd.ShowModal() == wxID_OK)
-	{           
+	{
 		wxString nc_file_str = fd.GetPath().c_str();
 		{
 			wxFile ofs(nc_file_str.c_str(), wxFile::write);
@@ -1187,15 +1187,15 @@ static void SaveNcFileMenuCallback(wxCommandEvent& event)
 				wxMessageBox(wxString(_("Couldn't open file")) + _T(" - ") + nc_file_str);
 				return;
 			}
-               
 
-          if(theApp.m_use_DOS_not_Unix == true)   //DF -added to get DOS line endings HeeksCNC running on Unix 
+
+          if(theApp.m_use_DOS_not_Unix == true)   //DF -added to get DOS line endings HeeksCNC running on Unix
             {
                 long line_num= 0;
                 bool ok = true;
                 int nLines = theApp.m_output_canvas->m_textCtrl->GetNumberOfLines();
             for ( int nLine = 0; ok && nLine < nLines; nLine ++)
-                {   
+                {
                     ok = ofs.Write(theApp.m_output_canvas->m_textCtrl->GetLineText(line_num) + _T("\r\n") );
                     line_num = line_num+1;
                 }
@@ -1840,7 +1840,7 @@ wxString CHeeksCNCApp::GetDllFolder()
 }
 
 wxString CHeeksCNCApp::GetResFolder()
-{ 
+{
 #if MACOSX
 	return m_dll_path;
 

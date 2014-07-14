@@ -26,9 +26,9 @@
 CTurnRoughParams::CTurnRoughParams(CTurnRough * parent)
 {
     this->parent = parent;
-	m_outside = true;
-	m_front = true;
-	m_facing = false;
+	m_outside.SetValue ( true );
+	m_front.SetValue ( true );
+	m_facing.SetValue ( false );
 	m_clearance = 0.0;
 }
 
@@ -99,10 +99,10 @@ Python CTurnRough::WriteSketchDefn(HeeksObj* sketch, int id_to_use, CMachineStat
 		python << wxString::Format(_T("comment(R'%s')\n"), wxString(sketch->GetShortString()).c_str());
 	}
 
-	python << wxString::Format(_T("k%d = kurve.new()\n"), id_to_use > 0 ? id_to_use : (int)sketch->m_id);
+	python << wxString::Format(_T("k%d = kurve.new()\n"), id_to_use > 0 ? id_to_use : (int)sketch->GetID());
 
 	bool started = false;
-	int sketch_id = (id_to_use > 0 ? id_to_use : (int)sketch->m_id);
+	int sketch_id = (id_to_use > 0 ? id_to_use : (int)sketch->GetID());
 
 	for(HeeksObj* span_object = sketch->GetFirstChild(); span_object; span_object = sketch->GetNextChild())
 	{

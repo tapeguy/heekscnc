@@ -15,7 +15,7 @@
 
 class CDepthOp;
 
-class CDepthOpParams : public MutableObject {
+class CDepthOpParams : public DomainObject {
 private:
 	CDepthOp * parent;
 	PropertyLength m_clearance_height;

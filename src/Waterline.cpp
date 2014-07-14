@@ -47,17 +47,17 @@ void CWaterlineParams::GetProperties(std::list<Property *> *list)
     m_min_y = m_box.MinY();
     m_max_x = m_box.MaxX();
     m_max_y = m_box.MaxY();
-    MutableObject::GetProperties(list);
+    DomainObject::GetProperties(list);
 }
 
-void CWaterlineParams::OnPropertyEdit(Property * prop)
+void CWaterlineParams::OnPropertyEdit(Property& prop)
 {
     m_box.m_x[0] = m_min_x;
     m_box.m_x[1] = m_min_y;
     m_box.m_x[3] = m_max_x;
     m_box.m_x[4] = m_max_y;
     heeksCAD->Changed();
-    MutableObject::OnPropertyEdit(prop);
+    DomainObject::OnPropertyEdit(prop);
 }
 
 void CWaterlineParams::WriteXMLAttributes(TiXmlNode *root)

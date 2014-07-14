@@ -35,11 +35,12 @@ void CCuttingRate::InitializeProperties()
 	m_max_material_removal_rate.Initialize(_("Maximum Material Removal Rate (mm^3/min)"), this);
 }
 
-void CCuttingRate::OnPropertyEdit(Property * prop)
+void CCuttingRate::OnPropertyEdit(Property& prop)
 {
-	if (prop == &m_brinell_hardness_choice) {
+	if (prop == m_brinell_hardness_choice) {
 		int choice = m_brinell_hardness_choice;
-		if (choice < 0) return;	// An error has occured.
+		if (choice < 0)
+		    return;	// An error has occured.
 
 		std::set<double> all_values = CSpeedReferences::GetAllHardnessValues();
 		for (std::set<double>::iterator l_itHardness = all_values.begin(); l_itHardness != all_values.end(); l_itHardness++)
@@ -51,7 +52,7 @@ void CCuttingRate::OnPropertyEdit(Property * prop)
 			} // End if - then
 		} // End for
 	}
-	else if (prop == &m_max_material_removal_rate) {
+	else if (prop == m_max_material_removal_rate) {
 		if (theApp.m_program->m_units != 1.0) {
 			double cubic_mm_per_cubic_inch = 25.4 * 25.4 * 25.4;
 			m_max_material_removal_rate = m_max_material_removal_rate * cubic_mm_per_cubic_inch;

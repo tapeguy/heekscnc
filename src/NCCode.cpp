@@ -782,8 +782,8 @@ class ApplyNCCode: public Tool{
 
 			for(HeeksObj* object = heeksCAD->GetFirstObject(); object; object = heeksCAD->GetNextObject())
 			{
-				if (object->GetType() == SolidType) solids.insert(std::make_pair(object->m_id, object));
-				if (object->GetShape() != NULL) shapes.push_back( std::make_pair(object->m_id, TopoDS_Shape( *(object->GetShape()) ) ) );
+				if (object->GetType() == SolidType) solids.insert(std::make_pair(object->GetID(), object));
+				if (object->GetShape() != NULL) shapes.push_back( std::make_pair(object->GetID(), TopoDS_Shape( *(object->GetShape()) ) ) );
 			} // End for
 
 			std::map<int, TopoDS_Shape> tools;
@@ -888,12 +888,13 @@ class ApplyNCCode: public Tool{
 #else
 				std::ostringstream l_ossTitle;
 #endif
-				l_ossTitle << "Machined " << solids[ l_itShape->first ]->GetShortString();
-				HeeksObj *pNewSolid = heeksCAD->NewSolid( *((TopoDS_Solid *) &(l_itShape->second)), l_ossTitle.str().c_str(), solids[ l_itShape->first ]->GetColor());
+				HeeksObj * solid = solids[ l_itShape->first ];
+				l_ossTitle << "Machined " << solid->GetShortString();
+				HeeksObj *pNewSolid = heeksCAD->NewSolid( *((TopoDS_Solid *) &(l_itShape->second)), l_ossTitle.str().c_str(), HeeksColor(234, 123, 89) );
 				if (pNewSolid != NULL)
 				{
 					heeksCAD->Add( pNewSolid, NULL );		// Add the machined solid
-					heeksCAD->Remove( solids[ l_itShape->first ] );	// Delete the original.
+					heeksCAD->Remove( solid );	// Delete the original.
 				} // End if - then
 			} // End for
 

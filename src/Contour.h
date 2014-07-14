@@ -21,7 +21,7 @@
 
 class CContour;
 
-class CContourParams : public MutableObject {
+class CContourParams : public DomainObject {
 
 private:
 	CContour * parent;
@@ -152,7 +152,7 @@ public:
 	void glCommands(bool select, bool marked, bool no_color);
 
 	const wxBitmap &GetIcon();
-	void OnPropertyEdit(Property *prop);
+	void OnPropertyEdit(Property& prop);
 	void GetProperties(std::list<Property *> *list);
 	HeeksObj *MakeACopy(void)const;
 	void CopyFrom(const HeeksObj* object);

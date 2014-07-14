@@ -1249,7 +1249,7 @@ std::list<wxString> CProfile::ConfirmAutoRollRadius(const bool apply_changes)
 
 					if (max_roll_radius < m_profile_params.m_auto_roll_radius)
 					{
-						l_ossChange << "Need to adjust auto_roll_radius for profile id=" << m_id << " from "
+						l_ossChange << "Need to adjust auto_roll_radius for profile id=" << GetID() << " from "
 								<< m_profile_params.m_auto_roll_radius << " to " << max_roll_radius << "\n";
 						changes.push_back(l_ossChange.str().c_str());
 
@@ -1287,7 +1287,7 @@ std::list<wxString> CProfile::DesignRulesAdjustment(const bool apply_changes)
 			std::ostringstream l_ossChange;
 #endif
 
-			l_ossChange << _("Invalid reference to sketch") << " id='" << *l_itSketch << "' " << _("in profile operations") << " id='" << m_id << "'\n";
+			l_ossChange << _("Invalid reference to sketch") << " id='" << *l_itSketch << "' " << _("in profile operations") << " id='" << GetID() << "'\n";
 			changes.push_back(l_ossChange.str().c_str());
 
 			if (apply_changes)
@@ -1317,7 +1317,7 @@ std::list<wxString> CProfile::DesignRulesAdjustment(const bool apply_changes)
 			std::ostringstream l_ossChange;
 #endif
 
-			l_ossChange << _("No valid sketches upon which to act for profile operations") << " id='" << m_id << "'\n";
+			l_ossChange << _("No valid sketches upon which to act for profile operations") << " id='" << GetID() << "'\n";
 			changes.push_back(l_ossChange.str().c_str());
 	} // End if - then
 
@@ -1332,7 +1332,7 @@ std::list<wxString> CProfile::DesignRulesAdjustment(const bool apply_changes)
 
 			std::wostringstream l_ossChange;
 
-			l_ossChange << _("Adjusting depth of profile") << " id='" << m_id << "' " << _("from") << " '"
+			l_ossChange << _("Adjusting depth of profile") << " id='" << GetID() << "' " << _("from") << " '"
 				<< m_depth_op_params.m_final_depth << " " << _("to") << " "
 				<< pCutter->m_params.m_cutting_edge_height << " " << _("due to cutting edge length of selected tool") << "\n";
 			changes.push_back(l_ossChange.str().c_str());

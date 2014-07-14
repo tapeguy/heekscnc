@@ -17,7 +17,7 @@
 class CTool;
 class CAttachOp;
 
-class CToolParams : public MutableObject {
+class CToolParams : public DomainObject {
 
 private:
 	CTool * parent;
@@ -242,11 +242,11 @@ public:
 		m_params.m_type = type;
 		if (title != NULL)
 		{
-			m_title = title;
+		    SetTitle ( title );
 		} // End if - then
 		else
 		{
-			m_title = GenerateMeaningfulName();
+		    SetTitle ( GenerateMeaningfulName() );
 		} // End if - else
 
 		ResetParametersToReasonableValues();

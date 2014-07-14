@@ -21,7 +21,7 @@
 
 class CChamfer;
 
-class CChamferParams : public MutableObject {
+class CChamferParams : public DomainObject {
 
 private:
         CChamfer * parent;

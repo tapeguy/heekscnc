@@ -147,7 +147,7 @@ void CChamferParams::ReadParametersFromXMLElement(TiXmlElement* pElem)
 	if(pElem->Attribute("side")) pElem->Attribute("side", (int *) &m_tool_on_side);
 }
 
-CChamfer::CChamfer() 
+CChamfer::CChamfer()
  : CDepthOp(GetTypeString(), NULL, 0, ChamferType), m_params(this)
 {
 }
@@ -308,7 +308,7 @@ Python CChamfer::AppendTextForCircularChildren(
 		if (pDrillBit == NULL)
 		{
 			// It's difficult to drill a hole without a drill bit but apparently this file does.
-			printf("Ignoring drilling operation (id=%d) with no  tool defined\n", (int)pDrilling->m_id );
+			printf("Ignoring drilling operation (id=%d) with no  tool defined\n", (int)pDrilling->GetID() );
 			return(python);	// Empty.
 		}
 
@@ -624,10 +624,10 @@ Python CChamfer::AppendTextForProfileChildren(
 			{
 				sketches.push_back(object);
 			}
-		}		
+		}
 	}
 
-	
+
 
     // for (HeeksObj *object = child->GetFirstChild(); object != NULL; object = child->GetNextChild())
 	for (std::list<HeeksObj *>::iterator itChild = sketches.begin(); itChild != sketches.end(); itChild++)

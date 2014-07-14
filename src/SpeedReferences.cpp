@@ -170,9 +170,9 @@ void CSpeedReferences::GetProperties(std::list<Property *> *list)
     HeeksObj::GetProperties(list);
 }
 
-void CSpeedReferences::OnPropertyEdit(Property *prop)
+void CSpeedReferences::OnPropertyEdit(Property& prop)
 {
-    if (prop == &m_estimate_when_possible_choices)
+    if (prop == m_estimate_when_possible_choices)
     {
         m_estimate_when_possible = (m_estimate_when_possible_choices == 0) ? true : false;
         CNCConfig config(CSpeedReferences::ConfigScope());

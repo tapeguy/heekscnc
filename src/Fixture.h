@@ -22,7 +22,7 @@
 class CFixture;
 class Python;
 
-class CFixtureParams : public MutableObject {
+class CFixtureParams : public DomainObject {
 
 private:
 	CFixture * parent;
@@ -53,7 +53,7 @@ public:
 
 		m_pivot_point = gp_Pnt( 0.0, 0.0, 0.0 );
 
-		m_safety_height_defined = false;
+		m_safety_height_defined.SetValue(false);
 		m_safety_height = 0.0;
 
 		m_touch_off_point = gp_Pnt(0.0, 0.0, 0.0);
@@ -208,7 +208,7 @@ public:
 	Python AppendTextToProgram() const;
 
 	void InitializeProperties();
-	void OnPropertyEdit(Property * prop);
+	void OnPropertyEdit(Property& prop);
 	void GetProperties(std::list<Property *> *list);
 	void CopyFrom(const HeeksObj* object);
 	bool CanAddTo(HeeksObj* owner);

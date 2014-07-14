@@ -29,7 +29,7 @@ public:
             :m_active(true), m_tool_number(tool_number),
             m_operation_type(operation_type)
     {
-	m_title = title;
+	    SetTitle ( title );
         ReadDefaultValues();
     }
 
@@ -38,12 +38,12 @@ public:
 
 	// HeeksObj's virtual functions
 	void InitializeProperties();
-	void OnPropertyEdit(Property * prop);
+	void OnPropertyEdit(Property& prop);
 	void GetProperties(std::list<Property *> *list);
 	void WriteBaseXML(TiXmlElement *element);
 	void ReadBaseXML(TiXmlElement* element);
 	const wxBitmap& GetInactiveIcon();
-	const wxChar* GetShortString(void)const{return m_title;}
+	const wxChar* GetShortString(void)const { return GetTitle(); }
 	bool CanEditString(void)const{return true;}
 	void GetTools(std::list<Tool*>* t_list, const wxPoint* p);
 	void glCommands(bool select, bool marked, bool no_color);

@@ -259,7 +259,7 @@ This is a simple way to insert datum parameters for translating gcode around lat
 
 				if (num_edges > 0)
 				{
-					python << _T("\040\040\040\040sketch_id_") << (int) (*itObject)->m_id << _T(" = ocl.Path()\n");
+					python << _T("\040\040\040\040sketch_id_") << (int) (*itObject)->GetID() << _T(" = ocl.Path()\n");
 				}
 
 				for(std::list< std::vector<TopoDS_Edge> >::iterator It = edges_list.begin(); It != edges_list.end(); It++)
@@ -269,7 +269,7 @@ This is a simple way to insert datum parameters for translating gcode around lat
 					{
 						Python prefix;
 						Python suffix;
-						prefix << _T("\040\040\040\040sketch_id_") << (int) (*itObject)->m_id << _T(".append(");
+						prefix << _T("\040\040\040\040sketch_id_") << (int) (*itObject)->GetID() << _T(".append(");
 						suffix << _T(")\n");
 						python << OpenCamLibDefinition(edges[offset], prefix, suffix);
 					}
@@ -278,7 +278,7 @@ This is a simple way to insert datum parameters for translating gcode around lat
 				if (num_edges > 0)
 				{
 					python << _T("\040\040\040\040sketches.append(")
-						<< _T("sketch_id_") << (int) (*itObject)->m_id << _T(")\n");
+						<< _T("sketch_id_") << (int) (*itObject)->GetID() << _T(")\n");
 				}
 			} // End if - else
 			break;
@@ -313,7 +313,7 @@ Python CScriptOp::AppendTextToProgram(CMachineState *pMachineState)
     if (children.size() > 0)
     {
         Python object_title;
-        object_title << _T("script_op_id_") << (int) this->m_id;
+        object_title << _T("script_op_id_") << (int) this->GetID();
         python << MiscDefs(children, object_title);
         python << OpenCamLibDefinition(children, object_title);
         python << _T("\n");

@@ -940,7 +940,7 @@ Python CProgram::RewritePythonProgram()
 			    for (std::list<CFixture>::iterator itFix = private_fixtures.begin();
                         itFix != private_fixtures.end(); itFix++)
                 {
-                    if (machine.AlreadyProcessed(object->GetType(), object->m_id, *itFix)) already_processed = true;
+                    if (machine.AlreadyProcessed(object->GetType(), object->GetID(), *itFix)) already_processed = true;
                 }
 
                 if (private_fixtures.size() == 0)
@@ -951,10 +951,10 @@ Python CProgram::RewritePythonProgram()
 
 				if ((! already_processed) &&
                     (((COp*)object)->m_active) &&
-                    (! machine.AlreadyProcessed(object->GetType(), object->m_id, *(*l_itFixture))))
+                    (! machine.AlreadyProcessed(object->GetType(), object->GetID(), *(*l_itFixture))))
 				{
 					python << ((COp*)object)->AppendTextToProgram( &machine );
-					machine.MarkAsProcessed(object->GetType(), object->m_id, machine.Fixture());
+					machine.MarkAsProcessed(object->GetType(), object->GetID(), machine.Fixture());
 				}
 			}
 		} // End for - operation

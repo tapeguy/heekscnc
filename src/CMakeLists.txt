@@ -8,7 +8,7 @@ set ( CMAKE_BUILD_TYPE Debug )
 add_definitions ( -Wall -DHEEKSPLUGIN -DHEEKSCNC -DUNICODE -DTIXML_USE_STL
                   -DOPEN_SOURCE_GEOMETRY -DWXUSINGDLL )
 find_package( OpenGL REQUIRED )
-find_package( wxWidgets REQUIRED COMPONENTS base core gl aui )
+find_package( wxWidgets REQUIRED COMPONENTS core gl aui )
 
 #find OCE or OpenCASCADE
 set( CASCADE_LIBS "TKernel;TKBRep;TKTopAlgo;TKMath;TKV3d;TKGeomBase;TKGeomAlgo;TKShHealing;TKBO;TKBool;TKOffset;TKLCAF;TKMath;TKService" )

@@ -34,7 +34,7 @@ bool HeeksPyBackplot(const CProgram* program, HeeksObj* into, const wxString &fi
 void HeeksPyCancel(void);
 
 
-class CSendToMachine : public MutableObject, CPyProcess
+class CSendToMachine : public DomainObject, CPyProcess
 {
 	wxString m_gcode;
 	static int m_serial;

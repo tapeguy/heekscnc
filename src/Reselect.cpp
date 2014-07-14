@@ -16,7 +16,7 @@ static bool GetSketches(std::list<int>& sketches )
 		HeeksObj* object = *It;
 		if(object->GetType() == SketchType)
 		{
-			sketches.push_back(object->m_id);
+			sketches.push_back(object->GetID());
 		}
 	}
 
@@ -60,7 +60,7 @@ static bool GetSolids(std::list<int>& solids )
 		HeeksObj* object = *It;
 		if(object->GetType() == SolidType || object->GetType() == StlSolidType)
 		{
-			solids.push_back(object->m_id);
+			solids.push_back(object->GetID());
 		}
 	}
 
@@ -124,9 +124,24 @@ void AddSolidsProperties(std::list<Property *> *list, HeeksObj* object)
 void AddSolidsProperties(std::list<Property *> *list, const std::list<int> &solids)
 {
 #endif
-	if(solids.size() == 0)list->push_back(new PropertyString(_("solids"), _("None"), NULL));
-	else if(solids.size() == 1)list->push_back(new PropertyInt(_("solid id"), solids.front(), NULL));
-	else list->push_back(new PropertyString(_("solids"), GetIntListString(solids), NULL));
+
+    Property * prop;
+	if(solids.size() == 0)
+	{
+	    prop = new PropertyString(_("solids"), _("Solids"), NULL);
+	    ((PropertyString *)prop)->SetValue ( _("None") );
+	}
+	else if(solids.size() == 1)
+	{
+	    prop = new PropertyInt(_("solids"), _("Solids"), NULL);
+	    ((PropertyInt *)prop)->SetValue ( solids.front() );
+	}
+	else
+	{
+	    prop = new PropertyString(_("solids"), _("Solids"), NULL);
+	    ((PropertyString *)prop)->SetValue ( GetIntListString(solids) );
+	}
+	list->push_back(prop);
 }
 
 #ifdef OP_SKETCHES_AS_CHILDREN
@@ -141,8 +156,23 @@ void AddSketchesProperties(std::list<Property *> *list, HeeksObj* object)
 void AddSketchesProperties(std::list<Property *> *list, const std::list<int> &sketches)
 {
 #endif
-	if(sketches.size() == 0)list->push_back(new PropertyString(_("sketches"), _("None"), NULL));
-	else if(sketches.size() == 1)list->push_back(new PropertyInt(_("sketch id"), sketches.front(), NULL));
-	else list->push_back(new PropertyString(_("sketches"), GetIntListString(sketches), NULL));
+    Property * prop;
+
+	if(sketches.size() == 0)
+    {
+	    prop = new PropertyString(_("sketches"), _("Sketches"), NULL);
+	    ((PropertyString *)prop)->SetValue ( _("None") );
+    }
+	else if(sketches.size() == 1)
+    {
+	    prop = new PropertyInt(_("sketches"), _("Sketches"), NULL);
+        ((PropertyInt *)prop)->SetValue ( sketches.front() );
+    }
+    else
+    {
+        prop = new PropertyString(_("sketches"), _("Sketches"), NULL);
+        ((PropertyString *)prop)->SetValue ( GetIntListString(sketches) );
+    }
+    list->push_back(prop);
 }
 

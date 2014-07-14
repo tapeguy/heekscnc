@@ -90,7 +90,7 @@ Python CMachineState::Tool( const int new_tool )
         CTool *pTool = (CTool *) CTool::Find(new_tool);
         if (pTool != NULL)
         {
-            python << _T("comment(") << PythonString(_T("tool change to ") + pTool->m_title) << _T(")\n");
+            python << _T("comment(") << PythonString(_T("tool change to ") + pTool->GetTitle()) << _T(")\n");
             python << _T("tool_change( id=") << new_tool << _T(")\n");
 			if(m_attached_to_surface)
 			{

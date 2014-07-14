@@ -27,11 +27,11 @@ CPocketParams::CPocketParams(CPocket* parent)
 	this->parent = parent;
 	m_step_over = 0.0;
 	m_material_allowance = 0.0;
-	m_starting_place = true;
-	m_keep_tool_down_if_poss = true;
-	m_use_zig_zag = true;
+	m_starting_place.SetValue ( true );
+	m_keep_tool_down_if_poss.SetValue ( true );
+	m_use_zig_zag.SetValue ( true );
 	m_zig_angle = 0.0;
-	m_zig_unidirectional = false;
+	m_zig_unidirectional.SetValue ( false );
 	m_entry_move = ePlunge;
 }
 
@@ -417,7 +417,7 @@ Python CPocket::AppendTextToProgram(CMachineState *pMachineState)
 				{
 				case SketchOrderTypeOpen:
 					{
-						wxMessageBox(wxString::Format(_("Pocket operation - Sketch must be a closed shape - sketch %d"), (int)object->m_id));
+						wxMessageBox(wxString::Format(_("Pocket operation - Sketch must be a closed shape - sketch %d"), (int)object->GetID()));
 						delete re_ordered_sketch;
 						continue;
 					}
@@ -425,7 +425,7 @@ Python CPocket::AppendTextToProgram(CMachineState *pMachineState)
 
 				default:
 					{
-						wxMessageBox(wxString::Format(_("Pocket operation - Badly ordered sketch - sketch %d"), (int)object->m_id));
+						wxMessageBox(wxString::Format(_("Pocket operation - Badly ordered sketch - sketch %d"), (int)object->GetID()));
 						delete re_ordered_sketch;
 						continue;
 					}
@@ -715,7 +715,7 @@ std::list<wxString> CPocket::DesignRulesAdjustment(const bool apply_changes)
 			std::ostringstream l_ossChange;
 #endif
 
-			l_ossChange << _("No valid sketches upon which to act for pocket operations") << " id='" << m_id << "'\n";
+			l_ossChange << _("No valid sketches upon which to act for pocket operations") << " id='" << GetID() << "'\n";
 			changes.push_back(l_ossChange.str().c_str());
 	} // End if - then
 
@@ -735,7 +735,7 @@ std::list<wxString> CPocket::DesignRulesAdjustment(const bool apply_changes)
 			std::ostringstream l_ossChange;
 #endif
 
-			l_ossChange << _("Adjusting depth of pocket") << " id='" << m_id << "' " << _("from") << " '"
+			l_ossChange << _("Adjusting depth of pocket") << " id='" << GetID() << "' " << _("from") << " '"
 				<< m_depth_op_params.m_final_depth << "' " << _("to") << " "
 				<< pCutter->m_params.m_cutting_edge_height << " " << _("due to cutting edge length of selected tool") << "\n";
 			changes.push_back(l_ossChange.str().c_str());
@@ -751,7 +751,7 @@ std::list<wxString> CPocket::DesignRulesAdjustment(const bool apply_changes)
 		{
 			wxString change;
 			change << _("The step-over distance for pocket (id=");
-			change << m_id;
+			change << GetID();
 			change << _(") is larger than the tool's diameter");
 			changes.push_back(change);
 

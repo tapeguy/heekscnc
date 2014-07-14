@@ -120,7 +120,7 @@ void CDepthOpParams::GetProperties(std::list<Property *> *list)
 		break;
 	} // End switch
 
-	MutableObject::GetProperties(list);
+	DomainObject::GetProperties(list);
 }
 
 void CDepthOpParams::WriteXMLAttributes(TiXmlNode* pElem)
@@ -335,7 +335,7 @@ std::list<wxString> CDepthOp::DesignRulesAdjustment(const bool apply_changes)
 		std::ostringstream l_ossChange;
 #endif
 
-		l_ossChange << _("WARNING") << ": " << _("Depth Operation") << " (id=" << m_id << ") " << _("does not have a tool assigned") << ". " << _("It can not produce GCode without a tool assignment") << ".\n";
+		l_ossChange << _("WARNING") << ": " << _("Depth Operation") << " (id=" << GetID() << ") " << _("does not have a tool assigned") << ". " << _("It can not produce GCode without a tool assignment") << ".\n";
 		changes.push_back(l_ossChange.str().c_str());
 	} // End if - then
 	else
@@ -349,7 +349,7 @@ std::list<wxString> CDepthOp::DesignRulesAdjustment(const bool apply_changes)
 			std::ostringstream l_ossChange;
 #endif
 
-			l_ossChange << _("WARNING") << ": " << _("Depth Operation") << " (id=" << m_id << ") " << _("is set to cut deeper than the assigned tool will allow") << ".\n";
+			l_ossChange << _("WARNING") << ": " << _("Depth Operation") << " (id=" << GetID() << ") " << _("is set to cut deeper than the assigned tool will allow") << ".\n";
 			changes.push_back(l_ossChange.str().c_str());
 		} // End if - then
 	} // End if - else
@@ -361,7 +361,7 @@ std::list<wxString> CDepthOp::DesignRulesAdjustment(const bool apply_changes)
 #else
 		std::ostringstream l_ossChange;
 #endif
-		l_ossChange << _("WARNING") << ": " << _("Depth Operation") << " (id=" << m_id << ") " << _("has poor start and final depths") << ". " << _("Can't change this setting automatically") << ".\n";
+		l_ossChange << _("WARNING") << ": " << _("Depth Operation") << " (id=" << GetID() << ") " << _("has poor start and final depths") << ". " << _("Can't change this setting automatically") << ".\n";
 		changes.push_back(l_ossChange.str().c_str());
 	} // End if - then
 
@@ -373,12 +373,12 @@ std::list<wxString> CDepthOp::DesignRulesAdjustment(const bool apply_changes)
 		std::ostringstream l_ossChange;
 #endif
 
-		l_ossChange << _("WARNING") << ": " << _("Depth Operation") << " (id=" << m_id << ") " << _("Clearance height is below start depth") << ".\n";
+		l_ossChange << _("WARNING") << ": " << _("Depth Operation") << " (id=" << GetID() << ") " << _("Clearance height is below start depth") << ".\n";
 		changes.push_back(l_ossChange.str().c_str());
 
 		if (apply_changes)
 		{
-			l_ossChange << _("Depth Operation") << " (id=" << m_id << ").  " << _("Raising clearance height up to start depth (+5 mm)") << "\n";
+			l_ossChange << _("Depth Operation") << " (id=" << GetID() << ").  " << _("Raising clearance height up to start depth (+5 mm)") << "\n";
 			m_depth_op_params.ClearanceHeight( m_depth_op_params.m_start_depth + 5 );
 		} // End if - then
 	} // End if - then
@@ -387,7 +387,7 @@ std::list<wxString> CDepthOp::DesignRulesAdjustment(const bool apply_changes)
     {
         wxString change;
 
-        change << _("The step-down value for pocket (id=") << m_id << _(") must be positive");
+        change << _("The step-down value for pocket (id=") << GetID() << _(") must be positive");
         changes.push_back(change);
 
         if (apply_changes)

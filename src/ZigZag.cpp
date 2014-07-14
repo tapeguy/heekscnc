@@ -61,16 +61,16 @@ void CZigZagParams::GetProperties(std::list<Property *> *list)
     m_min_y = m_box.MinY();
     m_max_x = m_box.MaxX();
     m_max_y = m_box.MaxY();
-    MutableObject::GetProperties(list);
+    DomainObject::GetProperties(list);
 }
 
-void CZigZagParams::OnPropertyEdit(Property * prop)
+void CZigZagParams::OnPropertyEdit(Property& prop)
 {
     m_box.m_x[0] = m_min_x;
     m_box.m_x[1] = m_min_y;
     m_box.m_x[3] = m_max_x;
     m_box.m_x[4] = m_max_y;
-    MutableObject::OnPropertyEdit(prop);
+    DomainObject::OnPropertyEdit(prop);
 }
 
 void CZigZagParams::WriteXMLAttributes(TiXmlNode *root)

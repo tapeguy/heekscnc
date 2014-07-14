@@ -950,9 +950,9 @@ void CProbe_Centre::GetProperties(std::list<Property *> *list)
 	CProbing::GetProperties(list);
 }
 
-void CProbe_Centre::OnPropertyEdit(Property *prop)
+void CProbe_Centre::OnPropertyEdit(Property& prop)
 {
-    if (prop == &m_number_of_points_choice) {
+    if (prop == m_number_of_points_choice) {
         if (m_number_of_points_choice == 0) {
             m_number_of_points = 2;
         }
@@ -1067,9 +1067,9 @@ void CProbe_Edge::GetProperties(std::list<Property *> *list)
 	CProbing::GetProperties(list);
 }
 
-void CProbe_Edge::OnPropertyEdit(Property *prop)
+void CProbe_Edge::OnPropertyEdit(Property& prop)
 {
-    if (prop == &m_number_of_edges_choice)
+    if (prop == m_number_of_edges_choice)
     {
         m_number_of_edges = m_number_of_edges_choice + 1;
     }
@@ -1498,9 +1498,9 @@ wxString CProbing::GetOutputFileName(const wxString extension, const bool filena
 	}
 
 	file_name << _T("_");
-	file_name << (const wxChar *)m_title;
+	file_name << GetTitle();
 	file_name << _T("_id_");
-	file_name << m_id;
+	file_name << GetID();
 	file_name << extension;
 
 	if (filename_only)
@@ -2137,7 +2137,7 @@ void CProbe_Edge::GenerateMeaningfullName()
 	    title << _T(" mm intervals");
     }
 
-	m_title = title;
+	SetTitle ( title );
 }
 
 void CProbe_Centre::GenerateMeaningfullName()
@@ -2225,7 +2225,7 @@ void CProbe_Centre::GenerateMeaningfullName()
 		} // End if - else
 	} // End if - then
 
-	m_title = title;
+	SetTitle ( title );
 }
 
 void CProbe_Grid::GenerateMeaningfullName()
@@ -2240,7 +2240,7 @@ void CProbe_Grid::GenerateMeaningfullName()
         title = _("Probe ");
         title << this->m_num_x_points << _T(" x ") << m_num_y_points << _T(" ") << _("grid");
     }
-    m_title = title;
+    SetTitle ( title );
 }
 
 void CProbing::GenerateMeaningfullName()

@@ -15,7 +15,7 @@
 
 class CTurnRough;
 
-class CTurnRoughParams : public MutableObject
+class CTurnRoughParams : public DomainObject
 {
 private:
 

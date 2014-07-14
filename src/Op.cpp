@@ -44,7 +44,7 @@ void COp::WriteBaseXML(TiXmlElement *element)
 		element->SetAttribute( "comment", comment.utf8_str());
 	}
 	element->SetAttribute( "active", m_active);
-	element->SetAttribute( "title", ((const wxString&)m_title).utf8_str());
+	element->SetAttribute( "title", GetTitle().utf8_str());
 	element->SetAttribute( "tool_number", m_tool_number);
 
 	ObjList::WriteBaseXML(element);
@@ -68,7 +68,8 @@ void COp::ReadBaseXML(TiXmlElement* element)
 	}
 
 	const char* title = element->Attribute("title");
-	if(title)m_title = wxString(Ctt(title));
+	if(title)
+	    SetTitle(Ctt(title));
 
 	if (element->Attribute("tool_number") != NULL)
 	{
@@ -99,9 +100,9 @@ void COp::InitializeProperties()
 }
 
 
-void COp::OnPropertyEdit(Property * prop)
+void COp::OnPropertyEdit(Property& prop)
 {
-	if (prop == &m_tool_number_choice) {
+	if (prop == m_tool_number_choice) {
 		std::vector< std::pair< int, wxString > > tools = FIND_ALL_TOOLS();
 
 		if ((m_tool_number_choice >= 0) && (m_tool_number_choice <= int(tools.size()-1))) {
@@ -153,7 +154,7 @@ COp & COp::operator= ( const COp & rhs )
 
 		m_comment = rhs.m_comment;
 		m_active = rhs.m_active;
-		m_title = rhs.m_title;
+		SetTitle ( rhs.GetTitle ( ) );
 		m_tool_number = rhs.m_tool_number;
 		m_operation_type = rhs.m_operation_type;
 	}
@@ -358,7 +359,7 @@ bool COp::operator==(const COp & rhs) const
 {
 	if ((const wxString&)m_comment != (const wxString&)rhs.m_comment) return(false);
 	if (m_active != rhs.m_active) return(false);
-	if ((const wxString&)m_title != (const wxString&)rhs.m_title) return(false);
+	if (GetTitle() != rhs.GetTitle()) return(false);
 	if (m_tool_number != rhs.m_tool_number) return(false);
 	if (m_operation_type != rhs.m_operation_type) return(false);
 

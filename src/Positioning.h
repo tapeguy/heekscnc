@@ -18,7 +18,7 @@
 
 class CPositioning;
 
-class CPositioningParams : public MutableObject {
+class CPositioningParams : public DomainObject {
 private:
 	CPositioning * parent;
 

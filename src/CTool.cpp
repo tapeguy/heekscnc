@@ -652,10 +652,10 @@ void CTool::SelectTapFromStandardSizes(const tap_sizes_t *tap_sizes)
 }
 
 
-
 void CToolParams::GetProperties(std::list<Property *> *list)
 {
 }
+
 
 void CToolParams::WriteXMLAttributes(TiXmlNode *root)
 {
@@ -873,7 +873,7 @@ void CTool::InitializeProperties()
 Python CTool::AppendTextToProgram()
 {
 	Python python;
-	wxString title = m_title;
+	wxString title = GetTitle();
 
 	// The G10 command can be used (within EMC2) to add a tool to the tool
         // table from within a program.
@@ -894,7 +894,7 @@ Python CTool::AppendTextToProgram()
 
 	if (title.size() > 0)
 	{
-		python << _T("name=") << PythonString(m_title).c_str() << _T(", ");
+		python << _T("name=") << PythonString(title).c_str() << _T(", ");
 	} // End if - then
 	else
 	{
@@ -957,7 +957,7 @@ CTool & CTool::operator= ( const CTool & rhs )
     if (this != &rhs)
     {
         m_params = rhs.m_params;
-        m_title = rhs.m_title;
+        SetTitle ( rhs.GetTitle() );
         m_tool_number = rhs.m_tool_number;
 
         if (m_pToolSolid)
@@ -1073,7 +1073,7 @@ void CTool::WriteXML(TiXmlNode *root)
 {
 	TiXmlElement * element = heeksCAD->NewXMLElement( "Tool" );
 	heeksCAD->LinkXMLEndChild( root,  element );
-	element->SetAttribute( "title", ((const wxString&)m_title).utf8_str());
+	element->SetAttribute( "title", GetTitle().utf8_str());
 
 	element->SetAttribute( "tool_number", m_tool_number );
 
@@ -1098,7 +1098,7 @@ HeeksObj* CTool::ReadFromXMLElement(TiXmlElement* element)
 		if(name == "params"){
 			new_object->m_params.ReadParametersFromXMLElement(pElem);
 			if(new_object->m_params.m_automatically_generate_title == 0) {
-			    new_object->m_title = title;
+			    new_object->SetTitle ( title );
 			}
 		}
 	}
@@ -1111,7 +1111,7 @@ HeeksObj* CTool::ReadFromXMLElement(TiXmlElement* element)
 
 void CTool::OnEditString(const wxChar* str)
 {
-	m_params.m_automatically_generate_title = false;	// It's been manually edited.  Leave it alone now.
+	m_params.m_automatically_generate_title.SetValue ( false );	// It's been manually edited.  Leave it alone now.
 	heeksCAD->Changed();
 }
 
@@ -1157,7 +1157,7 @@ int CTool::FindTool( const int tool_number )
 			if (ob->GetType() != ToolType) continue;
 			if ((ob != NULL) && (((CTool *) ob)->m_tool_number == tool_number))
 			{
-				return(ob->m_id);
+				return(ob->GetID());
 			} // End if - then
 		} // End for
 	} // End if - then
@@ -1430,7 +1430,7 @@ wxString CTool::ResetTitle()
 	if (m_params.m_automatically_generate_title)
 	{
 		// It has the default title.  Give it a name that makes sense.
-		m_title = GenerateMeaningfulName();
+	    SetTitle ( GenerateMeaningfulName() );
 		heeksCAD->Changed();
 
 #ifdef UNICODE
@@ -1438,7 +1438,7 @@ wxString CTool::ResetTitle()
 #else
 		std::ostringstream l_ossChange;
 #endif
-		l_ossChange << "Changing name to " << ((const wxString&)m_title).c_str() << "\n";
+		l_ossChange << "Changing name to " << GetTitle().c_str() << "\n";
 		return( l_ossChange.str().c_str() );
 	} // End if - then
 
@@ -2178,7 +2178,7 @@ bool CToolParams::operator==( const CToolParams & rhs ) const
 bool CTool::operator==( const CTool & rhs ) const
 {
 	if (m_params != rhs.m_params) return(false);
-	if ((const wxString&)m_title != (const wxString&)rhs.m_title) return(false);
+	if (GetTitle() != rhs.GetTitle()) return(false);
 	if (m_tool_number != rhs.m_tool_number) return(false);
 	// m_pToolSolid;
 
@@ -2225,11 +2225,12 @@ Python CTool::OpenCamLibDefinition(const unsigned int indent /* = 0 */ )
 
 static bool OnEdit(HeeksObj* object)
 {
-	CToolDlg dlg(heeksCAD->GetMainFrame(), (CTool*)object);
+    CTool* tool = (CTool*)object;
+	CToolDlg dlg(heeksCAD->GetMainFrame(), tool);
 	if(dlg.ShowModal() == wxID_OK)
 	{
-		dlg.GetData((CTool*)object);
-		((CToolParams*)object)->write_values_to_config();
+		dlg.GetData(tool);
+		tool->m_params.write_values_to_config();
 		return true;
 	}
 	return false;

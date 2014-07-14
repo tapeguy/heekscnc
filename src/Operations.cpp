@@ -112,7 +112,7 @@ class SetAllInactive: public Tool{
 		{
 			if(COperations::IsAnOperation(object->GetType()))
 			{
-				((COp*)object)->m_active = false;
+				((COp*)object)->m_active.SetValue ( false );
 				heeksCAD->Changed();
 			}
 		}

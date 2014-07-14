@@ -17,7 +17,7 @@
 
 
 /**
-	The CCuttingRate class holds the material hardness and a rate of 
+	The CCuttingRate class holds the material hardness and a rate of
 	material removal for that hardness.  This removal rate is the
 	best parameter to adjust to allow for a machine's rigidity.
 
@@ -32,7 +32,7 @@ public:
 	// Inputs...
 	PropertyDouble m_brinell_hardness_of_raw_material;			// 15.0 for Al
 	PropertyChoice m_brinell_hardness_choice;
-	
+
 	// Output
 	PropertyDouble m_max_material_removal_rate;
 
@@ -55,7 +55,7 @@ public:
         void WriteXML(TiXmlNode *root);
         static HeeksObj* ReadFromXMLElement(TiXmlElement* pElem);
 
-	void OnPropertyEdit(Property * prop);
+	void OnPropertyEdit(Property& prop);
 	void GetProperties(std::list<Property *> *list);
 	void CopyFrom(const HeeksObj* object);
 	bool CanAddTo(HeeksObj* owner);

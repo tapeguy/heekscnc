@@ -25,7 +25,7 @@
 
 class CInlay;
 
-class CInlayParams : public MutableObject {
+class CInlayParams : public DomainObject {
 private:
 	CInlay * parent;
 

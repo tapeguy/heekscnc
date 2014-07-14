@@ -20,7 +20,7 @@ class CProgramCanvas;
 class COutputCanvas;
 class Tool;
 
-class CHeeksCNCApp : public MutableObject {
+class CHeeksCNCApp : public DomainObject {
 public:
 	bool m_draw_cutter_radius; // applies to all operations
 	CProgram* m_program;

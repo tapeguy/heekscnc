@@ -53,7 +53,7 @@ HeeksObj* CTrsfNCCode::ReadFromXMLElement(TiXmlElement* pElem)
 void CTrsfNCCode::glCommands(bool select, bool marked, bool no_color)
 {
 	glPushMatrix();
-	
+
 	glTranslated(m_x,m_y,0);
 	ObjList::glCommands(select,marked,no_color);
 

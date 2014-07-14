@@ -1076,7 +1076,7 @@ CInlay::Valleys_t CInlay::DefineValleys(CMachineState *pMachineState)
 		} // End if - then
 		else
 		{
-			printf("Could not convert sketch id%d to wire\n", (int)object->m_id );
+			printf("Could not convert sketch id%d to wire\n", (int)object->GetID() );
 		}
 	} // End for
 

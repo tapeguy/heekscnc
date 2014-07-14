@@ -18,7 +18,7 @@ class CProgram;
 	\brief Defines material hardness of the raw material being machined.  This value helps
 		to determine recommended feed and speed settings.
  */
-class CRawMaterial : public MutableObject
+class CRawMaterial : public DomainObject
 {
 public:
 	CRawMaterial();

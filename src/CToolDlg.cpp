@@ -104,12 +104,12 @@ CToolDlg::CToolDlg(wxWindow *parent, CTool* object)
 	AddLabelAndControl(sizerRight, _("Filament Diameter"),m_dblFilamentDiameter = new CDoubleCtrl(this, ID_MAX_ADVANCE_PER_REVOLUTION));
 
 	AddLabelAndControl(sizerRight, _("Title"), m_txtTitle = new wxTextCtrl(this, ID_TITLE));
-	sizerRight->Add( m_chkVisible = new wxCheckBox( this, ID_VISIBLE, _("Visible") ), 0, wxALL, control_border );	
+	sizerRight->Add( m_chkVisible = new wxCheckBox( this, ID_VISIBLE, _("Visible") ), 0, wxALL, control_border );
 
 	// The following are for taps and should be hidden for all others
 	AddLabelAndControl(sizerRight, _("Pitch"),m_dblPitch = new CDoubleCtrl(this, ID_PITCH));
 	wxString tapdirections[] = {_("right hand"),_("left hand") };
-	AddLabelAndControl(sizerRight, _("Tap direction"),m_cmbDirection = new wxComboBox(this, ID_DIRECTION, _T(""), 
+	AddLabelAndControl(sizerRight, _("Tap direction"),m_cmbDirection = new wxComboBox(this, ID_DIRECTION, _T(""),
 											  wxDefaultPosition, wxDefaultSize, 2, tapdirections));
 
 	// add OK and Cancel to right side
@@ -144,10 +144,10 @@ CToolDlg::CToolDlg(wxWindow *parent, CTool* object)
 	 AddLabelAndControl(sizerLeft, _("Orientation"),m_lgthorientation = new CLengthCtrl(this, ID_MAX_ADVANCE_PER_REVOLUTION));
 
 	// The following are for probe tools and should be hidden for all others
-	
+
 	 AddLabelAndControl(sizerLeft, _("Probe Offset X"),m_dblProbeOffsetX = new CDoubleCtrl(this, ID_MAX_ADVANCE_PER_REVOLUTION));
 	 AddLabelAndControl(sizerLeft, _("Probe Offset Y"),m_dblProbeOffsetY = new CDoubleCtrl(this, ID_MAX_ADVANCE_PER_REVOLUTION));
-	
+
 	SetFromData(object);
 
     SetSizer( sizerMain );
@@ -169,10 +169,10 @@ void CToolDlg::GetData(CTool* object)
 	//need to deal with the combo box for title type
 	//need to deal with the combo box for material
 	//need to deal with the combo box for Tool Type.
-	
+
 	object->m_params.m_max_advance_per_revolution = m_dblMaxAdvancePerRevolution->GetValue();
 	object->m_params.m_diameter = m_dblDiameter->GetValue();
-	object->m_params.m_tool_length_offset = m_dblToolLengthOffset->GetValue();	
+	object->m_params.m_tool_length_offset = m_dblToolLengthOffset->GetValue();
 	object->m_params.m_flat_radius = m_dblFlatRadius->GetValue();
 	object->m_params.m_corner_radius = m_dblCornerRadius->GetValue();
 	object->m_params.m_cutting_edge_angle = m_dblCuttingEdgeAngle->GetValue();
@@ -190,13 +190,13 @@ void CToolDlg::GetData(CTool* object)
 	 object->m_params.m_orientation = m_lgthorientation->GetValue();
 
 	// The following are for probe tools
-	
+
 	 object->m_params.m_probe_offset_x = m_dblProbeOffsetX->GetValue();
 	 object->m_params.m_probe_offset_y = m_dblProbeOffsetY->GetValue();
-	
-	
+
+
 	// The following are for extrusion
-	
+
 	//need to deal with the combo box for title type
 	 //object->m_params.m_extrusion_material = m_cmbExtrusionMaterial->GetValue();
 	 object->m_params.m_feedrate = m_dblFeedRate->GetValue();
@@ -211,11 +211,11 @@ void CToolDlg::GetData(CTool* object)
 	 // need to deal with direction combo box
 
 	 // object->m_params.m_direction = m_cmbDirection->GetValue();
-	 object->m_params.m_pitch = m_dblPitch->GetValue();	 
+	 object->m_params.m_pitch = m_dblPitch->GetValue();
 
 	//need to deal with the check box for visible
-	
-	object->m_title = m_txtTitle->GetValue();
+
+	object->SetTitle ( m_txtTitle->GetValue() );
 
 	m_ignore_event_functions = false;
 }
@@ -227,7 +227,7 @@ void CToolDlg::SetFromData(CTool* object)
 	//need to deal with the combo box for title type
 	//need to deal with the combo box for material
 	//need to deal with the combo box for Tool Type.
-	
+
 	m_dblMaxAdvancePerRevolution->SetValue(object->m_params.m_max_advance_per_revolution);
 	m_dblDiameter->SetValue(object->m_params.m_diameter);
 	m_dblToolLengthOffset->SetValue(object->m_params.m_tool_length_offset);
@@ -243,11 +243,11 @@ void CToolDlg::SetFromData(CTool* object)
 	 m_lgthorientation->SetValue(object->m_params.m_orientation);
 
 	// The following are for probe tools
-	
+
 	 m_dblProbeOffsetX->SetValue(object->m_params.m_probe_offset_x);
 	 m_dblProbeOffsetY->SetValue(object->m_params.m_probe_offset_y);
-	
-	
+
+
 	// The following are for extrusion
 	 //m_cmbExtrusionMaterial->SetValue(object->m_params.m_max_advance_per_revolution);
 	 m_dblFeedRate->SetValue(object->m_params.m_feedrate);
@@ -256,14 +256,14 @@ void CToolDlg::SetFromData(CTool* object)
 	 m_dblTemperature->SetValue(object->m_params.m_temperature);
 	 m_dblFlowrate->SetValue(object->m_params.m_flowrate);
 	 m_dblFilamentDiameter->SetValue(object->m_params.m_filament_diameter);
-	
+
 	// The following are for tap tools
-	
+
 	 m_dblPitch->SetValue(object->m_params.m_pitch);
 	//need to deal with the text box for title
 
 	// m_cmbDirection->SetValue(object->m_params.m_direction);
-	
+
 	//need to deal with the text box for title
 	//need to deal with the check box for visible
 
@@ -285,7 +285,7 @@ void CToolDlg::SetPicture()
 	else if(w == m_dblCornerRadius)SetPicture(&m_corner_radius_bitmap, _T("cornerradius"));
 	else if(w == m_dblCuttingEdgeAngle)SetPicture(&m_cutting_edge_angle_bitmap, _T("cuttingedgeangle"));
 	else if(w == m_dblCuttingEdgeHeight)SetPicture(&m_cutting_edge_height_bitmap, _T("cuttingedgeheight"));
-	
+
 
 	// The following are all for lathe tools.  They become relevant when the m_type = eTurningTool
 	 else if(w == m_dblXOffset)SetPicture(&m_x_offset_bitmap, _T("xoffset"));
@@ -295,22 +295,22 @@ void CToolDlg::SetPicture()
 	 else if(w == m_lgthorientation)SetPicture(&m_orientation_bitmap, _T("orientation"));
 
 	// The following are for probe tools
-	
+
 	 else if(w == m_dblProbeOffsetX)SetPicture(&m_probe_offset_x_bitmap, _T("probeoffsetx"));
 	 else if(w == m_dblProbeOffsetY)SetPicture(&m_probe_offset_y_bitmap, _T("probeoffsety"));
-	
-	
+
+
 	// The following are for extrusion
 	 else if(w == m_dblLayerHeight)SetPicture(&m_layer_height_bitmap, _T("layerheight"));
 	 else if(w == m_dblWidthOverThickness)SetPicture(&m_width_over_thickness_bitmap, _T("wovert"));
 	 else if(w == m_dblTemperature)SetPicture(&m_temperature_bitmap, _T("temperature"));
 	 else if(w == m_dblFilamentDiameter)SetPicture(&m_filament_diameter_bitmap, _T("filament"));
-	 
+
 	// The following are for tap tools
-	
+
 	//	 else if(w == m_dblPitch)SetPicture(&m_probe_offset_x_bitmap, _T("probeoffsetx"));
 	// else if(w == m_dblProbeOffsetY)SetPicture(&m_probe_offset_y_bitmap, _T("probeoffsety"));
-	else SetPicture(&m_general_bitmap, _T("general"));	
+	else SetPicture(&m_general_bitmap, _T("general"));
 }
 
 void CToolDlg::OnChildFocus(wxChildFocusEvent& event)

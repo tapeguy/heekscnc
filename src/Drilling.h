@@ -17,7 +17,7 @@
 
 class CDrilling;
 
-class CDrillingParams : public MutableObject {
+class CDrillingParams : public DomainObject {
 
 private:
 	CDrilling * parent;

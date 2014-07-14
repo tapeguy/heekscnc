@@ -118,7 +118,7 @@ void CFixtureParams::InitializeProperties()
 
 void CFixtureParams::GetProperties(std::list<Property *> *list)
 {
-    MutableObject::GetProperties(list);
+    DomainObject::GetProperties(list);
 }
 
 void CFixtureParams::WriteXMLAttributes(TiXmlNode *root)
@@ -204,9 +204,9 @@ Python CFixture::AppendTextToProgram() const
 }
 
 
-void CFixture::OnPropertyEdit(Property * prop)
+void CFixture::OnPropertyEdit(Property& prop)
 {
-	if (prop == &m_coordinate_system_number_choice)
+	if (prop == m_coordinate_system_number_choice)
 	{
 		int zero_based_choice = m_coordinate_system_number_choice;
 		if (zero_based_choice < 0) return;	// An error has occured.
@@ -222,16 +222,8 @@ void CFixture::OnPropertyEdit(Property * prop)
 			// There is a pre-existing fixture for this coordinate system.  Use the pre-existing one and
 			// throw this one away.
 
-#ifdef MULTIPLE_OWNERS
-			for (HeeksObj *parent = this->GetFirstOwner(); parent != NULL; parent = this->GetNextOwner())
-			{
-				parent->Remove(this);
-				parent->Add( pExistingFixture, NULL );
-			} // End for
-#else
 			Owner()->Remove(this);
 			Owner()->Add( pExistingFixture, NULL );
-#endif
 		}
 	}
 }

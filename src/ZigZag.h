@@ -8,7 +8,7 @@
 
 class CZigZag;
 
-class CZigZagParams : public MutableObject
+class CZigZagParams : public DomainObject
 {
 private:
 
@@ -29,7 +29,7 @@ public:
     CZigZagParams(CZigZag * parent);
 	void InitializeProperties();
     void GetProperties(std::list<Property *> *list);
-    void OnPropertyEdit(Property * prop);
+    void OnPropertyEdit(Property& prop);
 
 	void WriteXMLAttributes(TiXmlNode* pElem);
 	void ReadFromXMLElement(TiXmlElement* pElem);

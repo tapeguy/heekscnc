@@ -84,7 +84,7 @@ public:
      : CSpeedOp ( title, tool_number, operation_type )
 	{
 		m_speed_op_params.m_spindle_speed = 0;	// We don't want the spindle to move while we're probing.
-		COp::m_active = 0;	// We don't want the normal GCode generation routines to include us.
+		COp::m_active.SetValue ( false );	// We don't want the normal GCode generation routines to include us.
 		m_depth = 10.0;	// mm
 		m_distance = 50.0;	// mm
 
@@ -454,7 +454,7 @@ public:
 
 	void InitializeProperties();
 	void GetProperties(std::list<Property *> *list);
-	void OnPropertyEdit(Property *prop);
+	void OnPropertyEdit(Property& prop);
 	HeeksObj *MakeACopy(void)const;
 	void CopyFrom(const HeeksObj* object);
 
@@ -524,7 +524,7 @@ public:
 
 	void InitializeProperties();
 	void GetProperties(std::list<Property *> *list);
-	void OnPropertyEdit(Property *prop);
+	void OnPropertyEdit(Property& prop);
 	HeeksObj *MakeACopy(void)const;
 	void CopyFrom(const HeeksObj* object);
 

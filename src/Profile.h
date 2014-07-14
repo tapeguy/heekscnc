@@ -15,7 +15,7 @@
 class CProfile;
 class CTags;
 
-class CProfileParams : public MutableObject
+class CProfileParams : public DomainObject
 {
 private:
 

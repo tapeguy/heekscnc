@@ -143,7 +143,7 @@ bool Excellon::Read( const char *p_szFileName, const bool force_mirror /* = fals
 		if (obj->GetType() != PointType) continue;
 		double pos[3];
 		obj->GetStartPoint( pos );
-		m_existing_points.insert( std::make_pair( CNCPoint( pos ), CDrilling::Symbol_t( PointType, obj->m_id ) ) );
+		m_existing_points.insert( std::make_pair( CNCPoint( pos ), CDrilling::Symbol_t( PointType, obj->GetID() ) ) );
 	} // End for
 
 	std::ifstream input( p_szFileName, std::ios::in );
@@ -841,7 +841,7 @@ bool Excellon::ReadDataBlock( const std::string & data_block )
 				cnc_point.ToDoubleArray( location );
 				HeeksObj *point = heeksCAD->NewPoint( location );
 				heeksCAD->Add( point, NULL );
-				CDrilling::Symbol_t symbol( point->GetType(), point->m_id );
+				CDrilling::Symbol_t symbol( point->GetType(), point->GetID() );
 				m_existing_points.insert( std::make_pair( cnc_point, symbol ));
 			} // End if - then
 

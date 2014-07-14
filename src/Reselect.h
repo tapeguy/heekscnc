@@ -16,7 +16,8 @@ public:
 	wxString BitmapPath(){ return theApp.GetResFolder() + _T("/bitmaps/selsketch.png"); }
 };
 
-class ReselectSolids: public Tool{
+class ReselectSolids : public Tool
+{
 public:
 	std::list<int> *m_solids;
 	HeeksObj* m_object;

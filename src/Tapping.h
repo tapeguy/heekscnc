@@ -23,7 +23,7 @@ typedef enum {
 } tap_mode_t;
 
 
-class CTappingParams : public MutableObject
+class CTappingParams : public DomainObject
 {
 private:
 
@@ -49,7 +49,7 @@ public:
     void InitializeProperties();
 	void set_initial_values( const double depth, const int tool_number );
 	void write_values_to_config();
-	void OnPropertyEdit(Property * prop);
+	void OnPropertyEdit(Property& prop);
 	void WriteXMLAttributes(TiXmlNode* pElem);
 	void ReadParametersFromXMLElement(TiXmlElement* pElem);
 

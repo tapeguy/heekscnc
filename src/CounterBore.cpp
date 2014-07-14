@@ -327,7 +327,7 @@ Python CCounterBore::AppendTextToProgram(CMachineState *pMachineState)
 				message << _("Error: Tool diameter (") << pTool->m_params.m_diameter << _T(") ")
 					 << _(">= hole diameter (") << m_params.m_diameter << _T(") ")
 					 << _("in counter bore operation.  ")
-					 << _("Skipping this counter bore operation (ID=") << m_id << _T(")");
+					 << _("Skipping this counter bore operation (ID=") << GetID() << _T(")");
 				wxMessageBox(message);
 				return(python);
 			} // End if - then
@@ -345,7 +345,7 @@ Python CCounterBore::AppendTextToProgram(CMachineState *pMachineState)
 			wxString message;
 			message << _("Warning: Counter bore refers to a tool ")
 				 << _("that can't be found in the model.  ")
-				 << _("Skipping this counter bore operation (ID=") << m_id << _T(")");
+				 << _("Skipping this counter bore operation (ID=") << GetID() << _T(")");
 			wxMessageBox(message);
 		} // End if - else
 	} // End if - then
@@ -353,7 +353,7 @@ Python CCounterBore::AppendTextToProgram(CMachineState *pMachineState)
 	{
 		wxString message;
 		message << _("Warning: Counter bore operations MUST refer to a tool.  ")
-			 << _("Skipping this counter bore operation (ID=") << m_id << _T(")");
+			 << _("Skipping this counter bore operation (ID=") << GetID() << _T(")");
 		wxMessageBox(message);
 	} // End if - else
 

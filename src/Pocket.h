@@ -11,7 +11,7 @@
 
 class CPocket;
 
-class CPocketParams : public MutableObject {
+class CPocketParams : public DomainObject {
 private:
 	CPocket * parent;
 

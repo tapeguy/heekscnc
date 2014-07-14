@@ -1121,7 +1121,7 @@ void CContour::glCommands(bool select, bool marked, bool no_color)
 	CDepthOp::glCommands( select, marked, no_color );
 }
 
-void CContour::OnPropertyEdit(Property *prop)
+void CContour::OnPropertyEdit(Property& prop)
 {
 	WriteDefaultValues();
 	CContour::WriteToConfig();

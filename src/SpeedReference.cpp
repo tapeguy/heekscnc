@@ -69,14 +69,14 @@ void CSpeedReference::GetProperties(std::list<Property *> *list)
 	HeeksObj::GetProperties(list);
 }
 
-void CSpeedReference::OnPropertyEdit(Property *prop)
+void CSpeedReference::OnPropertyEdit(Property& prop)
 {
     /**
         This is either expressed in metres per minute (when m_units = 1) or feet per minute (when m_units = 25.4).  These
         are not the normal conversion for the m_units parameter but these seem to be the two standards by which these
         surface speeds are specified.
      */
-    if (prop == &m_surface_speed)
+    if (prop == m_surface_speed)
     {
         if (theApp.m_program->m_units != 1.0)
         {
@@ -88,7 +88,7 @@ void CSpeedReference::OnPropertyEdit(Property *prop)
         } // End if - else
         this->ResetTitle();
     }
-    else if (prop == &m_tool_material)
+    else if (prop == m_tool_material)
     {
         this->ResetTitle();
         heeksCAD->RefreshProperties();

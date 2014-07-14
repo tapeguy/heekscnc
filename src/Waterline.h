@@ -8,7 +8,7 @@
 
 class CWaterline;
 
-class CWaterlineParams : public MutableObject
+class CWaterlineParams : public DomainObject
 {
 private:
 
@@ -29,7 +29,7 @@ public:
 
     void InitializeProperties();
     void GetProperties(std::list<Property *> *list);
-    void OnPropertyEdit(Property * prop);
+    void OnPropertyEdit(Property& prop);
 
     void WriteXMLAttributes(TiXmlNode* pElem);
 	void ReadFromXMLElement(TiXmlElement* pElem);

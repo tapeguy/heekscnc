@@ -20,7 +20,7 @@
 
 class CCounterBore;
 
-class CCounterBoreParams : public MutableObject {
+class CCounterBoreParams : public DomainObject {
 
 private:
 	CCounterBore * parent;

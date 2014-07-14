@@ -175,12 +175,12 @@ void PocketDlg::GetData(CPocket* object)
 	object->m_speed_op_params.m_spindle_speed = m_dblSpindleSpeed->GetValue();
 	object->m_comment = m_txtComment->GetValue();
 	object->m_active = m_chkActive->GetValue();
-	
+
 	// get the tool number
 	object->m_tool_number = 0;
 	if(m_cmbTool->GetSelection() >= 0)object->m_tool_number = tools_for_combo[m_cmbTool->GetSelection()].first;
 
-	object->m_title = m_txtTitle->GetValue();
+	object->SetTitle ( m_txtTitle->GetValue() );
 	m_ignore_event_functions = false;
 }
 
@@ -225,7 +225,7 @@ void PocketDlg::SetFromData(CPocket* object)
 	m_dblSpindleSpeed->SetValue(object->m_speed_op_params.m_spindle_speed);
 	m_txtComment->SetValue(object->m_comment);
 	m_chkActive->SetValue(object->m_active);
-	m_txtTitle->SetValue(object->m_title);
+	m_txtTitle->SetValue(object->GetTitle());
 	m_ignore_event_functions = false;
 }
 

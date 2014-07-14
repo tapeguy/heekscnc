@@ -51,7 +51,7 @@ public:
 
     void InitializeProperties();
     void GetProperties(std::list<Property *> *list);
-    void OnPropertyEdit(Property *prop);
+    void OnPropertyEdit(Property& prop);
 
     // HeeksObj's virtual functions
     int GetType()const{return SpeedReferenceType;}
