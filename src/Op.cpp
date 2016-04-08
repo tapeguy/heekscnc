@@ -14,18 +14,10 @@
 #include "CTool.h"
 #include "PythonStuff.h"
 #include "CNCConfig.h"
-#include "MachineState.h"
 #include "Program.h"
-#ifdef HEEKSCNC
-#include "Fixtures.h"
+
 #define FIND_FIRST_TOOL CTool::FindFirstByType
 #define FIND_ALL_TOOLS CTool::FindAllTools
-#define MACHINE_STATE_TOOL(t) pMachineState->Tool(t)
-#else
-#define FIND_FIRST_TOOL heeksCNC->FindFirstToolByType
-#define FIND_ALL_TOOLS heeksCNC->FindAllTools
-#define MACHINE_STATE_TOOL(t) heeksCNC->MachineStateTool(pMachineState, t)
-#endif
 
 #include <iterator>
 #include <vector>
@@ -37,141 +29,100 @@ const wxBitmap& COp::GetInactiveIcon()
 	return *icon;
 }
 
-void COp::WriteBaseXML(TiXmlElement *element)
+COp::COp(int obj_type, const int tool_number, const int operation_type)
+ : IdNamedObjList(obj_type), m_active(true), m_tool_number(tool_number),
+   m_operation_type(operation_type), m_pattern(1), m_surface(0)
 {
-	const wxString& comment = m_comment;
-	if(comment.Len() > 0) {
-		element->SetAttribute( "comment", comment.utf8_str());
-	}
-	element->SetAttribute( "active", m_active);
-	element->SetAttribute( "title", GetTitle().utf8_str());
-	element->SetAttribute( "tool_number", m_tool_number);
-
-	ObjList::WriteBaseXML(element);
+    InitializeProperties();
+    ReadDefaultValues();
 }
 
-void COp::ReadBaseXML(TiXmlElement* element)
+COp::COp( const COp & rhs )
+ : IdNamedObjList(rhs)
 {
-	const char* comment = element->Attribute("comment");
-	if(comment) {
-		m_comment = Ctt(comment);
-	}
-	const char* active = element->Attribute("active");
-	if(active) {
-		int int_active;
-		element->Attribute("active", &int_active);
-		m_active = (int_active != 0);
-	}
-	else
-	{
-        m_active = true;
-	}
-
-	const char* title = element->Attribute("title");
-	if(title)
-	    SetTitle(Ctt(title));
-
-	if (element->Attribute("tool_number") != NULL)
-	{
-		m_tool_number = atoi(element->Attribute("tool_number"));
-	} // End if - then
-	else
-	{
-	    // The older files used to call this attribute 'cutting_tool_number'.  Look for this old
-	    // name if we can't find the new one.
-	    if (element->Attribute("cutting_tool_number") != NULL)
-        {
-            m_tool_number = atoi(element->Attribute("cutting_tool_number"));
-        } // End if - then
-        else
-        {
-            m_tool_number = 0;
-        } // End if - else
-	} // End if - else
-
-	ObjList::ReadBaseXML(element);
-}
-
-void COp::InitializeProperties()
-{
-	m_comment.Initialize(_("comment"), this);
-	m_active.Initialize(_("active"), this);
-	m_tool_number_choice.Initialize(_("tool"), this);
-}
-
-
-void COp::OnPropertyEdit(Property& prop)
-{
-	if (prop == m_tool_number_choice) {
-		std::vector< std::pair< int, wxString > > tools = FIND_ALL_TOOLS();
-
-		if ((m_tool_number_choice >= 0) && (m_tool_number_choice <= int(tools.size()-1))) {
-			m_tool_number = tools[m_tool_number_choice].first;       // Convert the choice offset to the tool number for that choice
-		} // End if - then
-	}
-
-	WriteDefaultValues();
-}
-
-
-void COp::GetProperties(std::list<Property *> *list)
-{
-
-	if(UsesTool()) {
-		m_tool_number_choice.SetVisible(true);
-		m_tool_number_choice.m_choices.clear();
-		std::vector< std::pair< int, wxString > > tools = FIND_ALL_TOOLS();
-		for (std::vector< std::pair< int, wxString > >::size_type i=0; i<tools.size(); i++) {
-			m_tool_number_choice.m_choices.push_back(tools[i].second);
-		} // End for
-	}
-	else {
-		m_tool_number_choice.SetVisible(false);
-	}
-
-	ObjList::GetProperties(list);
+    InitializeProperties();
+    *this = rhs;    // Call the assignment operator.
 }
 
 COp & COp::operator= ( const COp & rhs )
 {
-	if (this != &rhs)
-	{
-		// In the case of machine operations, the child objects are all used
-		// for reference (position etc.) only.  When we duplicate the machine
-		// operation, we don't want to duplicate these reference (child)
-		// objects too.
-		// To this end, we want to copy the m_objects list without duplicating the
-		// objects they point to.  i.e. don't call the ObjList::operator=( rhs ) method.
+    if (this != &rhs)
+    {
+            IdNamedObjList::operator=( rhs );
 
-		m_objects.clear();
-		for (HeeksObj *child = ((ObjList &)rhs).GetFirstChild(); child != NULL; child = ((ObjList &)rhs).GetNextChild())
-		{
-			m_objects.push_back( child );
-		} // End for
+            m_comment = rhs.m_comment;
+            m_active = rhs.m_active;
+            m_tool_number = rhs.m_tool_number;
+            m_operation_type = rhs.m_operation_type;
+            m_pattern = rhs.m_pattern;
+            m_surface = rhs.m_surface;
+    }
 
-		HeeksObj::operator=(rhs);	// We need to call this as we've skipped over the ObjList::operator=() method
-									// which would normally have called it for us.
-
-		m_comment = rhs.m_comment;
-		m_active = rhs.m_active;
-		SetTitle ( rhs.GetTitle ( ) );
-		m_tool_number = rhs.m_tool_number;
-		m_operation_type = rhs.m_operation_type;
-	}
-
-	return(*this);
+    return(*this);
 }
 
-// Don't call the ObjList() constructor here as the duplication is
-// handled in an unusual way by the assignment operator.
-COp::COp( const COp & rhs ) // : ObjList(rhs)
+void COp::InitializeProperties()
 {
-	*this = rhs;	// Call the assignment operator.
+    m_comment.Initialize(_("comment"), this);
+    m_active.Initialize(_("active"), this);
+    m_tool_number_choice.Initialize(_("tool"), this);
+    m_pattern.Initialize(_("pattern"), this);
+    m_surface.Initialize(_("surface"), this);
+}
+
+void COp::OnPropertySet(Property& prop)
+{
+    if (prop == m_tool_number_choice) {
+        std::vector< std::pair< int, wxString > > tools = FIND_ALL_TOOLS();
+
+        if ((m_tool_number_choice >= 0) && (m_tool_number_choice <= int(tools.size()-1))) {
+            m_tool_number = tools[m_tool_number_choice].first;       // Convert the choice offset to the tool number for that choice
+        } // End if - then
+
+        WriteDefaultValues();
+    }
+    else {
+        IdNamedObjList::OnPropertySet(prop);
+    }
+}
+
+void COp::ReadBaseXML(TiXmlElement* element)
+{
+    IdNamedObjList::ReadBaseXML(element);
+
+    std::vector< std::pair< int, wxString > > tools = FIND_ALL_TOOLS();
+
+    if ((m_tool_number_choice >= 0) && (m_tool_number_choice <= int(tools.size()-1))) {
+        m_tool_number = tools[m_tool_number_choice].first;       // Convert the choice offset to the tool number for that choice
+    } // End if - then
+}
+
+void COp::GetProperties(std::list<Property *> *list)
+{
+
+    if(UsesTool()) {
+        m_tool_number_choice.SetVisible(true);
+        m_tool_number_choice.m_choices.clear();
+        std::vector< std::pair< int, wxString > > tools = FIND_ALL_TOOLS();
+        for (std::vector< std::pair< int, wxString > >::size_type i=0; i<tools.size(); i++) {
+            m_tool_number_choice.m_choices.push_back(tools[i].second);
+
+            // Set selection
+            if (m_tool_number == tools[i].first) {
+                m_tool_number_choice = tools[i].first;
+            }
+        } // End for
+    }
+    else {
+        m_tool_number_choice.SetVisible(false);
+    }
+
+    IdNamedObjList::GetProperties(list);
 }
 
 void COp::glCommands(bool select, bool marked, bool no_color)
 {
-	ObjList::glCommands(select, marked, no_color);
+    IdNamedObjList::glCommands(select, marked, no_color);
 }
 
 
@@ -179,16 +130,18 @@ void COp::WriteDefaultValues()
 {
 	CNCConfig config(GetTypeString());
 	config.Write(_T("Tool"), m_tool_number);
+    config.Write(_T("Pattern"), m_pattern);
+    config.Write(_T("Surface"), m_surface);
 }
 
 void COp::ReadDefaultValues()
 {
+    CNCConfig config(GetTypeString());
 	if (m_tool_number <= 0)
 	{
 		// The tool number hasn't been assigned from above.  Set some reasonable
 		// defaults.
 
-		CNCConfig config(GetTypeString());
 
 		// assume that default.tooltable contains tools with IDs:
 		// 1 drill
@@ -202,40 +155,16 @@ void COp::ReadDefaultValues()
 		int default_tool = 0;
 		switch(m_operation_type)
 		{
-		case DrillingType:
-			default_tool = FIND_FIRST_TOOL( CToolParams::eDrill );
-			if (default_tool <= 0) default_tool = FIND_FIRST_TOOL( CToolParams::eCentreDrill );
-			break;
-		case ProfileType:
-		case PocketType:
-		case CounterBoreType:
-			default_tool = FIND_FIRST_TOOL( CToolParams::eEndmill );
-			if (default_tool <= 0) default_tool = FIND_FIRST_TOOL( CToolParams::eSlotCutter );
-			if (default_tool <= 0) default_tool = FIND_FIRST_TOOL( CToolParams::eBallEndMill );
-			break;
-		case ZigZagType:
-		case WaterlineType:
-			default_tool = FIND_FIRST_TOOL( CToolParams::eEndmill );
-			if (default_tool <= 0) default_tool = FIND_FIRST_TOOL( CToolParams::eBallEndMill );
-			if (default_tool <= 0) default_tool = FIND_FIRST_TOOL( CToolParams::eSlotCutter );
-			break;
-		case TurnRoughType:
-			default_tool = FIND_FIRST_TOOL( CToolParams::eTurningTool );
-			break;
-        case PositioningType:
-		case ProbeCentreType:
-		case ProbeEdgeType:
-		case ProbeGridType:
-			default_tool = FIND_FIRST_TOOL( CToolParams::eTouchProbe );
-			break;
-        case ChamferType:
-        case InlayType:
-			default_tool = FIND_FIRST_TOOL( CToolParams::eChamfer );
-			break;
-
-        case TappingType:
-			default_tool = FIND_FIRST_TOOL( CToolParams::eTapTool );
-			break;
+        case DrillingType:
+            default_tool = FIND_FIRST_TOOL( CToolParams::eDrill );
+            if (default_tool <= 0) default_tool = FIND_FIRST_TOOL( CToolParams::eCentreDrill );
+            break;
+        case ProfileType:
+        case PocketType:
+            default_tool = FIND_FIRST_TOOL( CToolParams::eEndmill );
+            if (default_tool <= 0) default_tool = FIND_FIRST_TOOL( CToolParams::eSlotCutter );
+            if (default_tool <= 0) default_tool = FIND_FIRST_TOOL( CToolParams::eBallEndMill );
+            break;
 
 		default:
 			default_tool = FIND_FIRST_TOOL( CToolParams::eEndmill );
@@ -246,123 +175,48 @@ void COp::ReadDefaultValues()
 		}
 		config.Read(_T("Tool"), &m_tool_number, default_tool);
 	} // End if - then
+
+    config.Read(_T("Pattern"), m_pattern, 0);
+    config.Read(_T("Surface"), m_surface, 0);
 }
 
 /**
     Change tools (if necessary) and assign any private fixtures.
  */
-Python COp::AppendTextToProgram(CMachineState *pMachineState )
+Python COp::AppendTextToProgram()
 {
     Python python;
+    wxString comment = m_comment;
 
-	const wxString& comment = m_comment;
-	if(comment.Len() > 0)
-	{
-		python << _T("comment(") << PythonString(comment) << _T(")\n");
-	}
+    if(comment.Len() > 0)
+    {
+            python << _T("comment(") << PythonString(comment) << _T(")\n");
+    }
 
-	if(UsesTool())python << MACHINE_STATE_TOOL(m_tool_number);  // Select the correct  tool.
+    if(UsesTool())
+    {
+            python << theApp.SetTool(m_tool_number); // Select the correct  tool.
+    }
 
-#ifdef HEEKSCNC
-#ifndef STABLE_OPS_ONLY
-	// Check to see if this operation has its own fixture settings.  If so, change to that fixture now.
-	for (HeeksObj *ob = GetFirstChild(); ob != NULL; ob = GetNextChild())
-	{
-		if (ob->GetType() == FixtureType)
-		{
-			CFixture *pFixture = (CFixture *) ob;
-			python << pMachineState->Fixture(*pFixture);		// Change fixtures.
-			break;
-		}
-	}
-#endif
-#endif
-
-	return(python);
+    return(python);
 }
-
-#ifdef HEEKSCNC
-#ifndef STABLE_OPS_ONLY
-class AddFixture: public Tool{
-	// Tool's virtual functions
-	const wxChar* GetTitle(){return _("Add Fixture");}
-	void Run()
-	{
-		CProgram* program = theApp.m_program;
-        if (program->Fixtures()->GetNextFixture() > 0)
-        {
-            CFixture::eCoordinateSystemNumber_t coordinate_system_number = CFixture::eCoordinateSystemNumber_t(program->Fixtures()->GetNextFixture());
-
-            CFixture *new_object = new CFixture( NULL, coordinate_system_number, program->m_machine.m_safety_height_defined, program->m_machine.m_safety_height );
-            m_pThis->Add(new_object, NULL);
-            heeksCAD->ClearMarkedList();
-            heeksCAD->Mark(new_object);
-        } // End if - then
-        else
-        {
-            wxMessageBox(_T("There are no more coordinate systems available"));
-        } // End if - else
-	}
-	wxString BitmapPath(){ return theApp.GetResFolder() + _T("/bitmaps/fixture.png"); }
-	wxString previous_path;
-	COp *m_pThis;
-
-public:
-	void Set( COp *pOperation ) { m_pThis = pOperation; }
-};
-
-static AddFixture add_fixture;
-#endif
-#endif
 
 void COp::GetTools(std::list<Tool*>* t_list, const wxPoint* p)
 {
-    ObjList::GetTools( t_list, p );
-
-#ifdef HEEKSCNC
-#ifndef STABLE_OPS_ONLY
-	// See if this operation already has a child fixture.  If so, don't add a second one.
-	unsigned int num_private_fixtures = 0;
-	for (HeeksObj *child = GetFirstChild(); (child != NULL); child = GetNextChild())
-	{
-		if (child->GetType() == FixtureType) num_private_fixtures++;
-	} // End for
-
-	if (num_private_fixtures < MaxNumberOfPrivateFixtures())
-	{
-		add_fixture.Set(this);
-		t_list->push_back(&add_fixture);
-	} // End if - then
-#endif
-#endif
+    IdNamedObjList::GetTools( t_list, p );
 }
-
-#ifndef STABLE_OPS_ONLY
-
-/* virtual */ std::list<CFixture> COp::PrivateFixtures()
-{
-    std::list<CFixture> fixtures;
-
-    for (HeeksObj *child = GetFirstChild(); child != NULL; child = GetNextChild())
-    {
-        if (child->GetType() == FixtureType)
-        {
-            fixtures.push_back( *((CFixture *) child) );
-        }
-    } // End for
-
-    return(fixtures);
-} // End PrivateFixtures() method
-#endif
 
 bool COp::operator==(const COp & rhs) const
 {
 	if ((const wxString&)m_comment != (const wxString&)rhs.m_comment) return(false);
 	if (m_active != rhs.m_active) return(false);
-	if (GetTitle() != rhs.GetTitle()) return(false);
 	if (m_tool_number != rhs.m_tool_number) return(false);
 	if (m_operation_type != rhs.m_operation_type) return(false);
 
-	return(ObjList::operator==(rhs));
+	return(IdNamedObjList::operator==(rhs));
 }
 
+//HeeksObj* COp::PreferredPasteTarget()
+//{
+//    return theApp.m_program->Operations();
+//}

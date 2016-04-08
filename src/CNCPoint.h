@@ -44,7 +44,7 @@ public:
 
 private:
 	double Tolerance() const;
-	double Units() const;
+	double UnitsConversion() const;
 }; // End CNCPoint class definition.
 
 

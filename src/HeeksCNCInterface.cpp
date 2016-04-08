@@ -3,23 +3,16 @@
 #include "stdafx.h"
 #include "HeeksCNCInterface.h"
 #include "Program.h"
-#include "Fixtures.h"
 #include "Operations.h"
 #include "CTool.h"
-#include "MachineState.h"
+#include "Tools.h"
+#include "interface/HDialogs.h"
 #include <wx/aui/aui.h>
 
 CProgram* CHeeksCNCInterface::GetProgram()
 {
 	return theApp.m_program;
 }
-
-#ifndef STABLE_OPS_ONLY
-CFixture* CHeeksCNCInterface::FixtureFind(int coordinate_system_number )
-{
-	return theApp.m_program->Fixtures()->Find((CFixture::eCoordinateSystemNumber_t)coordinate_system_number);
-}
-#endif
 
 CTools* CHeeksCNCInterface::GetTools()
 {
@@ -29,7 +22,9 @@ CTools* CHeeksCNCInterface::GetTools()
 
 std::vector< std::pair< int, wxString > > CHeeksCNCInterface::FindAllTools()
 {
-	return CTool::FindAllTools();
+        std::vector< std::pair< int, wxString > > tools;
+        HTypeObjectDropDown::GetObjectArrayString(ToolType, theApp.m_program->Tools(), tools);
+        return tools;
 }
 
 int CHeeksCNCInterface::FindFirstToolByType( unsigned int type )
@@ -101,7 +96,3 @@ void CHeeksCNCInterface::PostProcess()
 	theApp.RunPythonScript();
 }
 
-wxString CHeeksCNCInterface::MachineStateTool(CMachineState *pMachineState, const int new_tool)
-{
-	return pMachineState->Tool(new_tool);
-}

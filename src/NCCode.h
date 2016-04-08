@@ -15,7 +15,7 @@
 #include "interface/HeeksColor.h"
 #include "HeeksCNCTypes.h"
 #include "CTool.h"
-
+#include "OutputCanvas.h"
 #include <TopoDS_Shape.hxx>
 #include <gp_Pnt.hxx>
 
@@ -88,10 +88,12 @@ public:
 };
 
 class PathArc : public PathObject{
-public:
+private:
 	double m_c[3]; // defined relative to previous point ( span start point )
 	double m_radius;
 	int m_dir; // 1 - anti-clockwise, -1 - clockwise
+
+public:
 	PathArc(){m_c[0] = m_c[1] = m_c[2] = 0.0; m_dir = 1;}
 	int GetType(){return int(PathObject::eArc);}
 	void WriteXML(TiXmlNode *root);
@@ -129,21 +131,24 @@ public:
 	void ReadFromXMLElement(TiXmlElement* pElem);
 };
 
-class CNCCodeBlock:public HeeksObj
+class CNCCodeBlock : public HeeksObj
 {
 public:
+
+    static const int ObjType = NCCodeBlockType;
+
+
 	std::list<ColouredText> m_text;
 	std::list<ColouredPath> m_line_strips;
 	long m_from_pos, m_to_pos; // position of block in text ctrl
 	bool m_formatted;
 	static double multiplier;
 
-	CNCCodeBlock():m_from_pos(-1), m_to_pos(-1), m_formatted(false) {}
+	CNCCodeBlock() : HeeksObj(ObjType), m_from_pos(-1), m_to_pos(-1), m_formatted(false) {}
 
 	void WriteNCCode(wxTextFile &f, double ox, double oy);
 
 	// HeeksObj's virtual functions
-	int GetType()const{return NCCodeBlockType;}
 	HeeksObj *MakeACopy(void)const;
 	void glCommands(bool select, bool marked, bool no_color);
 	void GetBox(CBox &box);
@@ -151,25 +156,30 @@ public:
 
 	static HeeksObj* ReadFromXMLElement(TiXmlElement* pElem);
 	void AppendText(wxString& str);
-	void FormatText(wxTextCtrl *textCtrl);
+	void FormatText(COutputTextCtrl *textCtrl);
 };
 
-class CNCCode:public HeeksObj
+class CNCCode : public HeeksObj
 {
 public:
 	static long pos; // used for setting the CNCCodeBlock objects' m_from_pos and m_to_pos
 private:
 	static std::map<std::string,ColorEnum> m_colors_s_i;
 	static std::map<ColorEnum,std::string> m_colors_i_s;
-	static std::vector<HeeksColor> m_colors;
+	static std::vector<PropertyColor> m_colors;
 
 public:
+
+
+    static const int ObjType = NCCodeType;
+
+    static void InitializeColorProperties(PropertyList * owner);
 	static void ClearColors(void);
-	static void AddColor(const char* name, const HeeksColor& col);
+	static void AddColor(const char* name, const PropertyColor& prop, long col, PropertyList * owner);
 	static ColorEnum GetColor(const char* name, ColorEnum def=ColorDefaultType);
 	static const char* GetColor(ColorEnum i, const char* def="default");
 	static int ColorCount(void) { return m_colors.size(); }
-	static HeeksColor& Color(ColorEnum i) { return m_colors[i]; }
+	static const HeeksColor& Color(ColorEnum i) { return m_colors[i]; }
 
 	std::list<CNCCodeBlock*> m_blocks;
 	int m_gl_list;
@@ -180,19 +190,17 @@ public:
 	static int s_arc_interpolation_count;	// How many lines to represent an arc for the glCommands() method?
 
 	CNCCode();
-	CNCCode(const CNCCode &p):m_gl_list(0), m_highlighted_block(NULL){operator=(p);}
+	CNCCode(const CNCCode &p): HeeksObj(p), m_gl_list(0), m_highlighted_block(NULL) {operator=(p);}
 	virtual ~CNCCode();
 
 	const CNCCode &operator=(const CNCCode &p);
 	void Clear();
 
 	// HeeksObj's virtual functions
-	int GetType()const{return NCCodeType;}
 	const wxChar* GetTypeString(void)const{return _T("NC Code");}
 	void glCommands(bool select, bool marked, bool no_color);
 	void GetBox(CBox &box);
 	const wxBitmap &GetIcon();
-//	void GetProperties(std::list<Property *> *list);
 	void GetTools(std::list<Tool*>* t_list, const wxPoint* p);
 	HeeksObj *MakeACopy(void)const;
 	void CopyFrom(const HeeksObj* object);
@@ -203,14 +211,14 @@ public:
 	void SetClickMarkPoint(MarkedObject* marked_object, const double* ray_start, const double* ray_direction);
 
 	static HeeksObj* ReadFromXMLElement(TiXmlElement* pElem);
-	static void ReadColorsFromConfig();
+	static void ReadColorsFromConfig(PropertyList * owner);
 	static void WriteColorsToConfig();
-	static void GetOptions(std::list<Property *> *list);
 	static wxString ConfigScope() { return(_T("NC Code")); }
 
 	void DestroyGLLists(void); // not void KillGLLists(void), because I don't want the display list recreated on the Redraw button
-	void SetTextCtrl(wxTextCtrl *textCtrl);
-	void FormatBlocks(wxTextCtrl *textCtrl, int i0, int i1);
+	void SetTextCtrlStyles(COutputTextCtrl *textCtrl);
+	void SetTextCtrl(COutputTextCtrl *textCtrl);
+	void FormatBlocks(COutputTextCtrl *textCtrl, int i0, int i1);
 	void HighlightBlock(long pos);
 
 	std::list< std::pair<PathObject *, CTool *> > GetPaths() const;

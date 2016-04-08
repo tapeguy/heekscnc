@@ -8,65 +8,40 @@ class CLengthCtrl;
 class CDoubleCtrl;
 class CObjectIdsCtrl;
 
-#include "interface/HDialogs.h"
+#include "SketchOpDlg.h"
 
-class PocketDlg : public HDialog
+class PocketDlg : public SketchOpDlg
 {
-	static wxBitmap* m_general_bitmap;
-	static wxBitmap* m_step_over_bitmap;
-	static wxBitmap* m_material_allowance_bitmap;
-	static wxBitmap* m_starting_center_bitmap;
-	static wxBitmap* m_starting_boundary_bitmap;
-	static wxBitmap* m_tool_down_bitmap;
-	static wxBitmap* m_not_tool_down_bitmap;
-	static wxBitmap* m_use_zig_zag_bitmap;
-	static wxBitmap* m_zig_angle_bitmap;
-	static wxBitmap* m_zig_unidirectional_bitmap;
-	static wxBitmap* m_not_use_zig_zag_bitmap;
-	static wxBitmap* m_clearance_height_bitmap;
-	static wxBitmap* m_rapid_down_to_bitmap;
-	static wxBitmap* m_start_depth_bitmap;
-	static wxBitmap* m_final_depth_bitmap;
-	static wxBitmap* m_step_down_bitmap;
-	static wxBitmap* m_entry_move_bitmap;
+	enum
+	{
+		ID_STARTING_PLACE = ID_SKETCH_ENUM_MAX,
+		ID_CUT_MODE,
+		ID_POST_PROCESSOR
+	};
 
-	CObjectIdsCtrl *m_idsSketches;
 	CLengthCtrl *m_lgthStepOver;
 	CLengthCtrl *m_lgthMaterialAllowance;
 	wxComboBox *m_cmbStartingPlace;
+	wxComboBox *m_cmbCutMode;
 	wxComboBox *m_cmbEntryMove;
-	wxComboBox *m_cmbTool;
-	wxCheckBox *m_chkKeepToolDown;
-	wxCheckBox *m_chkUseZigZag;
+	wxComboBox *m_cmbPostProcessor;
 	CDoubleCtrl *m_dblZigAngle;
-	wxCheckBox *m_chkZigUnidirectional;
-	wxComboBox *m_cmbAbsMode;
-	CLengthCtrl *m_lgthClearanceHeight;
-	CLengthCtrl *m_lgthRapidDownToHeight;
-	CLengthCtrl *m_lgthStartDepth;
-	CLengthCtrl *m_lgthFinalDepth;
-	CLengthCtrl *m_lgthStepDown;
-	CLengthCtrl *m_lgthHFeed;
-	CLengthCtrl *m_lgthVFeed;
-	CDoubleCtrl *m_dblSpindleSpeed;
-	wxTextCtrl *m_txtComment;
-	wxCheckBox *m_chkActive;
-	wxTextCtrl *m_txtTitle;
-	PictureWindow *m_picture;
+
+	void EnableZigZagControls();
 
 public:
-    PocketDlg(wxWindow *parent, CPocket* object);
-	void GetData(CPocket* object);
-	void SetFromData(CPocket* object);
-	void SetPicture();
-	void SetPicture(wxBitmap** bitmap, const wxString& name);
+    PocketDlg(wxWindow *parent, CPocket* object, const wxString& title = wxString(_T("Pocket Operation")), bool top_level = true);
 
-	void OnChildFocus(wxChildFocusEvent& event);
-	void OnComboStartingPlace( wxCommandEvent& event );
-	void OnCheckKeepToolDown(wxCommandEvent& event);
-	void OnCheckUseZigZag(wxCommandEvent& event);
-	void OnComboTool(wxCommandEvent& event);
-	void OnCheckZigUnidirectional(wxCommandEvent& event);
+	static bool Do(CPocket* object);
+
+	// HeeksObjDlg virtual functions
+	void GetDataRaw(HeeksObj* object);
+	void SetFromDataRaw(HeeksObj* object);
+	void SetPictureByWindow(wxWindow* w);
+	void SetPicture(const wxString& name);
+
+	void OnPostProcessor(wxCommandEvent& event);
+	void OnHelp( wxCommandEvent& event );
 
     DECLARE_EVENT_TABLE()
 };

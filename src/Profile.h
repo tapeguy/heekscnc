@@ -6,7 +6,7 @@
  */
 
 #include "HeeksCNCTypes.h"
-#include "DepthOp.h"
+#include "SketchOp.h"
 #include "Drilling.h"
 #include "CNCPoint.h"
 
@@ -19,52 +19,50 @@ class CProfileParams : public DomainObject
 {
 private:
 
-        CProfile * parent;
+    CProfile * parent;
 
 public:
-	typedef enum {
-		eRightOrInside = -1,
-		eOn = 0,
-		eLeftOrOutside = +1
-	}eSide;
-	eSide m_tool_on_side;
+    typedef enum {
+        eRightOrInside = -1,
+        eOn = 0,
+        eLeftOrOutside = +1
+    } eSide;
+	PropertyChoice m_tool_on_side;
 
 	typedef enum {
-		eConventional,
-		eClimb
-	}eCutMode;
-	PropertyChoice m_cut_mode;
+        eConventional,
+        eClimb
+    } eCutMode;
+    PropertyChoice m_cut_mode;
 
 	// these are only used when m_sketches.size() == 1
-	bool m_auto_roll_on;
-	bool m_auto_roll_off;
-	double m_auto_roll_radius;
-    double m_lead_in_line_len;
-    double m_lead_out_line_len;
-	double m_roll_on_point[3];
-	double m_roll_off_point[3];
-	bool m_start_given;
-	bool m_end_given;
-	double m_start[3];
-	double m_end[3];
-    double m_extend_at_start;
-    double m_extend_at_end;
-	bool m_end_beyond_full_profile;
-	int m_sort_sketches;
+	PropertyCheck m_auto_roll_on;
+	PropertyCheck m_auto_roll_off;
+	PropertyLength m_auto_roll_radius;
+	PropertyLength m_lead_in_line_len;
+	PropertyLength m_lead_out_line_len;
+	PropertyVertex m_roll_on_point;
+	PropertyVertex m_roll_off_point;
+	PropertyCheck m_start_given;
+	PropertyCheck m_end_given;
+	PropertyVertex m_start;
+	PropertyVertex m_end;
+	PropertyLength m_extend_at_start;
+	PropertyLength m_extend_at_end;
+	PropertyCheck m_end_beyond_full_profile;
+	PropertyCheck m_sort_sketches;
 
-	double m_offset_extra; // in mm
-	bool m_do_finishing_pass;
-	bool m_only_finishing_pass; // don't do roughing pass
-	double m_finishing_h_feed_rate;
+	PropertyLength m_offset_extra; // in mm
+	PropertyCheck m_do_finishing_pass;
+	PropertyCheck m_only_finishing_pass; // don't do roughing pass
+	PropertyLength m_finishing_h_feed_rate;
 	PropertyChoice m_finishing_cut_mode;
-	double m_finishing_step_down;
+	PropertyLength m_finishing_step_down;
 
 	CProfileParams(CProfile * parent);
 
 	void InitializeProperties();
-	void GetProperties(CProfile* parent, std::list<Property *> *list);
-	void WriteXMLAttributes(TiXmlNode* pElem);
-	void ReadFromXMLElement(TiXmlElement* pElem);
+	void GetProperties(std::list<Property *> *list);
 
 	static wxString ConfigScope() { return(_T("Profile")); }
 
@@ -72,7 +70,7 @@ public:
 	bool operator!=(const CProfileParams & rhs ) const { return(! (*this == rhs)); }
 };
 
-class CProfile: public CDepthOp{
+class CProfile: public CSketchOp{
 private:
 	CTags* m_tags;				// Access via Tags() method
 
@@ -84,14 +82,12 @@ public:
 	static PropertyDouble max_deviation_for_spline_to_arc;
 
 	CProfile()
-	 : CDepthOp(GetTypeString(), 0, ProfileType), m_tags(NULL), m_profile_params(this)
+	 : CSketchOp(0, ProfileType), m_tags(NULL), m_profile_params(this)
 	{
 	}
 
-	CProfile(const std::list<int> &sketches, const int tool_number );
-
+	CProfile(int sketch, const int tool_number );
 	CProfile( const CProfile & rhs );
-
 	CProfile & operator= ( const CProfile & rhs );
 
 	bool operator==( const CProfile & rhs ) const;
@@ -106,36 +102,31 @@ public:
 	void glCommands(bool select, bool marked, bool no_color);
 	const wxBitmap &GetIcon();
 	void GetProperties(std::list<Property *> *list);
-	ObjectCanvas* GetDialog(wxWindow* parent);
 	void GetTools(std::list<Tool*>* t_list, const wxPoint* p);
 	HeeksObj *MakeACopy(void)const;
 	void CopyFrom(const HeeksObj* object);
-	void WriteXML(TiXmlNode *root);
 	bool Add(HeeksObj* object, HeeksObj* prev_object);
 	void Remove(HeeksObj* object);
 	bool CanAdd(HeeksObj* object);
 	bool CanAddTo(HeeksObj* owner);
-#ifdef OP_SKETCHES_AS_CHILDREN
-	void ReloadPointers();
-#endif
+    void GetOnEdit(bool(**callback)(HeeksObj*));
+    void WriteDefaultValues();
+    void ReadDefaultValues();
+    void Clear();
 
 	// Data access methods.
 	CTags* Tags(){return m_tags;}
 
-	Python WriteSketchDefn(HeeksObj* sketch, CMachineState *pMachineState, bool reversed );
-	Python AppendTextForOneSketch(HeeksObj* object, CMachineState *pMachineState, CProfileParams::eCutMode cut_mode);
+	Python WriteSketchDefn(HeeksObj* sketch, bool reversed );
+	Python AppendTextForSketch(HeeksObj* object, CProfileParams::eCutMode cut_mode);
 
 	// COp's virtual functions
-	Python AppendTextToProgram(CMachineState *pMachineState);
-	void WriteDefaultValues();
-	void ReadDefaultValues();
+	Python AppendTextToProgram();
 
 	static HeeksObj* ReadFromXMLElement(TiXmlElement* pElem);
+
 	void AddMissingChildren();
-	unsigned int GetNumSketches();
-	Python AppendTextToProgram(CMachineState *pMachineState, bool finishing_pass);
-	std::list<wxString> DesignRulesAdjustment(const bool apply_changes);
-	std::list<wxString> ConfirmAutoRollRadius(const bool apply_changes);
+	Python AppendTextToProgram(bool finishing_pass);
 
 	static void GetOptions(std::list<Property *> *list);
 	static void ReadFromConfig();

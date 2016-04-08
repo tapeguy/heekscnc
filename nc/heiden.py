@@ -64,7 +64,6 @@ class Creator(nc.Creator):
         self.arc_centre_absolute = False
         self.arc_centre_positive = False
         self.in_quadrant_splitting = False
-        self.machine_coordinates = False
         self.drillExpanded = False
         self.can_do_helical_arcs = True
         self.shift_x = 0.0
@@ -280,16 +279,16 @@ class Creator(nc.Creator):
         self.write(self.SPACE() + (self.TOOL() % id) + '\n')
         self.t = id
 
-    def tool_defn(self, id, name='', radius=None, length=None, gradient=None):
+    def tool_defn(self, id, name='', params=None):
         self.write_blocknum()
         self.write(self.SPACE() + self.TOOL_DEFINITION())
         self.write(self.SPACE() + ('P%i' % id) + ' ')
 
         if (radius != None):
-            self.write(self.SPACE() + ('R%.3f' % radius))
+            self.write(self.SPACE() + ('R%.3f' % (float(params['diameter'])/2)))
 
         if (length != None):
-            self.write(self.SPACE() + 'Z%.3f' % length)
+            self.write(self.SPACE() + 'Z%.3f' % float(params['cutting edge height']))
 
         self.write('\n')
 
@@ -298,6 +297,9 @@ class Creator(nc.Creator):
 
     def offset_length(self, id, length=None):
         pass
+    
+    def current_tool(self):
+        return self.t
 
     ############################################################################
     ##  Datums
@@ -355,11 +357,8 @@ class Creator(nc.Creator):
     ############################################################################
     ##  Moves
 
-    def rapid(self, x=None, y=None, z=None, a=None, b=None, c=None, machine_coordinates=None ):
+    def rapid(self, x=None, y=None, z=None, a=None, b=None, c=None ):
         self.write_blocknum()
-
-        if self.machine_coordinates != False or (machine_coordinates != None and machine_coordinates == True):
-            self.write( self.MACHINE_COORDINATES() + self.SPACE() )
 
         if self.g0123_modal:
             if self.prev_g0123 != self.RAPID():
@@ -419,7 +418,7 @@ class Creator(nc.Creator):
         self.write_misc()
         self.write('\n')
 
-    def feed(self, x=None, y=None, z=None):
+    def feed(self, x=None, y=None, z=None, a=None, b=None, c=None):
         if self.same_xyz(x, y, z): return
         self.write_blocknum()
         if self.g0123_modal:
@@ -675,7 +674,7 @@ class Creator(nc.Creator):
         self.write_misc()
         self.write('\n')
 
-    def rapid_home(self, x=None, y=None, z=None, a=None, b=None, c=None, machine_coordinates=None):
+    def rapid_home(self, x=None, y=None, z=None, a=None, b=None, c=None):
         pass
 
     def rapid_unhome(self):
@@ -738,7 +737,7 @@ class Creator(nc.Creator):
     # revert it.  I must set the mode so that I can be sure the values I'm passing in make
     # sense to the end-machine.
     #
-    def drill(self, x=None, y=None, z=None, depth=None, standoff=None, dwell=None, peck_depth=None, retract_mode=None, spindle_mode=None):
+    def drill(self, x=None, y=None, dwell=None, depthparams = None, retract_mode=None, spindle_mode=None, internal_coolant_on=None, rapid_to_clearance = None):
         if (standoff == None):        
         # This is a bad thing.  All the drilling cycles need a retraction (and starting) height.        
             return

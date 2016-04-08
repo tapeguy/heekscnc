@@ -57,7 +57,7 @@ void ProgramDlg::GetDataRaw(HeeksObj* object)
 	((CProgram*)object)->m_machine = machine;
 	((CProgram*)object)->m_output_file_name_follows_data_file_name = m_chkOutputNameFollowsDataName->GetValue();
 	((CProgram*)object)->m_output_file = m_txtOutputFile->GetValue();
-	((CProgram*)object)->m_units = ((m_cmbUnits->GetSelection() == 0) ? 1.0:25.4);
+	((CProgram*)object)->m_units = (EnumUnitType)m_cmbUnits->GetSelection();
 }
 
 void ProgramDlg::SetFromDataRaw(HeeksObj* object)
@@ -77,7 +77,7 @@ void ProgramDlg::SetFromDataRaw(HeeksObj* object)
 	}
 	m_chkOutputNameFollowsDataName->SetValue(((CProgram*)object)->m_output_file_name_follows_data_file_name != 0);
 	m_txtOutputFile->SetValue(((CProgram*)object)->m_output_file);
-	m_cmbUnits->SetSelection(fabs(((CProgram*)object)->m_units) > 1.1);
+	m_cmbUnits->SetSelection(((CProgram*)object)->m_units);
 	EnableControls();
 }
 

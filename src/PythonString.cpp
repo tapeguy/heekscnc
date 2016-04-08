@@ -36,7 +36,7 @@ wxString PythonString( const wxString value )
 	_value.Replace(_T("\'"), _T("\\\'"), true );
 	_value.Replace(_T("\""), _T("\\\""), true );
 
-	result << _T("\'") << _value << _T("\'");
+	result << "\'" << _value << "\'";
 	return(result);
 }
 

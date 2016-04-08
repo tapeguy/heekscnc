@@ -143,7 +143,7 @@ bool Excellon::Read( const char *p_szFileName, const bool force_mirror /* = fals
 		if (obj->GetType() != PointType) continue;
 		double pos[3];
 		obj->GetStartPoint( pos );
-		m_existing_points.insert( std::make_pair( CNCPoint( pos ), CDrilling::Symbol_t( PointType, obj->GetID() ) ) );
+		m_existing_points.insert( std::make_pair( CNCPoint( pos ), obj->GetID() ) );
 	} // End for
 
 	std::ifstream input( p_szFileName, std::ios::in );
@@ -178,11 +178,11 @@ bool Excellon::Read( const char *p_szFileName, const bool force_mirror /* = fals
 			CDrilling *new_object = new CDrilling( m_holes[ *l_itToolNumber ], *l_itToolNumber, depth );
 			new_object->m_speed_op_params.m_spindle_speed = m_spindle_speed;
 			new_object->m_speed_op_params.m_vertical_feed_rate = m_feed_rate;
-			new_object->m_params.m_peck_depth = 0.0;	// Don't peck for a Printed Circuit Board.
+			new_object->m_depth_op_params.m_step_down = 0.0;	// Don't peck for a Printed Circuit Board.
 			new_object->m_params.m_dwell = 0.0;		// Don't wait around to clear stringers either.
-			new_object->m_params.m_standoff = 2.0;		// Printed Circuit Boards a quite flat
+			new_object->m_depth_op_params.m_rapid_safety_space = 2.0;		// Printed Circuit Boards a quite flat
 
-			theApp.m_program->Operations()->Add(new_object,NULL);
+			theApp.m_program->Operations()->Add(new_object);
 		} // End for
 
 		return(true);	// Success
@@ -803,8 +803,7 @@ bool Excellon::ReadDataBlock( const std::string & data_block )
             CTool *tool = new CTool(NULL, CToolParams::eDrill, id);
             heeksCAD->SetObjectID( tool, id );
             tool->m_params.m_diameter = tool_diameter * m_units;
-            tool->SetAngleAndRadius();
-            theApp.m_program->Tools()->Add( tool, NULL );
+            theApp.m_program->Tools()->Add(tool);
 
             // Keep a map of the tool numbers found in the Excellon file to those in our tool table.
             m_tool_table_map.insert( std::make_pair( excellon_tool_number, tool->m_tool_number ));
@@ -841,19 +840,18 @@ bool Excellon::ReadDataBlock( const std::string & data_block )
 				cnc_point.ToDoubleArray( location );
 				HeeksObj *point = heeksCAD->NewPoint( location );
 				heeksCAD->Add( point, NULL );
-				CDrilling::Symbol_t symbol( point->GetType(), point->GetID() );
-				m_existing_points.insert( std::make_pair( cnc_point, symbol ));
+				m_existing_points.insert( std::make_pair( cnc_point, point->GetID() ));
 			} // End if - then
 
 			// There is already a point here.  Use it.
 			if (m_holes.find( m_active_tool_number ) == m_holes.end())
 			{
 				// We haven't used this drill bit before.  Add it now.
-				CDrilling::Symbols_t symbols;
-				CDrilling::Symbol_t symbol( m_existing_points[ cnc_point ] );
-				symbols.push_back( symbol );
+				std::list<int> points;
+				int p = m_existing_points[ cnc_point ];
+				points.push_back( p );
 
-				m_holes.insert( std::make_pair( m_active_tool_number, symbols ) );
+				m_holes.insert( std::make_pair( m_active_tool_number, points ) );
 			}
 			else
 			{
@@ -873,5 +871,10 @@ bool Excellon::ReadDataBlock( const std::string & data_block )
 	return(true);
 } // End ReadDataBlock() method
 
+
+/* static */ void Excellon::GetOptions(std::list<Property *> *list)
+{
+	list->push_back(&s_allow_dummy_tool_definitions);
+} // End GetOptions() method
 
 

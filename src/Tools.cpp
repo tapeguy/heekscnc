@@ -3,6 +3,7 @@
 // This program is released under the BSD license. See the file COPYING for details.
 
 #include "stdafx.h"
+#include "CNCConfig.h"
 #include "Tools.h"
 #include "Program.h"
 #include "interface/Tool.h"
@@ -12,25 +13,28 @@
 
 bool CTools::CanAdd(HeeksObj* object)
 {
-	return 	((object != NULL) && (object->GetType() == ToolType));
+	return ((object != NULL) && (object->GetType() == ToolType));
 }
-
 
 HeeksObj *CTools::MakeACopy(void) const
 {
     return(new CTools(*this));  // Call the copy constructor.
 }
 
-
 CTools::CTools()
+ : ObjList(ObjType)
 {
+    InitializeProperties();
     CNCConfig config(CTools::ConfigScope());
-	config.Read(_T("title_format"), (int *) (&m_title_format), int(eGaugeReplacesSize) );
+    int title_format;
+	config.Read(_T("title_format"), &title_format, int(eGaugeReplacesSize) );
+	m_title_format = title_format;
 }
 
-
-CTools::CTools( const CTools & rhs ) : ObjList(rhs)
+CTools::CTools( const CTools & rhs )
+ : ObjList(rhs)
 {
+    InitializeProperties();
     m_title_format = rhs.m_title_format;
 }
 
@@ -41,17 +45,21 @@ void CTools::InitializeProperties()
         choices.push_back( _("Gauge number replaces size") );
         choices.push_back( _("Include gauge number and size") );
 
-        m_title_format.Initialize(_("Title Format"), this);
+        m_title_format.Initialize(_("title_format"), this);
         m_title_format.m_choices = choices;
     }
 }
 
-void CTools::OnPropertyEdit(Property *prop)
+void CTools::OnPropertySet(Property& prop)
 {
-    if (prop == &m_title_format)
+    if (prop == m_title_format)
     {
         CNCConfig config(CTools::ConfigScope());
         config.Write(_T("title_format"), m_title_format);
+    }
+    else
+    {
+        ObjList::OnPropertySet(prop);
     }
 }
 
@@ -92,14 +100,6 @@ void CTools::CopyFrom(const HeeksObj* object)
         }
     }
     */
-}
-
-void CTools::WriteXML(TiXmlNode *root)
-{
-	TiXmlElement * element;
-	element = heeksCAD->NewXMLElement( "Tools" );
-	heeksCAD->LinkXMLEndChild( root,  element );
-	WriteBaseXML(element);
 }
 
 //static
@@ -208,7 +208,6 @@ void CTools::GetTools(std::list<Tool*>* t_list, const wxPoint* p)
 
 	ObjList::GetTools(t_list, p);
 }
-
 
 void CTools::OnChangeUnits(const double units)
 {

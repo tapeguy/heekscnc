@@ -8,29 +8,27 @@
 #include "tinyxml/tinyxml.h"
 #include "ProgramCanvas.h"
 #include "NCCode.h"
+#include "interface/Geom.h"
 #include "interface/MarkedObject.h"
+#include "interface/Property.h"
 #include "interface/Tool.h"
 #include "Profile.h"
 #include "Pocket.h"
-#include "ZigZag.h"
-#include "Waterline.h"
 #include "Drilling.h"
 #include "CTool.h"
 #include "Op.h"
 #include "CNCConfig.h"
-#include "CounterBore.h"
-#ifndef STABLE_OPS_ONLY
-#include "Fixture.h"
-#endif
 #include "SpeedOp.h"
 #include "Operations.h"
-#ifndef STABLE_OPS_ONLY
-#include "Fixtures.h"
-#endif
 #include "Tools.h"
+#include "Patterns.h"
+#include "Surfaces.h"
+#include "Stocks.h"
 #include "interface/strconv.h"
-#include "MachineState.h"
-#include "AttachOp.h"
+#include "Pattern.h"
+#include "Surface.h"
+#include "Stock.h"
+#include "ProgramDlg.h"
 
 #include <wx/stdpaths.h>
 #include <wx/filename.h>
@@ -43,58 +41,29 @@ using namespace std;
 
 wxString CProgram::alternative_machines_file = _T("");
 
-CProgram::CProgram():m_nc_code(NULL), m_operations(NULL), m_tools(NULL), m_speed_references(NULL)
-#ifndef STABLE_OPS_ONLY
-, m_fixtures(NULL)
-, m_active_machine_state(NULL)
-#endif
-, m_script_edited(false)
+CProgram::CProgram()
+ : IdNamedObjList(ObjType),
+   m_nc_code ( NULL ),
+   m_operations ( NULL ),
+   m_tools ( NULL ),
+   m_patterns ( NULL ),
+   m_surfaces ( NULL ),
+   m_stocks ( NULL ),
+   m_script_edited ( false )
 {
-	CNCConfig config(ConfigScope());
-	wxString machine_file_name;
-	config.Read(_T("ProgramMachine"), &machine_file_name, _T("iso"));
-	m_machine = CProgram::GetMachine(machine_file_name);
-
-	config.Read(_T("OutputFileNameFollowsDataFileName"), &m_output_file_name_follows_data_file_name, true);
-
-    wxStandardPaths& standard_paths = wxStandardPaths::Get();
-    wxFileName default_path( standard_paths.GetTempDir().c_str(), _T("test.tap"));
-
-	config.Read(_T("ProgramOutputFile"), &m_output_file, default_path.GetFullPath().c_str());
-
-	config.Read(_T("ProgramUnits"), &m_units, 1.0);
-	config.Read(_("ProgramPathControlMode"), (int *) &m_path_control_mode, (int) ePathControlUndefined );
-	config.Read(_("ProgramMotionBlendingTolerance"), &m_motion_blending_tolerance, 0.0001);
-	config.Read(_("ProgramNaiveCamTolerance"), &m_naive_cam_tolerance, 0.0001);
-
-	config.Read(_("ClearanceSource"), (int *) &m_clearance_source, int(CProgram::eClearanceDefinedByOperation) );
+	ReadDefaultValues();
 }
 
-const wxBitmap &CProgram::GetIcon()
-{
-	static wxBitmap* icon = NULL;
-	if(icon == NULL)icon = new wxBitmap(wxImage(theApp.GetResFolder() + _T("/icons/program.png")));
-	return *icon;
-}
-
-HeeksObj *CProgram::MakeACopy(void)const
-{
-	return new CProgram(*this);
-}
-
-
-CProgram::CProgram( const CProgram & rhs ) : ObjList(rhs)
+CProgram::CProgram( const CProgram & rhs )
+ : IdNamedObjList(rhs)
 {
     m_nc_code = NULL;
     m_operations = NULL;
     m_tools = NULL;
-    m_speed_references = NULL;
-#ifndef STABLE_OPS_ONLY
-    m_fixtures = NULL;
-#endif
+	m_patterns = NULL;
+	m_surfaces = NULL;
+	m_stocks = NULL;
     m_script_edited = false;
-
-    m_raw_material = rhs.m_raw_material;
     m_machine = rhs.m_machine;
     m_output_file = rhs.m_output_file;
     m_output_file_name_follows_data_file_name = rhs.m_output_file_name_follows_data_file_name;
@@ -106,18 +75,15 @@ CProgram::CProgram( const CProgram & rhs ) : ObjList(rhs)
 	m_motion_blending_tolerance = rhs.m_motion_blending_tolerance;
 	m_naive_cam_tolerance = rhs.m_naive_cam_tolerance;
 
-	m_clearance_source = rhs.m_clearance_source;
-
     ReloadPointers();
     AddMissingChildren();
 
     if ((m_nc_code != NULL) && (rhs.m_nc_code != NULL)) *m_nc_code = *(rhs.m_nc_code);
     if ((m_operations != NULL) && (rhs.m_operations != NULL)) *m_operations = *(rhs.m_operations);
     if ((m_tools != NULL) && (rhs.m_tools != NULL)) *m_tools = *(rhs.m_tools);
-    if ((m_speed_references != NULL) && (rhs.m_speed_references != NULL)) *m_speed_references = *(rhs.m_speed_references);
- #ifndef STABLE_OPS_ONLY
-   if ((m_fixtures != NULL) && (rhs.m_fixtures != NULL)) *m_fixtures = *(rhs.m_fixtures);
-#endif
+    if ((m_patterns != NULL) && (rhs.m_patterns != NULL)) *m_patterns = *(rhs.m_patterns);
+    if ((m_surfaces != NULL) && (rhs.m_surfaces != NULL)) *m_surfaces = *(rhs.m_surfaces);
+    if ((m_stocks != NULL) && (rhs.m_stocks != NULL)) *m_stocks = *(rhs.m_stocks);
 }
 
 CProgram::~CProgram()
@@ -130,6 +96,42 @@ CProgram::~CProgram()
 	}
 }
 
+const wxBitmap &CProgram::GetIcon()
+{
+	static wxBitmap* icon = NULL;
+	if(icon == NULL)icon = new wxBitmap(wxImage(theApp.GetResFolder() + _T("/icons/program.png")));
+	return *icon;
+}
+
+void CProgram::glCommands(bool select, bool marked, bool no_color)
+{
+	if (m_nc_code != NULL)
+	{
+		int color[4];
+		if (no_color){
+			glGetIntegerv(GL_CURRENT_COLOR, color);
+		}
+		if (select)glPushName(m_nc_code->GetIndex());
+		m_nc_code->glCommands(select, marked, no_color);
+		if (select)glPopName();
+		if (no_color)
+		{
+			glColor3i(color[0], color[1], color[2]);
+		}
+	}
+	if (!select)
+	{
+		if (m_tools != NULL)m_tools->glCommands(select, marked, no_color);
+	}
+
+	if (m_operations != NULL)m_operations->glCommands(select, false, no_color);
+}
+
+HeeksObj *CProgram::MakeACopy(void)const
+{
+	return new CProgram(*this);
+}
+
 /**
 	This is ALMOST the same as the assignment operator.  The difference is that
 	this, and its subordinate methods, augment themselves with the contents
@@ -140,17 +142,15 @@ void CProgram::CopyFrom(const HeeksObj* object)
 	if (object->GetType() == GetType())
 	{
 		CProgram *rhs = (CProgram *) object;
-		// ObjList::operator=(*rhs);	// I don't think this will do anything in this case. But it might one day.
+		// IdNamedObjList::operator=(*rhs);	// I don't think this will do anything in this case. But it might one day.
 
 		if ((m_nc_code != NULL) && (rhs->m_nc_code != NULL)) m_nc_code->CopyFrom( rhs->m_nc_code );
 		if ((m_operations != NULL) && (rhs->m_operations != NULL)) m_operations->CopyFrom( rhs->m_operations );
 		if ((m_tools != NULL) && (rhs->m_tools != NULL)) m_tools->CopyFrom( rhs->m_tools );
-		if ((m_speed_references != NULL) && (rhs->m_speed_references != NULL)) m_speed_references->CopyFrom(rhs->m_speed_references);
-#ifndef STABLE_OPS_ONLY
-		if ((m_fixtures != NULL) && (rhs->m_fixtures != NULL)) m_fixtures->CopyFrom(rhs->m_fixtures);
-#endif
+		if ((m_patterns != NULL) && (rhs->m_patterns != NULL)) m_patterns->CopyFrom( rhs->m_patterns );
+		if ((m_surfaces != NULL) && (rhs->m_surfaces != NULL)) m_surfaces->CopyFrom( rhs->m_surfaces );
+		if ((m_stocks != NULL) && (rhs->m_stocks != NULL)) m_stocks->CopyFrom( rhs->m_stocks );
 
-		m_raw_material = rhs->m_raw_material;
 		m_machine = rhs->m_machine;
 		m_output_file = rhs->m_output_file;
 		m_output_file_name_follows_data_file_name = rhs->m_output_file_name_follows_data_file_name;
@@ -161,27 +161,33 @@ void CProgram::CopyFrom(const HeeksObj* object)
 		m_path_control_mode = rhs->m_path_control_mode;
 		m_motion_blending_tolerance = rhs->m_motion_blending_tolerance;
 		m_naive_cam_tolerance = rhs->m_naive_cam_tolerance;
-
-		m_clearance_source = rhs->m_clearance_source;
 	}
+}
+
+void CProgram::Clear()
+{
+	if (m_nc_code != NULL)m_nc_code->Clear();
+	if (m_operations != NULL)m_operations->Clear();
+	if (m_tools != NULL)m_tools->Clear();
+	if (m_patterns != NULL)m_patterns->Clear();
+	if (m_surfaces != NULL)m_surfaces->Clear();
+	if (m_stocks != NULL)m_stocks->Clear();
 }
 
 CProgram & CProgram::operator= ( const CProgram & rhs )
 {
 	if (this != &rhs)
 	{
-		ObjList::operator=(rhs);
+		IdNamedObjList::operator=(rhs);
 		ReloadPointers();
 
 		if ((m_nc_code != NULL) && (rhs.m_nc_code != NULL)) *m_nc_code = *(rhs.m_nc_code);
 		if ((m_operations != NULL) && (rhs.m_operations != NULL)) *m_operations = *(rhs.m_operations);
 		if ((m_tools != NULL) && (rhs.m_tools != NULL)) *m_tools = *(rhs.m_tools);
-		if ((m_speed_references != NULL) && (rhs.m_speed_references != NULL)) *m_speed_references = *(rhs.m_speed_references);
-#ifndef STABLE_OPS_ONLY
-		if ((m_fixtures != NULL) && (rhs.m_fixtures != NULL)) *m_fixtures = *(rhs.m_fixtures);
-#endif
+		if ((m_patterns != NULL) && (rhs.m_patterns != NULL)) *m_patterns = *(rhs.m_patterns);
+		if ((m_surfaces != NULL) && (rhs.m_surfaces != NULL)) *m_surfaces = *(rhs.m_surfaces);
+		if ((m_stocks != NULL) && (rhs.m_stocks != NULL)) *m_stocks = *(rhs.m_stocks);
 
-		m_raw_material = rhs.m_raw_material;
 		m_machine = rhs.m_machine;
 		m_output_file = rhs.m_output_file;
 		m_output_file_name_follows_data_file_name = rhs.m_output_file_name_follows_data_file_name;
@@ -192,8 +198,6 @@ CProgram & CProgram::operator= ( const CProgram & rhs )
 		m_path_control_mode = rhs.m_path_control_mode;
 		m_motion_blending_tolerance = rhs.m_motion_blending_tolerance;
 		m_naive_cam_tolerance = rhs.m_naive_cam_tolerance;
-
-		m_clearance_source = rhs.m_clearance_source;
 	}
 
 	return(*this);
@@ -202,12 +206,6 @@ CProgram & CProgram::operator= ( const CProgram & rhs )
 
 CMachine::CMachine()
 {
-	m_max_spindle_speed = 0.0;
-
-	CNCConfig config(CMachine::ConfigScope());
-	config.Read(_T("safety_height_defined"), m_safety_height_defined, false );
-	config.Read(_T("safety_height"), m_safety_height, 0.0 );		// in G53 machine units - indicates where to move to for tool changes
-	config.Read(_("ClearanceHeight"), m_clearance_height, 50.0 ); // in local coordinate system (G54 etc.) to show how tall clamps and vices are for movement between machine operations.
 }
 
 CMachine::CMachine( const CMachine & rhs )
@@ -220,241 +218,77 @@ CMachine & CMachine::operator= ( const CMachine & rhs )
 {
 	if (this != &rhs)
 	{
-		configuration_file_name = rhs.configuration_file_name;
-		file_name = rhs.file_name;
+		post = rhs.post;
+		reader = rhs.reader;
+		suffix = rhs.suffix;
 		description = rhs.description;
-		m_max_spindle_speed = rhs.m_max_spindle_speed;
-		m_safety_height_defined = rhs.m_safety_height_defined;
-		m_safety_height = rhs.m_safety_height;
-		m_clearance_height = rhs.m_clearance_height;
+		py_params = rhs.py_params;
 	} // End if - then
 
 	return(*this);
 } // End assignment operator.
 
 
-static void on_set_machine(int value, HeeksObj* object)
+static void on_set_machine(int value, HeeksObj* object, bool from_undo_redo)
 {
 	std::vector<CMachine> machines;
 	CProgram::GetMachines(machines);
 	((CProgram*)object)->m_machine = machines[value];
-	CNCConfig config(CProgram::ConfigScope());
-	config.Write(_T("ProgramMachine"), ((CProgram*)object)->m_machine.file_name);
+	((CProgram*)object)->WriteDefaultValues();
 	heeksCAD->RefreshProperties();
 }
 
-static void on_set_output_file(const wxChar* value, HeeksObj* object)
+void CProgram::InitializeProperties()
 {
-	((CProgram*)object)->m_output_file = value;
-	CNCConfig config(CProgram::ConfigScope());
-	config.Write(_T("ProgramOutputFile"), ((CProgram*)object)->m_output_file);
-}
-
-static void on_set_units(int value, HeeksObj* object)
-{
-	((CProgram*)object)->ChangeUnits((value == 0) ? 1.0:25.4);
-
-	CNCConfig config(CProgram::ConfigScope());
-	config.Write(_T("ProgramUnits"), ((CProgram*)object)->m_units);
-
-    if (heeksCAD->GetViewUnits() != ((CProgram*)object)->m_units)
-    {
-        int response;
-        response = wxMessageBox( _("Would you like to change the HeeksCAD view units too?"), _("Change Units"), wxYES_NO );
-        if (response == wxYES)
-        {
-            heeksCAD->SetViewUnits(((CProgram*)object)->m_units, true);
-            heeksCAD->RefreshOptions();
-        }
-    }
-    heeksCAD->RefreshProperties();
-}
-
-static void on_set_output_file_name_follows_data_file_name(int zero_based_choice, HeeksObj *object)
-{
-	CProgram *pProgram = (CProgram *) object;
-	pProgram->m_output_file_name_follows_data_file_name = (zero_based_choice != 0);
-	heeksCAD->RefreshProperties();
-
-	CNCConfig config(CProgram::ConfigScope());
-	config.Write(_T("OutputFileNameFollowsDataFileName"), pProgram->m_output_file_name_follows_data_file_name );
-}
-
-static void on_set_clearance_source(int zero_based_choice, HeeksObj *object)
-{
-	CProgram *pProgram = (CProgram *) object;
-	pProgram->m_clearance_source = CProgram::eClearanceSource_t(zero_based_choice);
-
-	CNCConfig config(CProgram::ConfigScope());
-	config.Write(_T("ClearanceSource"), (int) pProgram->m_clearance_source );
-}
-
-static void on_set_path_control_mode(int zero_based_choice, HeeksObj *object)
-{
-	CProgram *pProgram = (CProgram *) object;
-	pProgram->m_path_control_mode = CProgram::ePathControlMode_t(zero_based_choice);
-
-	CNCConfig config(CProgram::ConfigScope());
-	config.Write(_T("ProgramPathControlMode"), (int) pProgram->m_path_control_mode );
-}
-
-static void on_set_motion_blending_tolerance(double value, HeeksObj *object)
-{
-	CProgram *pProgram = (CProgram *) object;
-	pProgram->m_motion_blending_tolerance = value;
-
-	CNCConfig config(CProgram::ConfigScope());
-	config.Write(_T("ProgramMotionBlendingTolerance"), pProgram->m_motion_blending_tolerance );
-}
-
-static void on_set_naive_cam_tolerance(double value, HeeksObj *object)
-{
-	CProgram *pProgram = (CProgram *) object;
-	pProgram->m_naive_cam_tolerance = value;
-
-	CNCConfig config(CProgram::ConfigScope());
-	config.Write(_T("ProgramNaiveCamTolerance"), pProgram->m_naive_cam_tolerance );
-}
-
-
-void CProgram::GetProperties(std::list<Property *> *list)
-{
-/*
-	{
-		std::vector<CMachine> machines;
-		GetMachines(machines);
-
-		std::list< wxString > choices;
-		int choice = 0;
-		for(unsigned int i = 0; i < machines.size(); i++)
-		{
-			CMachine& machine = machines[i];
-			choices.push_back(machine.description);
-			if(machine.file_name == m_machine.file_name)choice = i;
-		}
-		list->push_back ( new PropertyChoice ( _("machine"),  choices, choice, this, on_set_machine ) );
-	}
-
-	{
-		std::list<wxString> choices;
-		int choice = int(m_output_file_name_follows_data_file_name?1:0);
-		choices.push_back(_T("False"));
-		choices.push_back(_T("True"));
-
-		list->push_back(new PropertyChoice(_("output file name follows data file name"), choices, choice, this, on_set_output_file_name_follows_data_file_name));
-	}
-
-	{
-		std::list< wxString > choices;
-		choices.push_back ( wxString ( _("By Machine") ) );
-		choices.push_back ( wxString ( _("By Fixture") ) );
-		choices.push_back ( wxString ( _("By Operation") ) );
-		int choice = int(m_clearance_source);
-
-		list->push_back ( new PropertyChoice ( _("Clearance Height Defined"),  choices, choice, this, on_set_clearance_source ) );
-	}
-
-	if (m_output_file_name_follows_data_file_name == false)
-	{
-		list->push_back(new PropertyFile(_("output file"), m_output_file, this, on_set_output_file));
-	} // End if - then
+    m_machine_choice.Initialize(_("machine"), this);
+    m_output_file_name_follows_data_file_name.Initialize(_("output file name follows data file name"), this);
+    m_output_file.Initialize(_("output file"), this);
 
 	{
 		std::list< wxString > choices;
 		choices.push_back ( wxString ( _("mm") ) );
 		choices.push_back ( wxString ( _("inch") ) );
-		int choice = 0;
-		if(m_units > 25.0)choice = 1;
-		list->push_back ( new PropertyChoice ( _("units for nc output"),  choices, choice, this, on_set_units ) );
+		m_units_choice.Initialize(_("units for nc output"), this);
+		m_units_choice.m_choices = choices;
 	}
-*/
 
-	m_machine.GetProperties(this, list);
-	m_raw_material.GetProperties(list);
-/*
 	{
 		std::list< wxString > choices;
 		choices.push_back(_("Exact Path Mode"));
 		choices.push_back(_("Exact Stop Mode"));
 		choices.push_back(_("Best Possible Speed"));
 		choices.push_back(_("Undefined"));
-
-		list->push_back ( new PropertyChoice ( _("Path Control Mode"),  choices, (int) m_path_control_mode, this, on_set_path_control_mode ) );
-
-		if (m_path_control_mode == eBestPossibleSpeed)
-		{
-			list->push_back( new PropertyLength( _("Motion Blending Tolerance"), m_motion_blending_tolerance, this, on_set_motion_blending_tolerance ) );
-			list->push_back( new PropertyLength( _("Naive CAM Tolerance"), m_naive_cam_tolerance, this, on_set_naive_cam_tolerance ) );
-		} // End if - then
+		m_path_control_mode.Initialize(_("Path Control Mode"), this);
 	}
-*/
-	HeeksObj::GetProperties(list);
+
+    m_motion_blending_tolerance.Initialize( _("Motion Blending Tolerance"), this);
+    m_naive_cam_tolerance.Initialize( _("Naive CAM Tolerance"), this);
 }
 
-static void on_set_max_spindle_speed(double value, HeeksObj* object)
+void CProgram::GetProperties(std::list<Property *> *list)
 {
-    ((CProgram *) object)->m_machine.m_max_spindle_speed = value;
-	heeksCAD->RefreshProperties();
-}
+    {
+        std::vector<CMachine> machines;
+        GetMachines(machines);
 
-static void on_set_safety_height_defined(const bool value, HeeksObj *object)
-{
-    ((CProgram *)object)->m_machine.m_safety_height_defined = value;
+        std::list< wxString > choices;
+        int choice = 0;
+        for(unsigned int i = 0; i < machines.size(); i++)
+        {
+            CMachine& machine = machines[i];
+            choices.push_back(machine.description);
+            if(machine.description == m_machine.description)choice = i;
+        }
+        m_machine_choice.m_choices = choices;
+    }
 
-	CNCConfig config(CMachine::ConfigScope());
-	config.Write(_T("safety_height_defined"), ((CProgram *)object)->m_machine.m_safety_height_defined );
+    m_machine.GetProperties(this, list);
 
-    heeksCAD->Changed();
-}
-
-static void on_set_safety_height(const double value, HeeksObj *object)
-{
-    ((CProgram *)object)->m_machine.m_safety_height = value;
-
-	CNCConfig config(CMachine::ConfigScope());
-	config.Write(_T("safety_height"), ((CProgram *)object)->m_machine.m_safety_height );
-
-    heeksCAD->Changed();
-}
-
-static void on_set_clearance_height( const double value, HeeksObj *object)
-{
-	CMachine *pMachine = &(((CProgram *)object)->m_machine);
-	pMachine->m_clearance_height = value;
-
-	CNCConfig config(CMachine::ConfigScope());
-	config.Write(_T("ClearanceHeight"), pMachine->m_clearance_height);
-
-	heeksCAD->RefreshProperties();
-}
-
-void CMachine::InitializeProperties()
-{
-    m_max_spindle_speed.Initialize(_("Maximum Spindle Speed (RPM)"), this);
-    m_safety_height_defined.Initialize(_("Safety Height Defined"), this);
-    m_clearance_height.Initialize(_("Clearance Height (for inter-operation movement)"), this);
-    m_safety_height.Initialize(_("Safety Height (in G53 - Machine - coordinates)"), this);
+	IdNamedObjList::GetProperties(list);
 }
 
 void CMachine::GetProperties(CProgram *parent, std::list<Property *> *list)
 {
-	if (theApp.m_program->m_clearance_source == CProgram::eClearanceDefinedByMachine)
-	{
-        m_clearance_height.SetVisible(true);
-	}
-	else
-	{
-        m_clearance_height.SetVisible(false);
-	}
-
-    if (m_safety_height_defined.IsSet())
-    {
-        m_safety_height.SetVisible(true);
-    }
-    else
-    {
-        m_safety_height.SetVisible(true);
-    }
 } // End GetProperties() method
 
 
@@ -466,11 +300,9 @@ bool CProgram::CanAdd(HeeksObj* object)
 	return object->GetType() == NCCodeType ||
 		object->GetType() == OperationsType ||
 		object->GetType() == ToolsType ||
-		object->GetType() == SpeedReferencesType
-#ifndef STABLE_OPS_ONLY
-		|| object->GetType() == FixturesType
-#endif
-		;
+		object->GetType() == PatternsType ||
+		object->GetType() == SurfacesType ||
+		object->GetType() == StocksType;
 }
 
 bool CProgram::CanAddTo(HeeksObj* owner)
@@ -482,13 +314,17 @@ void CProgram::SetClickMarkPoint(MarkedObject* marked_object, const double* ray_
 {
 	if(marked_object->m_map.size() > 0)
 	{
-		MarkedObject* sub_marked_object = marked_object->m_map.begin()->second;
-		if(sub_marked_object)
+		HeeksObj* object = marked_object->m_map.begin()->first;
+		if(object)
 		{
-			HeeksObj* object = sub_marked_object->m_map.begin()->first;
-			if(object && object->GetType() == NCCodeType)
+			switch(object->GetType())
 			{
-				((CNCCode*)object)->SetClickMarkPoint(sub_marked_object, ray_start, ray_direction);
+			case NCCodeType:
+				((CNCCode*)object)->SetClickMarkPoint(marked_object, ray_start, ray_direction);
+				break;
+			case NCCodeBlockType:
+				((CNCCodeBlock*)object)->SetClickMarkPoint(marked_object, ray_start, ray_direction);
+				break;
 			}
 		}
 	}
@@ -499,18 +335,18 @@ void CProgram::WriteXML(TiXmlNode *root)
 	TiXmlElement * element;
 	element = heeksCAD->NewXMLElement( "Program" );
 	heeksCAD->LinkXMLEndChild( root,  element );
-	element->SetAttribute( "machine", m_machine.file_name.utf8_str());
-	element->SetAttribute( "output_file", m_output_file.utf8_str());
+	element->SetAttribute( "machine", m_machine.description.utf8_str());
+	const wxString& filename = m_output_file;
+	element->SetAttribute( "output_file", filename.utf8_str());
 	element->SetAttribute( "output_file_name_follows_data_file_name", (int) (m_output_file_name_follows_data_file_name?1:0));
 
 	element->SetAttribute( "program", theApp.m_program_canvas->m_textCtrl->GetValue().utf8_str());
-	element->SetDoubleAttribute( "units", m_units);
+	element->SetAttribute( "units", m_units);
 
-	element->SetAttribute( "ProgramPathControlMode", int(m_path_control_mode));
+	element->SetAttribute( "ProgramPathControlMode", (int)m_path_control_mode);
 	element->SetDoubleAttribute( "ProgramMotionBlendingTolerance", m_motion_blending_tolerance);
 	element->SetDoubleAttribute( "ProgramNaiveCamTolerance", m_naive_cam_tolerance);
 
-	m_raw_material.WriteBaseXML(element);
 	m_machine.WriteBaseXML(element);
 	WriteBaseXML(element);
 }
@@ -528,21 +364,23 @@ bool CProgram::Add(HeeksObj* object, HeeksObj* prev_object)
 		break;
 
 	case ToolsType:
-			m_tools = (CTools*)object;
+		m_tools = (CTools*)object;
 		break;
 
-	case SpeedReferencesType:
-		m_speed_references = (CSpeedReferences*)object;
+	case PatternsType:
+		m_patterns = (CPatterns*)object;
 		break;
 
-#ifndef STABLE_OPS_ONLY
-	case FixturesType:
-		m_fixtures = (CFixtures*)object;
+	case SurfacesType:
+		m_surfaces = (CSurfaces*)object;
 		break;
-#endif
+
+	case StocksType:
+		m_stocks = (CStocks*)object;
+		break;
 	}
 
-	return ObjList::Add(object, prev_object);
+	return IdNamedObjList::Add(object, prev_object);
 }
 
 void CProgram::Remove(HeeksObj* object)
@@ -559,12 +397,11 @@ void CProgram::Remove(HeeksObj* object)
 	if(object == m_nc_code)m_nc_code = NULL;
 	else if(object == m_operations)m_operations = NULL;
 	else if(object == m_tools)m_tools = NULL;
-	else if(object == m_speed_references)m_speed_references = NULL;
-#ifndef STABLE_OPS_ONLY
-	else if(object == m_fixtures)m_fixtures = NULL;
-#endif
+	else if(object == m_patterns)m_patterns = NULL;
+	else if(object == m_surfaces)m_surfaces = NULL;
+	else if(object == m_stocks)m_stocks = NULL;
 
-	ObjList::Remove(object);
+	IdNamedObjList::Remove(object);
 }
 
 // static member function
@@ -581,17 +418,16 @@ HeeksObj* CProgram::ReadFromXMLElement(TiXmlElement* pElem)
 	{
 		std::string name(a->Name());
 		if(name == "machine")new_object->m_machine = GetMachine(Ctt(a->Value()));
-		else if(name == "output_file"){new_object->m_output_file.assign(Ctt(a->Value()));}
+		else if(name == "output_file"){new_object->m_output_file = Ctt(a->Value());}
 		else if(name == "output_file_name_follows_data_file_name"){new_object->m_output_file_name_follows_data_file_name = (atoi(a->Value()) != 0); }
 		else if(name == "program"){theApp.m_program_canvas->m_textCtrl->SetValue(Ctt(a->Value()));}
-		else if(name == "units"){new_object->m_units = a->DoubleValue();}
+		else if(name == "units"){new_object->m_units = (EnumUnitType)a->IntValue();}
 		else if(name == "ProgramPathControlMode"){new_object->m_path_control_mode = ePathControlMode_t(atoi(a->Value()));}
 		else if(name == "ProgramMotionBlendingTolerance"){new_object->m_motion_blending_tolerance = a->DoubleValue();}
 		else if(name == "ProgramNaiveCamTolerance"){new_object->m_naive_cam_tolerance = a->DoubleValue();}
 	}
 
 	new_object->ReadBaseXML(pElem);
-	new_object->m_raw_material.ReadBaseXML(pElem);
 	new_object->m_machine.ReadBaseXML(pElem);
 
 	new_object->AddMissingChildren();
@@ -602,47 +438,93 @@ HeeksObj* CProgram::ReadFromXMLElement(TiXmlElement* pElem)
 
 void CMachine::WriteBaseXML(TiXmlElement *element)
 {
-	element->SetDoubleAttribute( "max_spindle_speed", m_max_spindle_speed);
-	element->SetAttribute( "safety_height_defined", m_safety_height_defined);
-	element->SetDoubleAttribute( "safety_height", m_safety_height);
-	element->SetDoubleAttribute( "clearance_height", m_clearance_height);
 } // End WriteBaseXML() method
 
 void CMachine::ReadBaseXML(TiXmlElement* element)
 {
-    double d;
-	if (element->Attribute("max_spindle_speed"))
-	{
-		element->Attribute("max_spindle_speed", &d);
-		m_max_spindle_speed = d;
-	} // End if - then
-
-	int flag = 0;
-	if (element->Attribute("safety_height_defined"))
-	    element->Attribute("safety_height_defined", &flag);
-	m_safety_height_defined = (flag != 0);
-
-	if (element->Attribute("safety_height")) {
-	    element->Attribute("safety_height", &d);
-	    m_safety_height = d;
-	}
-	if (element->Attribute("clearance_height")) {
-	    element->Attribute("clearance_height", &d);
-	    m_clearance_height = d;
-	}
-
 } // End ReadBaseXML() method
+
+void ApplyPatternToText(Python &python, int p, std::set<int> &patterns_written)
+{
+	CPattern* pattern = (CPattern*)heeksCAD->GetIDObject(PatternType, p);
+	if(pattern)
+	{
+		// if pattern not already written
+		if(patterns_written.find(p) == patterns_written.end())
+		{
+			// write a pattern definition
+			python << _T("pattern") << p << _T(" = [");
+			std::list<gp_Trsf> matrices;
+			pattern->GetMatrices(matrices);
+			for(std::list<gp_Trsf>::iterator It = matrices.begin(); It != matrices.end(); It++)
+			{
+				if(It != matrices.begin())python << _T(", ");
+				gp_Trsf &mat = *It;
+				python << _T("area.Matrix([");
+				double m[16];
+				extract(mat, m);
+				for(int i = 0; i<16; i++)
+				{
+					if(i>0)python<<_T(", ");
+					python<<m[i];
+				}
+				python << _T("])");
+			}
+			python<<_T("]\n");
+
+			patterns_written.insert(p);
+		}
+
+		// write a transform redirector
+		python << _T("transform.transform_begin(pattern") << p << _T(")\n");
+	}
+}
+
+void ApplySurfaceToText(Python &python, CSurface* surface, std::set<CSurface*> &surfaces_written)
+{
+	if(surfaces_written.find(surface) == surfaces_written.end())
+	{
+		surfaces_written.insert(surface);
+		// get the solids list
+		std::list<HeeksObj*> solids;
+		for (std::list<int>::iterator It = surface->m_solids.begin(); It != surface->m_solids.end(); It++)
+		{
+			HeeksObj* object = heeksCAD->GetIDObject(SolidType, *It);
+			if (object != NULL)solids.push_back(object);
+		} // End for
+
+#if wxCHECK_VERSION(3, 0, 0)
+		wxStandardPaths& standard_paths = wxStandardPaths::Get();
+#else
+		wxStandardPaths standard_paths;
+#endif
+		wxFileName filepath(standard_paths.GetTempDir().c_str(), wxString::Format(_T("surface%d.stl"), CSurface::number_for_stl_file).c_str());
+		CSurface::number_for_stl_file++;
+
+		//write stl file
+		heeksCAD->SaveSTLFile(solids, filepath.GetFullPath(), 0.01);
+
+		python << _T("stl") << (int)(surface->GetID()) << _T(" = ocl_funcs.STLSurfFromFile(") << PythonString(filepath.GetFullPath()) << _T(")\n");
+	}
+
+	double scale = Length::Conversion(theApp.m_program->m_units, UnitTypeMillimeter);
+	python << _T("attach.units = ") << scale << _T("\n");
+	python << _T("attach.attach_begin()\n");
+	python << _T("nc.creator.stl = stl") << (int)(surface->GetID()) << _T("\n");
+	python << _T("nc.creator.minz = -10000.0\n");
+	python << _T("nc.creator.material_allowance = ") << surface->m_material_allowance << _T("\n");
+
+	theApp.m_attached_to_surface = surface;
+}
 
 Python CProgram::RewritePythonProgram()
 {
 	Python python;
 
 	theApp.m_program_canvas->m_textCtrl->Clear();
-#ifndef STABLE_OPS_ONLY
-	CZigZag::number_for_stl_file = 1;
-	CWaterline::number_for_stl_file = 1;
-#endif
-	CAttachOp::number_for_stl_file = 1;
+	theApp.m_attached_to_surface = NULL;
+	CSurface::number_for_stl_file = 1;
+	theApp.m_tool_number = 0;
 
 	// call any OnRewritePython functions from other plugins
 	for(std::list< void(*)() >::iterator It = theApp.m_OnRewritePython_list.begin(); It != theApp.m_OnRewritePython_list.end(); It++)
@@ -652,12 +534,13 @@ Python CProgram::RewritePythonProgram()
 	}
 
 	bool kurve_funcs_needed = false;
-	bool area_module_needed = false;
+	bool area_module_needed = true;  // area module could be used anywhere
 	bool area_funcs_needed = false;
 	bool ocl_module_needed = false;
 	bool ocl_funcs_needed = false;
 	bool nc_attach_needed = false;
-	bool turning_module_needed = false;
+	bool transform_module_needed = false;
+	bool depths_needed = false;
 
 	typedef std::vector< COp * > OperationsMap_t;
 	OperationsMap_t operations;
@@ -675,33 +558,31 @@ Python CProgram::RewritePythonProgram()
 
 		if(((COp*)object)->m_active)
 		{
+			if(((COp*)object)->m_pattern != 0)transform_module_needed = true;
+			if(((COp*)object)->m_surface != 0){nc_attach_needed = true; ocl_module_needed = true; ocl_funcs_needed = true;}
 
 			switch(object->GetType())
 			{
 			case ProfileType:
-				area_module_needed = true;
 				kurve_funcs_needed = true;
+				depths_needed = true;
 				break;
 
 			case PocketType:
-			case InlayType:
-				area_module_needed = true;
 				area_funcs_needed = true;
+				depths_needed = true;
 				break;
 
-			case AttachOpType:
-			case UnattachOpType:
+			case DrillingType:
+				depths_needed = true;
+				break;
+
 			case ScriptOpType:
 				ocl_module_needed = true;
 				nc_attach_needed = true;
-			case ZigZagType:
-			case WaterlineType:
 				ocl_funcs_needed = true;
+				depths_needed = true;
 				break;
-
-			case TurnRoughType:
-				area_module_needed = true;
-				turning_module_needed = true;
 			}
 		}
 	}
@@ -774,20 +655,13 @@ Python CProgram::RewritePythonProgram()
 	//hackhack, make it work on unix with FHS
 	python << _T("import sys\n");
 
-#ifdef CMAKE_UNIX
-	#ifdef RUNINPLACE
-	        python << _T("sys.path.insert(0,'") << theApp.GetResFolder() << _T("/')\n");
-	#else
-	        python << _T("sys.path.insert(0,'/usr/lib/heekscnc/')\n");
-	#endif
+
+#ifdef RUNINPLACE
+        python << _T("sys.path.insert(0,'") << theApp.GetResFolder() << _T("/')\n");
 #else
-#ifndef WIN32
-#ifndef RUNINPLACE
-	python << _T("sys.path.insert(0,") << PythonString(_T("/usr/local/lib/heekscnc/")) << _T(")\n");
+        python << _T("sys.path.insert(0,'/usr/lib/heekscnc/')\n");
 #endif
-#endif
-	python << _T("sys.path.insert(0,") << PythonString(theApp.GetResFolder()) << _T(")\n");
-#endif
+
 	python << _T("import math\n");
 
 	// area related things
@@ -797,8 +671,9 @@ Python CProgram::RewritePythonProgram()
 	python << _T("sys.path.insert(0,") << PythonString(theApp.GetResFolder() + (theApp.m_use_Clipper_not_Boolean ? _T("/Clipper"):_T("/Boolean"))) << _T(")\n");
 #endif
 
+	    double scale = Length::Conversion(theApp.m_program->m_units, UnitTypeMillimeter);
 		python << _T("import area\n");
-		python << _T("area.set_units(") << m_units << _T(")\n");
+		python << _T("area.set_units(") << scale << _T(")\n");
 	}
 
 	// kurve related things
@@ -815,7 +690,7 @@ Python CProgram::RewritePythonProgram()
 	// attach operations
 	if(nc_attach_needed)
 	{
-		python << _T("import nc.attach\n");
+		python << _T("import nc.attach as attach\n");
 	}
 
 	// OpenCamLib stuff
@@ -828,34 +703,77 @@ Python CProgram::RewritePythonProgram()
 		python << _T("import ocl_funcs\n");
 	}
 
-	if(turning_module_needed)
+	if(transform_module_needed)
 	{
-		python << _T("import turning\n");
+		python << _T("import nc.transform as transform\n");
 		python << _T("\n");
 	}
 
+	if(depths_needed)
+	{
+		python << _T("from depth_params import depth_params as depth_params\n");
+		python << _T("\n");
+	}
 
 	// machine general stuff
 	python << _T("from nc.nc import *\n");
 
 	// specific machine
-	if (m_machine.file_name == _T("not found"))
+	if (m_machine.post == _T("not found"))
 	{
-		wxMessageBox(_T("Machine name (defined in Program Properties) not found"));
+		wxMessageBox(_T("Machine post processor name (defined in Program Properties) not found"));
 	} // End if - then
 	else
+
 	{
-		python << _T("import nc.") + m_machine.file_name + _T("\n");
+		python << _T("from nc.") + m_machine.post + _T(" import *\n");
 		python << _T("\n");
 	} // End if - else
+
+	// write the machine's parameters
+	for(std::list<PyParam>::iterator It = m_machine.py_params.begin(); It != m_machine.py_params.end(); It++)
+	{
+		PyParam &p = *It;
+		python << _T("nc.creator.") << Ctt(p.m_name.c_str()) << _T(" = ") << Ctt(p.m_value.c_str()) << _T("\n");
+	}
 
 	// output file
 	python << _T("output(") << PythonString(GetOutputFileName()) << _T(")\n");
 
+
+#ifdef FREE_VERSION
+	python << _T("comment('MADE WITH FREE VERSION OF HEEKSCNC. Please buy full version to remove this text\\n')\n");
+	python << _T("comment('***********    MADE WITH FREE VERSION OF HEEKSCNC!   ***********\\n')\n");
+	python << _T("comment('***********    MADE WITH FREE VERSION OF HEEKSCNC!   ***********\\n')\n");
+	python << _T("comment('***********    MADE WITH FREE VERSION OF HEEKSCNC!   ***********\\n')\n");
+	python << _T("comment('***********    MADE WITH FREE VERSION OF HEEKSCNC!   ***********\\n')\n");
+	python << _T("comment('***********    MADE WITH FREE VERSION OF HEEKSCNC!   ***********\\n')\n");
+	python << _T("comment('***********    MADE WITH FREE VERSION OF HEEKSCNC!   ***********\\n')\n");
+	python << _T("comment('***********                    ***********\\n')\n");
+	python << _T("comment('***********    www.heeks.net   ***********\\n')\n");
+	python << _T("comment('***********                    ***********\\n')\n");
+#endif
+
 	// begin program
-	python << _T("program_begin(123, ") << PythonString(_T("Test program")) << _T(")\n");
+	python << _T("program_begin(") << wxString::Format(_T("%d"), GetID()) << _T(", ") << PythonString(GetTitle()) << _T(")\n");
+
+	// add any stock commands
+	std::set<int> stock_ids;
+	m_stocks->GetSolidIds(stock_ids);
+	for(std::set<int>::iterator It = stock_ids.begin(); It != stock_ids.end(); It++)
+	{
+		int id = *It;
+		HeeksObj* object = heeksCAD->GetIDObject(SolidType, id);
+		if(object)
+		{
+			CBox box;
+			object->GetBox(box);
+			python << _T("add_stock('BLOCK',[") << box.Width() << _T(", ") << box.Height() << _T(", ") << box.Depth() << _T(", ") << -box.MinX() << _T(", ") << -box.MinY() << _T(", ") << -box.MinZ() << _T("])\n");
+		}
+	}
+
 	python << _T("absolute()\n");
-	if(m_units > 25.0)
+	if(m_units == UnitTypeInch)
 	{
 		python << _T("imperial()\n");
 	}
@@ -870,8 +788,6 @@ Python CProgram::RewritePythonProgram()
 	{
 		python << _T("set_path_control_mode(") << (int) m_path_control_mode << _T(",") << m_motion_blending_tolerance << _T(",") << m_naive_cam_tolerance << _T(")\n");
 	}
-
-	python << m_raw_material.AppendTextToProgram();
 
 	// write the tools setup code.
 	if (m_tools != NULL)
@@ -888,10 +804,11 @@ Python CProgram::RewritePythonProgram()
 		} // End for
 	} // End if - then
 
-	// copied operations ( with same id ) were not being done, so I've removed fixtures completely for the Windows installation
-#ifdef STABLE_OPS_ONLY
 	// Write all the operations
-    CMachineState machine;
+
+	std::set<CSurface*> surfaces_written;
+	std::set<int> patterns_written;
+
 	for (OperationsMap_t::const_iterator l_itOperation = operations.begin(); l_itOperation != operations.end(); l_itOperation++)
 	{
 		HeeksObj *object = (HeeksObj *) *l_itOperation;
@@ -899,67 +816,25 @@ Python CProgram::RewritePythonProgram()
 
 		if(COperations::IsAnOperation(object->GetType()))
 		{
-			if(((COp*)object)->m_active)
+			COp* op = (COp*)object;
+			if(op->m_active)
 			{
-				python << ((COp*)object)->AppendTextToProgram( &machine );
+				CSurface* surface = (CSurface*)heeksCAD->GetIDObject(SurfaceType, op->m_surface);
+				if(surface && !surface->m_same_for_each_pattern_position)ApplySurfaceToText(python, surface, surfaces_written);
+				ApplyPatternToText(python, op->m_pattern, patterns_written);
+				if(surface && surface->m_same_for_each_pattern_position)ApplySurfaceToText(python, surface, surfaces_written);
+
+				python << op->AppendTextToProgram();
+
+				// end surface attach
+				if(surface && surface->m_same_for_each_pattern_position)python << _T("attach.attach_end()\n");
+				if(op->m_pattern != 0)python << _T("transform.transform_end()\n");
+				if(surface && !surface->m_same_for_each_pattern_position)python << _T("attach.attach_end()\n");
+				theApp.m_attached_to_surface = NULL;
 			}
 		}
 	} // End for - operation
-#else
-	// Write all the operations once for each fixture.
-	std::list<CFixture *> fixtures;
-	std::auto_ptr<CFixture> default_fixture = std::auto_ptr<CFixture>(new CFixture( NULL, CFixture::G54, false, 0.0 ) );
 
-    for (HeeksObj *publicFixture = theApp.m_program->Fixtures()->GetFirstChild(); publicFixture != NULL;
-        publicFixture = theApp.m_program->Fixtures()->GetNextChild())
-	{
-			fixtures.push_back( ((CFixture *) publicFixture) );
-	} // End for
-
-	if (fixtures.size() == 0)
-	{
-		// We need at least one fixture definition to generate any GCode.  Generate one
-		// that provides no rotation at all.
-
-		fixtures.push_back( default_fixture.get() );
-	} // End if - then
-
-    CMachineState machine;
-	for (std::list<CFixture *>::const_iterator l_itFixture = fixtures.begin(); l_itFixture != fixtures.end(); l_itFixture++)
-	{
-        // And then all the rest of the operations.
-		for (OperationsMap_t::const_iterator l_itOperation = operations.begin(); l_itOperation != operations.end(); l_itOperation++)
-		{
-			HeeksObj *object = (HeeksObj *) *l_itOperation;
-			if (object == NULL) continue;
-
-			if(COperations::IsAnOperation(object->GetType()))
-			{
-			    bool already_processed = false;
-			    std::list<CFixture> private_fixtures = ((COp *) object)->PrivateFixtures();
-			    for (std::list<CFixture>::iterator itFix = private_fixtures.begin();
-                        itFix != private_fixtures.end(); itFix++)
-                {
-                    if (machine.AlreadyProcessed(object->GetType(), object->GetID(), *itFix)) already_processed = true;
-                }
-
-                if (private_fixtures.size() == 0)
-                {
-                    // Make sure the public fixture is in place.
-                    python << machine.Fixture(*(*l_itFixture));
-                }
-
-				if ((! already_processed) &&
-                    (((COp*)object)->m_active) &&
-                    (! machine.AlreadyProcessed(object->GetType(), object->GetID(), *(*l_itFixture))))
-				{
-					python << ((COp*)object)->AppendTextToProgram( &machine );
-					machine.MarkAsProcessed(object->GetType(), object->GetID(), machine.Fixture());
-				}
-			}
-		} // End for - operation
-	} // End for - fixture
-#endif
 	python << _T("program_end()\n");
 	m_python_program = python;
 	theApp.m_program_canvas->m_textCtrl->AppendText(python);
@@ -969,8 +844,13 @@ Python CProgram::RewritePythonProgram()
 		// length of the text control objects changes depending on the operating system (and its
 		// implementation of wxWidgets).  Rather than showing the truncated program, tell the
 		// user that it has been truncated and where to find it.
+
+#if wxCHECK_VERSION(3, 0, 0)
 		wxStandardPaths& standard_paths = wxStandardPaths::Get();
-		wxFileName file_str( standard_paths.GetTempDir().c_str(), _T("post.py"));
+#else
+		wxStandardPaths standard_paths;
+#endif
+		wxFileName file_str(standard_paths.GetTempDir().c_str(), _T("post.py"));
 
 		theApp.m_program_canvas->m_textCtrl->Clear();
 		theApp.m_program_canvas->m_textCtrl->AppendText(_("The Python program is too long \n"));
@@ -1013,87 +893,106 @@ void CProgram::UpdateFromUserType()
 void CProgram::GetMachines(std::vector<CMachine> &machines)
 {
 	wxString machines_file = CProgram::alternative_machines_file;
-
-#ifdef WIN32
-	if(machines_file.Len() == 0)machines_file = theApp.GetResFolder() + _T("/nc/machines.txt");
-#else
+#ifdef CMAKE_UNIX
 	#ifdef RUNINPLACE
-		if(machines_file.Len() == 0)machines_file = theApp.GetResFolder() + _T("/nc/machines.txt");
+		if(machines_file.Len() == 0)machines_file = theApp.GetResFolder() + _T("/nc/machines.xml");
 	#else
-		if(machines_file.Len() == 0)machines_file = _T("/usr/local/lib/heekscnc/nc/machines.txt");
+		if(machines_file.Len() == 0)machines_file = theApp.GetResourceFilename(wxT("machines.xml"));
 	#endif
-#endif
-
-    ifstream ifs(Ttc(machines_file.c_str()));
-	if(!ifs)
-	{
-#ifdef UNICODE
-		std::wostringstream l_ossMessage;
 #else
-		std::ostringstream l_ossMessage;
+	if(machines_file.Len() == 0)machines_file = theApp.GetResFolder() + _T("/nc/machines.xml");
 #endif
 
-		l_ossMessage << "Could not open '" << machines_file.c_str() << "' for reading";
-		wxMessageBox( l_ossMessage.str().c_str() );
+	TiXmlDocument doc(Ttc(machines_file.c_str()));
+	if (!doc.LoadFile())
+	{
+		if(doc.Error())
+		{
+			wxString msg(machines_file);
+			msg << Ctt(": ") << Ctt(doc.ErrorDesc());
+			wxMessageBox(msg);
+		}
 		return;
 	}
 
-	char str[1024] = "";
+	char oldlocale[1000];
+	strcpy(oldlocale, setlocale(LC_NUMERIC, "C"));
 
-	while(!(ifs.eof()))
+	TiXmlHandle hDoc(&doc);
+	TiXmlElement* element;
+	TiXmlNode* root = &doc;
+
+	for(element = root->FirstChildElement(); element;	element = element->NextSiblingElement())
 	{
 		CMachine m;
-
-		ifs.getline(str, 1024);
-
-		m.configuration_file_name = machines_file;
-
-		std::vector<wxString> tokens = Tokens( Ctt(str), _T(" \t\n\r") );
-
-		// The first token is the machine name (post processor name)
-		if (tokens.size() > 0) {
-			m.file_name = tokens[0];
-			tokens.erase(tokens.begin());
-		} // End if - then
-
-		// If there are other tokens, check the last one to see if it could be a maximum
-		// spindle speed.
-		if (tokens.size() > 0)
+		for(TiXmlAttribute* a = element->FirstAttribute(); a; a = a->Next())
 		{
-			// We may have a material rate value.
-			if (AllNumeric( *tokens.rbegin() ))
-			{
-			    double d;
-				tokens.rbegin()->ToDouble(&d);
-				m.m_max_spindle_speed = d;
-				tokens.resize(tokens.size() - 1);	// Remove last token.
-			} // End if - then
-		} // End if - then
-
-		// Everything else must be a description.
-		m.description.clear();
-		for (std::vector<wxString>::const_iterator l_itToken = tokens.begin(); l_itToken != tokens.end(); l_itToken++)
-		{
-			if (l_itToken != tokens.begin()) m.description << _T(" ");
-			m.description << *l_itToken;
-		} // End for
-
-		if(m.file_name.Length() > 0)
-		{
-			machines.push_back(m);
+			std::string name(a->Name());
+			if(name == "post")m.post = wxString(Ctt(a->Value()));
+			else if(name == "reader")m.reader = wxString(Ctt(a->Value()));
+			else if(name == "suffix")m.suffix = wxString(Ctt(a->Value()));
+			else if(name == "description")m.description = wxString(Ctt(a->Value()));
+			else m.py_params.push_back(PyParam(a->Name(), a->Value()));
 		}
+		machines.push_back(m);
 	}
 
+	setlocale(LC_NUMERIC, oldlocale);
 }
 
 // static
-CMachine CProgram::GetMachine(const wxString& file_name)
+void CProgram::GetScriptOps(std::vector< CXmlScriptOp > &script_ops)
+{
+	wxString script_op_file = theApp.GetResFolder() + _T("/script_ops.xml");
+
+	TiXmlDocument doc(Ttc(script_op_file.c_str()));
+	if (!doc.LoadFile())
+	{
+		if(doc.Error())
+		{
+			wxString msg(script_op_file);
+			msg << Ctt(": ") << Ctt(doc.ErrorDesc());
+			wxMessageBox(msg);
+		}
+		return;
+	}
+
+	char oldlocale[1000];
+	strcpy(oldlocale, setlocale(LC_NUMERIC, "C"));
+
+	TiXmlHandle hDoc(&doc);
+	TiXmlElement* element;
+	TiXmlNode* root = &doc;
+
+	for(element = root->FirstChildElement(); element;	element = element->NextSiblingElement())
+	{
+		wxString label;
+		wxString bitmap;
+		wxString icon;
+		wxString script;
+
+		for(TiXmlAttribute* a = element->FirstAttribute(); a; a = a->Next())
+		{
+			std::string name(a->Name());
+			if(name == "name")label = wxString(Ctt(a->Value()));
+			else if(name == "bitmap")bitmap = wxString(Ctt(a->Value()));
+			else if(name == "icon")icon = wxString(Ctt(a->Value()));
+			else if(name == "script")script = wxString(Ctt(a->Value()));
+		}
+		script_ops.push_back(CXmlScriptOp(label, bitmap, icon, script));
+	}
+
+	setlocale(LC_NUMERIC, oldlocale);
+}
+
+// static
+CMachine CProgram::GetMachine(const wxString& description)
 {
 	std::vector<CMachine> machines;
 	GetMachines(machines);
 	for(unsigned int i = 0; i<machines.size(); i++)
 	{
-		if(machines[i].file_name == file_name)
+		if(machines[i].description == description)
 		{
 			return machines[i];
 		}
@@ -1102,12 +1001,9 @@ CMachine CProgram::GetMachine(const wxString& file_name)
 	if(machines.size() > 0)return machines[0];
 
 	CMachine machine;
-	machine.file_name = _T("not found");
+	machine.post = _T("not found");
+	machine.reader = _T("not found");
 	machine.description = _T("not found");
-
-	CNCConfig config(ConfigScope());
-	config.Read(_T("safety_height_defined"), machine.m_safety_height_defined, false);
-	config.Read(_T("safety_height"), machine.m_safety_height, 0.0);
 
 	return machine;
 }
@@ -1129,13 +1025,13 @@ wxString CProgram::GetOutputFileName() const
 				path.Remove(offset); // chop off the end.
 			} // End if - then
 
-			path << _T(".tap");
+			path << m_machine.suffix.c_str();
 			return(path);
 		} // End if - then
 		else
 		{
 			// The user hasn't assigned a filename yet.  Use the default.
-			return(m_output_file);
+			return GetDefaultOutputFilePath();
 		} // End if - else
 	} // End if - then
 	else
@@ -1146,9 +1042,13 @@ wxString CProgram::GetOutputFileName() const
 
 wxString CProgram::GetBackplotFilePath() const
 {
-	// The creation of a ".nc.xml" file, in the users own folder, is not good.
+	// The xml file is created in the temporary folder
+#if wxCHECK_VERSION(3, 0, 0)
 	wxStandardPaths& standard_paths = wxStandardPaths::Get();
-	wxFileName file_str( standard_paths.GetTempDir().c_str(), _T("backplot.xml"));
+#else
+	wxStandardPaths standard_paths;
+#endif
+	wxFileName file_str(standard_paths.GetTempDir().c_str(), _T("backplot.xml"));
 	return file_str.GetFullPath();
 }
 
@@ -1170,30 +1070,33 @@ CTools* CProgram::Tools()
     return m_tools;
 }
 
-CSpeedReferences *CProgram::SpeedReferences()
+CPatterns* CProgram::Patterns()
 {
-    if (m_speed_references == NULL) ReloadPointers();
-    return m_speed_references;
+    if (m_patterns == NULL) ReloadPointers();
+    return m_patterns;
 }
 
-#ifndef STABLE_OPS_ONLY
-CFixtures *CProgram::Fixtures()
+CSurfaces* CProgram::Surfaces()
 {
-    if (m_fixtures == NULL) ReloadPointers();
-    return m_fixtures;
+    if (m_surfaces == NULL) ReloadPointers();
+    return m_surfaces;
 }
-#endif
+
+CStocks* CProgram::Stocks()
+{
+    if (m_stocks == NULL) ReloadPointers();
+    return m_stocks;
+}
 
 void CProgram::ReloadPointers()
 {
     for (HeeksObj *child = GetFirstChild(); child != NULL; child = GetNextChild())
 	{
 	    if (child->GetType() == ToolsType) m_tools = (CTools *) child;
-#ifndef STABLE_OPS_ONLY
-	    if (child->GetType() == FixturesType) m_fixtures = (CFixtures *) child;
-#endif
+	    if (child->GetType() == PatternsType) m_patterns = (CPatterns *) child;
+	    if (child->GetType() == SurfacesType) m_surfaces = (CSurfaces *) child;
+	    if (child->GetType() == StocksType) m_stocks = (CStocks *) child;
 	    if (child->GetType() == OperationsType) m_operations = (COperations *) child;
-	    if (child->GetType() == SpeedReferencesType) m_speed_references = (CSpeedReferences *) child;
 	    if (child->GetType() == NCCodeType) m_nc_code = (CNCCode *) child;
 	} // End for
 }
@@ -1205,45 +1108,93 @@ void CProgram::AddMissingChildren()
 
 	// make sure tools, operations, fixtures, etc. exist
 	if(m_tools == NULL){m_tools = new CTools; Add( m_tools, NULL );}
-#ifndef STABLE_OPS_ONLY
-	if(m_fixtures == NULL){m_fixtures = new CFixtures; Add( m_fixtures, NULL );}
-#endif
+	if(m_patterns == NULL){m_patterns = new CPatterns; Add( m_patterns, NULL );}
+	if(m_surfaces == NULL){m_surfaces = new CSurfaces; Add( m_surfaces, NULL );}
+	if(m_stocks == NULL){m_stocks = new CStocks; Add( m_stocks, NULL );}
 	if(m_operations == NULL){m_operations = new COperations; Add( m_operations, NULL );}
-	if(m_speed_references == NULL){m_speed_references = new CSpeedReferences; Add( m_speed_references, NULL );}
 	if(m_nc_code == NULL){m_nc_code = new CNCCode; Add( m_nc_code, NULL );}
 }
 
-void CProgram::ChangeUnits( const double units )
-{
-    m_units = units;
-    Tools()->OnChangeUnits(units);
-    Operations()->OnChangeUnits(units);
-}
 bool CProgram::operator==( const CProgram & rhs ) const
 {
-	if (m_raw_material != rhs.m_raw_material) return(false);
 	if (m_machine != rhs.m_machine) return(false);
-	if (m_output_file != rhs.m_output_file) return(false);
+	if ((const wxString&)m_output_file != (const wxString&)rhs.m_output_file) return(false);
 	if (m_output_file_name_follows_data_file_name != rhs.m_output_file_name_follows_data_file_name) return(false);
 	if (m_script_edited != rhs.m_script_edited) return(false);
 	if (m_units != rhs.m_units) return(false);
 
-	return(ObjList::operator==(rhs));
+	return(IdNamedObjList::operator==(rhs));
 }
-
 
 bool CMachine::operator==( const CMachine & rhs ) const
 {
-	if (configuration_file_name != rhs.configuration_file_name) return(false);
-	if (file_name != rhs.file_name) return(false);
+	if (post != rhs.post) return(false);
+	if (reader != rhs.reader) return(false);
+	if (suffix != rhs.suffix) return(false);
 	if (description != rhs.description) return(false);
-	if (m_max_spindle_speed != rhs.m_max_spindle_speed) return(false);
-	if (m_safety_height_defined != rhs.m_safety_height_defined) return(false);
-	if (m_safety_height != rhs.m_safety_height) return(false);
-	if (m_clearance_height != rhs.m_clearance_height) return(false);
+	if (py_params.size() != rhs.py_params.size())return false;
+	std::list<PyParam>::const_iterator It = py_params.begin(), It2 = rhs.py_params.begin();
+	for(;It != py_params.end(); It++, It2++){
+		if(!((*It) == (*It2)))return false;
+	}
 
 	return(true);
 }
 
+void CProgram::WriteDefaultValues()
+{
+	CNCConfig config;
 
+	config.Write(_T("ProgramMachine"), m_machine.description);
+	config.Write(_T("OutputFileNameFollowsDataFileName"), m_output_file_name_follows_data_file_name );
+	const wxString& filename = m_output_file;
+	config.Write(_T("ProgramOutputFile"), filename);
+	config.Write(_T("ProgramUnits"), m_units);
+	config.Write(_T("ProgramPathControlMode"), (int) m_path_control_mode );
+	config.Write(_T("ProgramMotionBlendingTolerance"), m_motion_blending_tolerance );
+	config.Write(_T("ProgramNaiveCamTolerance"), m_naive_cam_tolerance );
+}
 
+wxString CProgram::GetDefaultOutputFilePath()const
+ {
+#if wxCHECK_VERSION(3, 0, 0)
+	wxStandardPaths& standard_paths = wxStandardPaths::Get();
+#else
+	wxStandardPaths standard_paths;
+#endif
+	wxFileName default_path(standard_paths.GetTempDir().c_str(), wxString(_T("test")) + m_machine.suffix);
+	return default_path.GetFullPath();
+}
+
+void CProgram::ReadDefaultValues()
+{
+	CNCConfig config;
+
+	wxString machine_description;
+	config.Read(_T("ProgramMachine"), &machine_description, _T("LinuxCNC"));
+	m_machine = CProgram::GetMachine(machine_description);
+	config.Read(_T("OutputFileNameFollowsDataFileName"), m_output_file_name_follows_data_file_name, true);
+	config.Read(_T("ProgramOutputFile"), m_output_file, GetDefaultOutputFilePath().c_str());
+	int units;
+	config.Read(_T("ProgramUnits"), &units, 0);
+	m_units = (EnumUnitType)units;
+	config.Read(_("ProgramPathControlMode"), m_path_control_mode, (int) ePathControlUndefined );
+	config.Read(_("ProgramMotionBlendingTolerance"), m_motion_blending_tolerance, 0.0001);
+	config.Read(_("ProgramNaiveCamTolerance"), m_naive_cam_tolerance, 0.0001);
+}
+
+static bool OnEdit(HeeksObj* object)
+{
+	ProgramDlg dlg(heeksCAD->GetMainFrame(), (CProgram*)object);
+	if(dlg.ShowModal() == wxID_OK)
+	{
+		dlg.GetData((CProgram*)object);
+		return true;
+	}
+	return false;
+}
+
+void CProgram::GetOnEdit(bool(**callback)(HeeksObj*))
+{
+	*callback = OnEdit;
+}

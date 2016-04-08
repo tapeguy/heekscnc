@@ -6,7 +6,7 @@
  */
 
 #include "HeeksCNCTypes.h"
-#include "DepthOp.h"
+#include "SketchOp.h"
 #include "CTool.h"
 
 class CPocket;
@@ -19,10 +19,22 @@ public:
 	PropertyChoice m_starting_place;
 	PropertyLength m_material_allowance;
 	PropertyLength m_step_over;
-	PropertyCheck m_keep_tool_down_if_poss;
-	PropertyCheck m_use_zig_zag;
+
+    typedef enum {
+        eZigZag = 0,
+        eZigZagUnidirectional,
+        eOffsets,
+        eTrochoidal
+
+    } ePostProcessor;
+    PropertyChoice m_post_processor;
+
+    bool IsZigZag() const {
+        return ( m_post_processor == CPocketParams::eZigZag ||
+                 m_post_processor == CPocketParams::eZigZagUnidirectional );
+    }
+
 	PropertyDouble m_zig_angle;
-	PropertyCheck m_zig_unidirectional;
 
 	typedef enum {
 		eConventional = 0,
@@ -43,26 +55,20 @@ public:
 	void InitializeProperties();
 	void set_initial_values(const CTool::ToolNumber_t tool_number);
 	void GetProperties(std::list<Property *> *list);
-	void WriteXMLAttributes(TiXmlNode* pElem);
-	void ReadFromXMLElement(TiXmlElement* pElem);
 	static wxString ConfigScope() { return(_T("Pocket")); }
 
 	bool operator== ( const CPocketParams & rhs ) const;
 	bool operator!= ( const CPocketParams & rhs ) const { return(! (*this == rhs)); }
 };
 
-class CPocket: public CDepthOp{
+class CPocket: public CSketchOp{
 public:
-	typedef std::list<int> Sketches_t;
-	Sketches_t m_sketches;
 	CPocketParams m_pocket_params;
 
 	static PropertyDouble max_deviation_for_spline_to_arc;
 
-	CPocket():CDepthOp(GetTypeString(), 0, PocketType), m_pocket_params(this){}
-	CPocket(const std::list<int> &sketches, const int tool_number );
-	CPocket(const std::list<HeeksObj *> &sketches, const int tool_number );
-
+	CPocket():CSketchOp(0, PocketType), m_pocket_params(this){}
+	CPocket(int sketch, const int tool_number );
 	CPocket( const CPocket & rhs );
 	CPocket & operator= ( const CPocket & rhs );
 
@@ -77,24 +83,21 @@ public:
 	void GetProperties(std::list<Property *> *list);
 	HeeksObj *MakeACopy(void)const;
 	void CopyFrom(const HeeksObj* object);
-	void WriteXML(TiXmlNode *root);
 	bool CanAddTo(HeeksObj* owner);
 	void GetTools(std::list<Tool*>* t_list, const wxPoint* p);
-#ifdef OP_SKETCHES_AS_CHILDREN
-	void ReloadPointers();
-#endif
 	void GetOnEdit(bool(**callback)(HeeksObj*));
 	bool Add(HeeksObj* object, HeeksObj* prev_object);
 
 	// COp's virtual functions
-	Python AppendTextToProgram(CMachineState *pMachineState);
+	Python AppendTextToProgram();
 	void WriteDefaultValues();
 	void ReadDefaultValues();
 
 	static HeeksObj* ReadFromXMLElement(TiXmlElement* pElem);
 
-	std::list<wxString> DesignRulesAdjustment(const bool apply_changes);
+    void WritePocketPython(Python &python);
 
+    static void GetOptions(std::list<Property *> *list);
 	static void ReadFromConfig();
 	static void WriteToConfig();
 };

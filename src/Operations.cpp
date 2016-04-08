@@ -6,10 +6,14 @@
 #include "Operations.h"
 #include "Op.h"
 #include "tinyxml/tinyxml.h"
-#include "Excellon.h"
-#include "Probing.h"
 
 #include <wx/progdlg.h>
+
+
+COperations::COperations( const COperations & rhs )
+ : ObjList(rhs)
+{
+}
 
 bool COperations::CanAdd(HeeksObj* object)
 {
@@ -24,10 +28,6 @@ COperations & COperations::operator= ( const COperations & rhs )
 	}
 
 	return(*this);
-}
-
-COperations::COperations( const COperations & rhs ) : ObjList(rhs)
-{
 }
 
 const wxBitmap &COperations::GetIcon()
@@ -50,7 +50,7 @@ void COperations::CopyFrom(const HeeksObj *object)
         for (HeeksObj *child = rhs->GetFirstChild(); child != NULL; child = rhs->GetNextChild())
         {
             child->SetID( heeksCAD->GetNextID(child->GetType()) );
-            Add(child, NULL);
+            Add(child);
         } // End for
     }
 }
@@ -63,15 +63,6 @@ void COperations::ReloadPointers()
 void COperations::glCommands(bool select, bool marked, bool no_color)
 {
 	ObjList::glCommands(select, marked, no_color);
-}
-
-
-void COperations::WriteXML(TiXmlNode *root)
-{
-	TiXmlElement * element;
-	element = heeksCAD->NewXMLElement( "Operations" );
-	heeksCAD->LinkXMLEndChild( root,  element );
-	WriteBaseXML(element);
 }
 
 //static
@@ -94,7 +85,7 @@ class SetAllActive: public Tool{
 			if(COperations::IsAnOperation(object->GetType()))
 			{
 				((COp*)object)->m_active = true;
-				heeksCAD->Changed();
+				heeksCAD->EndHistory();
 			}
 		}
 	}
@@ -113,7 +104,7 @@ class SetAllInactive: public Tool{
 			if(COperations::IsAnOperation(object->GetType()))
 			{
 				((COp*)object)->m_active.SetValue ( false );
-				heeksCAD->Changed();
+				heeksCAD->EndHistory();
 			}
 		}
 	}
@@ -132,51 +123,15 @@ void COperations::GetTools(std::list<Tool*>* t_list, const wxPoint* p)
 	ObjList::GetTools(t_list, p);
 }
 
-void COperations::OnChangeUnits(const double units)
-{
-    for(HeeksObj* object = GetFirstChild(); object != NULL; object = GetNextChild())
-    {
-        switch (((COp *)object)->m_operation_type)
-        {
-           case ProbeCentreType:
-                ((CProbe_Centre *)object)->OnChangeUnits(units);
-                break;
-
-           case ProbeEdgeType:
-                ((CProbe_Grid *)object)->OnChangeUnits(units);
-                break;
-
-           case ProbeGridType:
-                ((CProbe_Grid *)object)->OnChangeUnits(units);
-                break;
-        }
-    }
-    heeksCAD->Changed();
-}
-
 //static
 bool COperations::IsAnOperation(int object_type)
 {
 	switch(object_type)
 	{
-		case ProfileType:
-		case PocketType:
-		case ZigZagType:
-		case WaterlineType:
-		case DrillingType:
-		case CounterBoreType:
-		case TurnRoughType:
-		case PositioningType:
-		case ProbeCentreType:
-		case ProbeEdgeType:
-		case ProbeGridType:
-		case ChamferType:
-		case ContourType:
-		case InlayType:
-		case ScriptOpType:
-		case AttachOpType:
-		case UnattachOpType:
-		case TappingType:
+                case ProfileType:
+                case PocketType:
+                case DrillingType:
+                case ScriptOpType:
 			return true;
 		default:
 			return theApp.m_external_op_types.find(object_type) != theApp.m_external_op_types.end();

@@ -6,21 +6,17 @@
 
 #pragma once
 
-#include "interface/ObjList.h"
+#include "interface/IdNamedObjList.h"
 #include "HeeksCNCTypes.h"
-#include "RawMaterial.h"
-#include "SpeedReferences.h"
+#include "PythonString.h"
 
 class CNCCode;
 class CProgram;
 class COperations;
-#ifndef STABLE_OPS_ONLY
-class CFixtures;
-class CFixture;
-class CMachineState;
-#endif
 class CTools;
-
+class CPatterns;
+class CSurfaces;
+class CStocks;
 
 enum ProgramUserType{
 	ProgramUserTypeUnkown,
@@ -29,47 +25,63 @@ enum ProgramUserType{
 	ProgramUserTypeNC
 };
 
-class CMachine : public DomainObject
+class PyParam
+{
+public:
+	std::string m_name;
+	std::string m_value;
+
+	PyParam(const char* name, const char* value):m_name(name), m_value(value){}
+	bool operator==( const PyParam & rhs ) const{ return (m_name == rhs.m_name) && (m_value == rhs.m_value);}
+};
+
+class CMachine
 {
 public:
 	CMachine();
 	CMachine( const CMachine & rhs );
 	CMachine & operator= ( const CMachine & rhs );
 
-	wxString configuration_file_name;
-	wxString file_name;
+	wxString post;
+	wxString reader;
+	wxString suffix;
 	wxString description;
-	PropertyDouble m_max_spindle_speed;		// in revolutions per minute (RPM)
-	PropertyCheck m_safety_height_defined;
-	PropertyDouble m_safety_height;
-	PropertyDouble m_clearance_height;		// Default clearance height when CProgram::m_clearance_definition == eClearanceDefinedByMachine
+	std::list<PyParam> py_params;
 
-	void InitializeProperties();
 	void GetProperties(CProgram *parent, std::list<Property *> *list);
 	void WriteBaseXML(TiXmlElement *element);
 	void ReadBaseXML(TiXmlElement* element);
-
-	static wxString ConfigScope() { return(_T("Machine")); }
 
 	bool operator==( const CMachine & rhs ) const;
 	bool operator!=( const CMachine & rhs ) const { return(! (*this == rhs)); }
 
 };
 
+class CXmlScriptOp
+{
+public:
+	wxString m_name;
+	wxString m_bitmap;
+	wxString m_icon;
+	wxString m_script;
 
-class CProgram:public ObjList
+	CXmlScriptOp(const wxString &name, const wxString &bitmap, const wxString &icon, const wxString &script):m_name(name), m_bitmap(bitmap), m_icon(icon), m_script(script){}
+};
+
+class CProgram : public IdNamedObjList
 {
 private:
 	CNCCode* m_nc_code;						// Access via NCCode() method
 	COperations* m_operations;				// Access via Operations() method
 	CTools* m_tools;						// Access via Tools() method
-	CSpeedReferences *m_speed_references;	// Access via SpeedReferences() method
-#ifndef STABLE_OPS_ONLY
-	CFixtures *m_fixtures;					// Access via Fixtures() method
-#endif
+	CPatterns* m_patterns;
+	CSurfaces* m_surfaces;
+	CStocks* m_stocks;
 
 public:
-	static wxString ConfigScope(void) {return _T("Program");}
+
+	static const int ObjType = ProgramType;
+
 
 	typedef enum
 	{
@@ -86,49 +98,49 @@ public:
 		eClearanceDefinedByOperation
 	} eClearanceSource_t;
 
-	ePathControlMode_t m_path_control_mode;
-	eClearanceSource_t m_clearance_source;
-	double m_motion_blending_tolerance;	// Only valid if m_path_control_mode == eBestPossibleSpeed
-	double m_naive_cam_tolerance;		// Only valid if m_path_control_mode == eBestPossibleSpeed
+	PropertyChoice m_path_control_mode;
+	PropertyLength m_motion_blending_tolerance;	// Only valid if m_path_control_mode == eBestPossibleSpeed
+	PropertyLength m_naive_cam_tolerance;		// Only valid if m_path_control_mode == eBestPossibleSpeed
 
 public:
 	static wxString alternative_machines_file;
-	CRawMaterial m_raw_material;	// for material hardness - to determine feeds and speeds.
+	PropertyChoice m_machine_choice;
 	CMachine m_machine;
-	wxString m_output_file;		// NOTE: Only relevant if the filename does NOT follow the data file's name.
-	bool m_output_file_name_follows_data_file_name;	// Just change the extension to determine the NC file name
+	PropertyFile m_output_file;		// NOTE: Only relevant if the filename does NOT follow the data file's name.
+	PropertyCheck m_output_file_name_follows_data_file_name;	// Just change the extension to determine the NC file name
 
 	// Data access methods.
 	CNCCode* NCCode();
 	COperations* Operations();
 	CTools* Tools();
-	CSpeedReferences *SpeedReferences();
-#ifndef STABLE_OPS_ONLY
-	CFixtures *Fixtures();
-	CMachineState *m_active_machine_state;	// Pointer to current machine state (only valid during Python output)
-#endif
+	CPatterns* Patterns();
+	CSurfaces* Surfaces();
+	CStocks* Stocks();
 
 	bool m_script_edited;
-	double m_units; // 1.0 for mm, 25.4 for inches
+	PropertyChoice m_units_choice;
+	EnumUnitType m_units;
 	Python m_python_program;
 
 	CProgram();
 	CProgram( const CProgram & rhs );
+    ~CProgram();
 	CProgram & operator= ( const CProgram & rhs );
-	~CProgram();
 
 	bool operator== ( const CProgram & rhs ) const;
 	bool operator!= ( const CProgram & rhs ) const { return(! (*this == rhs)); }
 
 	bool IsDifferent( HeeksObj *other ) { return(*this != (*(CProgram *)other)); }
 
+	wxString GetDefaultOutputFilePath()const;
 	wxString GetOutputFileName() const;
 	wxString GetBackplotFilePath() const;
 
 	// HeeksObj's virtual functions
-	int GetType()const{return ProgramType;}
+	void InitializeProperties();
 	const wxChar* GetTypeString(void)const{return _T("Program");}
 	const wxBitmap &GetIcon();
+	void glCommands(bool select, bool marked, bool no_color);
 	HeeksObj *MakeACopy(void)const;
 	void CopyFrom(const HeeksObj* object);
 	void GetProperties(std::list<Property *> *list);
@@ -142,15 +154,21 @@ public:
 	void SetClickMarkPoint(MarkedObject* marked_object, const double* ray_start, const double* ray_direction);
 	bool AutoExpand(){return true;}
 	static HeeksObj* ReadFromXMLElement(TiXmlElement* pElem);
+	void GetGripperPositionsTransformed(std::list<GripData> *list, bool just_for_endof){}
+	bool CanBeDragged(){return false;}
+	void WriteDefaultValues();
+	void ReadDefaultValues();
+	void GetOnEdit(bool(**callback)(HeeksObj*));
+	void Clear();
 
 	Python RewritePythonProgram();
 	ProgramUserType GetUserType();
 	void UpdateFromUserType();
 
 	static void GetMachines(std::vector<CMachine> &machines);
+	static void GetScriptOps(std::vector< CXmlScriptOp > &script_ops);
 	static CMachine GetMachine(const wxString& file_name);
 	void AddMissingChildren();
 
-	void ChangeUnits( const double units );
 	void ReloadPointers();
 };

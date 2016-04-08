@@ -28,12 +28,12 @@
      objecttolerance="10"
      inkscape:pageopacity="0.0"
      inkscape:pageshadow="2"
-     inkscape:zoom="2"
-     inkscape:cx="454.04568"
-     inkscape:cy="868.63685"
+     inkscape:zoom="7.7771869"
+     inkscape:cx="321.91109"
+     inkscape:cy="472.46542"
      inkscape:document-units="px"
      inkscape:current-layer="layer1"
-     showgrid="true"
+     showgrid="false"
      inkscape:window-width="1495"
      inkscape:window-height="968"
      inkscape:window-x="295"
@@ -45,6 +45,18 @@
   </sodipodi:namedview>
   <defs
      id="defs4">
+    <linearGradient
+       inkscape:collect="always"
+       id="linearGradient5791">
+      <stop
+         style="stop-color:#0000ff;stop-opacity:1;"
+         offset="0"
+         id="stop5793" />
+      <stop
+         style="stop-color:#0000ff;stop-opacity:0;"
+         offset="1"
+         id="stop5795" />
+    </linearGradient>
     <linearGradient
        inkscape:collect="always"
        id="linearGradient5735">
@@ -11024,6 +11036,122 @@
        id="linearGradient5759-1"
        xlink:href="#linearGradient5735-1"
        inkscape:collect="always" />
+    <radialGradient
+       inkscape:collect="always"
+       xlink:href="#linearGradient3690-7"
+       id="radialGradient4034-1"
+       gradientUnits="userSpaceOnUse"
+       gradientTransform="matrix(1,0,0,0.9206096,0,1.7471117)"
+       cx="166.42264"
+       cy="22.006586"
+       fx="166.42264"
+       fy="22.006586"
+       r="15.904826" />
+    <linearGradient
+       id="linearGradient3690-7">
+      <stop
+         style="stop-color:#ff8bcc;stop-opacity:1;"
+         offset="0"
+         id="stop3692-4" />
+      <stop
+         id="stop3698-0"
+         offset="1"
+         style="stop-color:#08100e;stop-opacity:0.49803922;" />
+      <stop
+         style="stop-color:#5cece8;stop-opacity:1"
+         offset="1"
+         id="stop3694-9" />
+    </linearGradient>
+    <linearGradient
+       inkscape:collect="always"
+       xlink:href="#linearGradient4698-1"
+       id="linearGradient6658"
+       gradientUnits="userSpaceOnUse"
+       gradientTransform="translate(35,-4.0000015)"
+       x1="52"
+       y1="61.362183"
+       x2="78"
+       y2="91.362183" />
+    <linearGradient
+       id="linearGradient4698-1">
+      <stop
+         style="stop-color:#0000ff;stop-opacity:1;"
+         offset="0"
+         id="stop4700-7" />
+      <stop
+         style="stop-color:#0000a0;stop-opacity:1;"
+         offset="1"
+         id="stop4702-4" />
+    </linearGradient>
+    <linearGradient
+       inkscape:collect="always"
+       xlink:href="#linearGradient1887-0"
+       id="linearGradient6652"
+       gradientUnits="userSpaceOnUse"
+       gradientTransform="translate(35,-2.0000011)"
+       x1="56"
+       y1="59.362183"
+       x2="74"
+       y2="75.362183" />
+    <linearGradient
+       id="linearGradient1887-0">
+      <stop
+         style="stop-color:#ffffff;stop-opacity:1;"
+         offset="0"
+         id="stop1888-9" />
+      <stop
+         style="stop-color:#d0d0d0;stop-opacity:1;"
+         offset="1"
+         id="stop1889-4" />
+    </linearGradient>
+    <linearGradient
+       y2="75.362183"
+       x2="74"
+       y1="59.362183"
+       x1="56"
+       gradientTransform="translate(35,-2.0000011)"
+       gradientUnits="userSpaceOnUse"
+       id="linearGradient4853"
+       xlink:href="#linearGradient1887-0"
+       inkscape:collect="always" />
+    <linearGradient
+       inkscape:collect="always"
+       xlink:href="#linearGradient5791"
+       id="linearGradient5801"
+       gradientUnits="userSpaceOnUse"
+       x1="309.75"
+       y1="477.36218"
+       x2="360.25056"
+       y2="477.36218" />
+    <linearGradient
+       inkscape:collect="always"
+       xlink:href="#linearGradient5791"
+       id="linearGradient5805"
+       gradientUnits="userSpaceOnUse"
+       x1="309.75"
+       y1="477.36218"
+       x2="360.25056"
+       y2="477.36218" />
+    <linearGradient
+       inkscape:collect="always"
+       xlink:href="#linearGradient5791"
+       id="linearGradient5815"
+       gradientUnits="userSpaceOnUse"
+       x1="309.75"
+       y1="477.36218"
+       x2="360.25056"
+       y2="477.36218"
+       gradientTransform="matrix(2.1660248,0,0,2.1660248,-360.88469,-526.88253)" />
+    <linearGradient
+       inkscape:collect="always"
+       xlink:href="#linearGradient5791"
+       id="linearGradient5819"
+       gradientUnits="userSpaceOnUse"
+       gradientTransform="matrix(0.70591405,0,0,0.70591405,91.019596,132.88631)"
+       x1="309.75"
+       y1="477.36218"
+       x2="360.25056"
+       y2="477.36218" />
   </defs>
   <metadata
      id="metadata7">
@@ -12714,6 +12842,302 @@
          id="path4953-52"
          d="m 545,152.36218 0,30 30,0 0,-30 z"
          style="fill:url(#linearGradient5759-1);fill-opacity:1;stroke:#000000;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+    </g>
+    <g
+       id="g5126"
+       transform="matrix(1,0,0,0.74308965,0,91.039314)"
+       inkscape:export-filename="C:\Dev\HeeksCNCSVN\icons\duplicate.png"
+       inkscape:export-xdpi="51.296738"
+       inkscape:export-ydpi="51.296738">
+      <g
+         inkscape:export-filename="C:\Users\Dan\HeeksCAD\HeeksCNC\icons\profile.png"
+         id="g4007-8"
+         transform="matrix(0.0739951,0,0,0.08681861,381.62526,349.94204)"
+         inkscape:label="#g3159"
+         inkscape:export-xdpi="46.919231"
+         inkscape:export-ydpi="46.919231">
+        <path
+           inkscape:connector-curvature="0"
+           id="path4010-8"
+           d="m 110,152.36218 0,-89.999997 90,0 0,89.999997 0,0"
+           style="fill:none;stroke:#000000;stroke-width:4;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none" />
+        <path
+           inkscape:connector-curvature="0"
+           sodipodi:nodetypes="ccccccccc"
+           id="path4012-2"
+           d="m 80,182.36218 c 10,0 20,-10 20,-30 l 0,-89.999997 c -0.06863,-7.585783 4.77583,-9.030218 10,-10 l 90,0 c 3.92877,1.54701 8.74757,0.42397 10,10 l 0,89.999997 c -1.01654,20.18639 9.4675,29.96434 20,30 l 0,0"
+           style="fill:none;stroke:#00ff00;stroke-width:4;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none" />
+      </g>
+      <g
+         transform="matrix(0.36266223,0,0,0.3783683,345.97404,300.49685)"
+         id="g4014-4"
+         inkscape:label="#g3189"
+         inkscape:export-xdpi="278.70969"
+         inkscape:export-ydpi="278.70969">
+        <path
+           inkscape:connector-curvature="0"
+           id="path4016-5"
+           d="m 160,172.36218 0,-30 30,0 0,30 -30,0 z"
+           style="fill:none;stroke:#000000;stroke-width:1;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none" />
+        <path
+           inkscape:connector-curvature="0"
+           id="path4018-5"
+           d="m 165,167.36218 20,0 0,-20 -20,0 0,20 z"
+           style="fill:none;stroke:#00ff00;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+        <path
+           inkscape:connector-curvature="0"
+           id="path4020-1"
+           d="m 165,167.36218 5,-5 10,0 0,-10 -10,0 0,10 0,0"
+           style="fill:none;stroke:#00ff00;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+      </g>
+      <g
+         inkscape:export-filename="C:\Users\Dan\HeeksCAD\HeeksCNC\icons\profile.png"
+         id="g4007-8-6"
+         transform="matrix(0.0739951,0,0,0.08681861,381.86054,362.94798)"
+         inkscape:label="#g3159"
+         inkscape:export-xdpi="46.919231"
+         inkscape:export-ydpi="46.919231">
+        <path
+           inkscape:connector-curvature="0"
+           id="path4010-8-1"
+           d="m 110,152.36218 0,-89.999997 90,0 0,89.999997 0,0"
+           style="fill:none;stroke:#000000;stroke-width:4;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none" />
+        <path
+           inkscape:connector-curvature="0"
+           sodipodi:nodetypes="ccccccccc"
+           id="path4012-2-4"
+           d="m 80,182.36218 c 10,0 20,-10 20,-30 l 0,-89.999997 c -0.06863,-7.585783 4.77583,-9.030218 10,-10 l 90,0 c 3.92877,1.54701 8.74757,0.42397 10,10 l 0,89.999997 c -1.01654,20.18639 9.4675,29.96434 20,30 l 0,0"
+           style="fill:none;stroke:#00ff00;stroke-width:4;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none" />
+      </g>
+      <g
+         transform="matrix(0.36266223,0,0,0.3783683,346.20932,313.50279)"
+         id="g4014-4-2"
+         inkscape:label="#g3189"
+         inkscape:export-xdpi="278.70969"
+         inkscape:export-ydpi="278.70969">
+        <path
+           inkscape:connector-curvature="0"
+           id="path4016-5-3"
+           d="m 160,172.36218 0,-30 30,0 0,30 -30,0 z"
+           style="fill:none;stroke:#000000;stroke-width:1;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none" />
+        <path
+           inkscape:connector-curvature="0"
+           id="path4018-5-2"
+           d="m 165,167.36218 20,0 0,-20 -20,0 0,20 z"
+           style="fill:none;stroke:#00ff00;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+        <path
+           inkscape:connector-curvature="0"
+           id="path4020-1-2"
+           d="m 165,167.36218 5,-5 10,0 0,-10 -10,0 0,10 0,0"
+           style="fill:none;stroke:#00ff00;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+      </g>
+      <g
+         inkscape:export-filename="C:\Users\Dan\HeeksCAD\HeeksCNC\icons\profile.png"
+         id="g4007-8-1"
+         transform="matrix(0.0739951,0,0,0.08681861,381.46103,375.94798)"
+         inkscape:label="#g3159"
+         inkscape:export-xdpi="46.919231"
+         inkscape:export-ydpi="46.919231">
+        <path
+           inkscape:connector-curvature="0"
+           id="path4010-8-6"
+           d="m 110,152.36218 0,-89.999997 90,0 0,89.999997 0,0"
+           style="fill:none;stroke:#000000;stroke-width:4;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none" />
+        <path
+           inkscape:connector-curvature="0"
+           sodipodi:nodetypes="ccccccccc"
+           id="path4012-2-8"
+           d="m 80,182.36218 c 10,0 20,-10 20,-30 l 0,-89.999997 c -0.06863,-7.585783 4.77583,-9.030218 10,-10 l 90,0 c 3.92877,1.54701 8.74757,0.42397 10,10 l 0,89.999997 c -1.01654,20.18639 9.4675,29.96434 20,30 l 0,0"
+           style="fill:none;stroke:#00ff00;stroke-width:4;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none" />
+      </g>
+      <g
+         transform="matrix(0.36266223,0,0,0.3783683,345.80981,326.50279)"
+         id="g4014-4-5"
+         inkscape:label="#g3189"
+         inkscape:export-xdpi="278.70969"
+         inkscape:export-ydpi="278.70969">
+        <path
+           inkscape:connector-curvature="0"
+           id="path4016-5-7"
+           d="m 160,172.36218 0,-30 30,0 0,30 -30,0 z"
+           style="fill:none;stroke:#000000;stroke-width:1;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none" />
+        <path
+           inkscape:connector-curvature="0"
+           id="path4018-5-6"
+           d="m 165,167.36218 20,0 0,-20 -20,0 0,20 z"
+           style="fill:none;stroke:#00ff00;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+        <path
+           inkscape:connector-curvature="0"
+           id="path4020-1-1"
+           d="m 165,167.36218 5,-5 10,0 0,-10 -10,0 0,10 0,0"
+           style="fill:none;stroke:#00ff00;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+      </g>
+    </g>
+    <g
+       id="g5005"
+       inkscape:export-filename="C:\Dev\HeeksCNCSVN\bitmaps\simulate.png"
+       inkscape:export-xdpi="204.3459"
+       inkscape:export-ydpi="204.3459">
+      <rect
+         y="357.36218"
+         x="450"
+         height="40"
+         width="40"
+         id="rect5003"
+         style="opacity:0.45;fill:#b3b3b3;stroke:#000000;stroke-width:2.28571439;stroke-linecap:butt;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;stroke-dashoffset:0" />
+      <path
+         inkscape:export-ydpi="65.294121"
+         inkscape:export-xdpi="65.294121"
+         inkscape:export-filename="C:\Users\Dan\voxelcut\bitmaps\play.png"
+         id="path2383"
+         d="M 461.77347,392.98492 480,377.36218 l -18.22653,-16.1435 0,31.76624 z"
+         style="fill:#008000;fill-rule:evenodd;stroke:#000000;stroke-width:1.09359205;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none"
+         inkscape:connector-curvature="0" />
+    </g>
+    <g
+       id="g5821"
+       inkscape:export-filename="C:\Dev\HeeksCNCSVN\bitmaps\help.png"
+       inkscape:export-xdpi="240"
+       inkscape:export-ydpi="240">
+      <path
+         sodipodi:nodetypes="csscc"
+         inkscape:connector-curvature="0"
+         id="path5008"
+         d="m 345.14866,469.86299 c 0,9.74664 -7.90121,17.64785 -17.64785,17.64785 -9.74664,0 -17.64786,-7.90121 -17.64786,-17.64785 0,-9.74664 7.90122,-17.64786 17.64786,-17.64786 9.62011,0 17.71352,8.29044 17.64785,17.64786 z"
+         style="fill:#ffffff;fill-opacity:1;fill-rule:nonzero;stroke:#0000ff;stroke-width:0.70591408;stroke-linecap:butt;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;stroke-dashoffset:0" />
+      <path
+         inkscape:connector-curvature="0"
+         id="path5799"
+         d="m 327.05802,454.29026 c -10.44269,-0.26875 -18.49484,12.25668 -13.92217,21.63181 3.55531,9.65441 17.65853,12.73287 24.88066,5.45888 7.30908,-6.10736 6.40605,-19.0429 -1.54804,-24.12701 -2.7021,-1.98389 -6.0506,-3.08173 -9.41045,-2.96368 z"
+         style="fill:url(#linearGradient5819);fill-opacity:1;fill-rule:nonzero;stroke:#0000ff;stroke-width:0.70591408;stroke-linecap:butt;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;stroke-dashoffset:0" />
+      <text
+         sodipodi:linespacing="125%"
+         id="text5807"
+         y="482.15918"
+         x="317.65283"
+         style="font-size:34.91170502px;font-style:normal;font-weight:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#ffffff;fill-opacity:1;stroke:#0000ff;stroke-width:0.70591408;font-family:Sans"
+         xml:space="preserve"><tspan
+           style="stroke-width:0.70591408"
+           y="482.15918"
+           x="317.65283"
+           id="tspan5809"
+           sodipodi:role="line">?</tspan></text>
+    </g>
+    <g
+       id="g5862"
+       inkscape:export-filename="C:\Dev\HeeksCNCSVN\icons\stock.png"
+       inkscape:export-xdpi="32.365253"
+       inkscape:export-ydpi="32.365253">
+      <path
+         d="m 189.70118,565.61884 19.56927,11.63783 24.89793,-7.27587 -22.35274,-8.8621 z"
+         style="fill:#afafde;fill-opacity:1;fill-rule:evenodd;stroke:none"
+         id="path5844"
+         inkscape:connector-curvature="0" />
+      <path
+         d="m 189.70118,533.65031 0,31.96853 22.11446,-4.50014 0,-28.3542 z"
+         style="fill:#353564;fill-opacity:1;fill-rule:evenodd;stroke:none"
+         id="path5846"
+         inkscape:connector-curvature="0" />
+      <path
+         d="m 211.81564,532.7645 22.35274,1.74441 0,35.47189 -22.35274,-8.8621 z"
+         style="fill:#e9e9ff;fill-opacity:1;fill-rule:evenodd;stroke:none"
+         id="path5848"
+         inkscape:connector-curvature="0" />
+      <path
+         d="m 189.70118,533.65031 19.56927,2.29076 24.89793,-1.43216 -22.35274,-1.74441 z"
+         style="fill:#4d4d4d;fill-opacity:1;fill-rule:evenodd;stroke:none"
+         id="path5850"
+         inkscape:connector-curvature="0" />
+      <path
+         d="m 209.27045,535.94107 0,41.3156 24.89793,-7.27587 0,-35.47189 z"
+         style="fill:#ececec;fill-opacity:1;fill-rule:evenodd;stroke:none"
+         id="path5852"
+         inkscape:connector-curvature="0" />
+      <path
+         d="m 189.70118,533.65031 19.56927,2.29076 0,41.3156 -19.56927,-11.63783 z"
+         style="fill:#b3b3b3;fill-opacity:1;fill-rule:evenodd;stroke:none"
+         id="path5854"
+         inkscape:connector-curvature="0" />
+    </g>
+    <g
+       id="g5925"
+       inkscape:export-filename="C:\Dev\HeeksCNCSVN\icons\stocks.png"
+       inkscape:export-xdpi="18.75153"
+       inkscape:export-ydpi="18.75153">
+      <g
+         inkscape:export-ydpi="32.365253"
+         inkscape:export-xdpi="32.365253"
+         inkscape:export-filename="C:\Dev\HeeksCNCSVN\icons\stock.png"
+         id="g5862-1"
+         transform="translate(93.558556,5.6527998)">
+        <path
+           inkscape:connector-curvature="0"
+           id="path5844-7"
+           style="fill:#afafde;fill-opacity:1;fill-rule:evenodd;stroke:none"
+           d="m 189.70118,565.61884 19.56927,11.63783 24.89793,-7.27587 -22.35274,-8.8621 z" />
+        <path
+           inkscape:connector-curvature="0"
+           id="path5846-4"
+           style="fill:#353564;fill-opacity:1;fill-rule:evenodd;stroke:none"
+           d="m 189.70118,533.65031 0,31.96853 22.11446,-4.50014 0,-28.3542 z" />
+        <path
+           inkscape:connector-curvature="0"
+           id="path5848-0"
+           style="fill:#e9e9ff;fill-opacity:1;fill-rule:evenodd;stroke:none"
+           d="m 211.81564,532.7645 22.35274,1.74441 0,35.47189 -22.35274,-8.8621 z" />
+        <path
+           inkscape:connector-curvature="0"
+           id="path5850-9"
+           style="fill:#4d4d4d;fill-opacity:1;fill-rule:evenodd;stroke:none"
+           d="m 189.70118,533.65031 19.56927,2.29076 24.89793,-1.43216 -22.35274,-1.74441 z" />
+        <path
+           inkscape:connector-curvature="0"
+           id="path5852-4"
+           style="fill:#ececec;fill-opacity:1;fill-rule:evenodd;stroke:none"
+           d="m 209.27045,535.94107 0,41.3156 24.89793,-7.27587 0,-35.47189 z" />
+        <path
+           inkscape:connector-curvature="0"
+           id="path5854-8"
+           style="fill:#b3b3b3;fill-opacity:1;fill-rule:evenodd;stroke:none"
+           d="m 189.70118,533.65031 19.56927,2.29076 0,41.3156 -19.56927,-11.63783 z" />
+      </g>
+      <g
+         inkscape:export-ydpi="32.365253"
+         inkscape:export-xdpi="32.365253"
+         inkscape:export-filename="C:\Dev\HeeksCNCSVN\icons\stock.png"
+         id="g5862-8"
+         transform="translate(125.6912,37.954363)">
+        <path
+           inkscape:connector-curvature="0"
+           id="path5844-2"
+           style="fill:#afafde;fill-opacity:1;fill-rule:evenodd;stroke:none"
+           d="m 189.70118,565.61884 19.56927,11.63783 24.89793,-7.27587 -22.35274,-8.8621 z" />
+        <path
+           inkscape:connector-curvature="0"
+           id="path5846-45"
+           style="fill:#353564;fill-opacity:1;fill-rule:evenodd;stroke:none"
+           d="m 189.70118,533.65031 0,31.96853 22.11446,-4.50014 0,-28.3542 z" />
+        <path
+           inkscape:connector-curvature="0"
+           id="path5848-5"
+           style="fill:#e9e9ff;fill-opacity:1;fill-rule:evenodd;stroke:none"
+           d="m 211.81564,532.7645 22.35274,1.74441 0,35.47189 -22.35274,-8.8621 z" />
+        <path
+           inkscape:connector-curvature="0"
+           id="path5850-1"
+           style="fill:#4d4d4d;fill-opacity:1;fill-rule:evenodd;stroke:none"
+           d="m 189.70118,533.65031 19.56927,2.29076 24.89793,-1.43216 -22.35274,-1.74441 z" />
+        <path
+           inkscape:connector-curvature="0"
+           id="path5852-7"
+           style="fill:#ececec;fill-opacity:1;fill-rule:evenodd;stroke:none"
+           d="m 209.27045,535.94107 0,41.3156 24.89793,-7.27587 0,-35.47189 z" />
+        <path
+           inkscape:connector-curvature="0"
+           id="path5854-1"
+           style="fill:#b3b3b3;fill-opacity:1;fill-rule:evenodd;stroke:none"
+           d="m 189.70118,533.65031 19.56927,2.29076 0,41.3156 -19.56927,-11.63783 z" />
+      </g>
     </g>
   </g>
 </svg>

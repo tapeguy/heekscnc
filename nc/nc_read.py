@@ -8,6 +8,11 @@ import area
 import math
 count = 0
 
+class Program:   # stores start and end lines of programs and subroutines
+    def __init__(self):
+        self.start_line = None
+        self.end_line = None
+
 class Parser:
 
     def __init__(self, writer):
@@ -41,16 +46,6 @@ class Parser:
             if self.absolute_flag or self.currentz == None: self.currentz = z
             else: self.currentz = self.currentz + z
 
-#    def add_line(self, x, y, z, a, b, c):
-#        if (x == None and y == None and z == None and a == None and b == None and c == None) : return
-#        self.set_current_pos(x, y, z)
-#        self.writer.add_line(self.currentx, self.currenty, self.currentz, a, b, c)
-
-#    def add_arc(self, x, y, z, i, j, k, r, d):
-#        if (x == None and y == None and z == None and i == None and j == None and k == None and r == None and d == None) : return
-#        self.set_current_pos(x, y, z)
-#        self.writer.add_arc(self.currentx, self.currenty, self.currentz, i, j, k, r, d)
-
     def incremental(self):
         self.absolute_flag = False
 
@@ -65,6 +60,9 @@ class Parser:
         self.arc = 0
         self.q = None
         self.r = None
+        self.drilling = None
+        self.drilling_uses_clearance = False
+        self.drilling_clearance_height = None
 
         while (self.readline()):
             self.a = None
@@ -79,9 +77,6 @@ class Parser:
             self.x = None
             self.y = None
             self.z = None
-            self.u = None
-            self.v = None
-            self.w = None
             self.t = None
             self.m6 = False
 
@@ -90,8 +85,9 @@ class Parser:
             self.move = False
             self.height_offset = False
             self.drill = False
+            self.drill_off = False
             self.no_move = False
-
+            
             words = self.pattern_main.findall(self.line)
             for word in words:
                 self.col = None
@@ -103,14 +99,23 @@ class Parser:
                 if (self.m6 == True) or (self.need_m6_for_t_change == False):
                     self.writer.tool_change( self.t )
 
-            if (self.drill):
-                if self.z != None: self.drillz = self.z
-                self.writer.rapid(self.x, self.y, self.r)
-                self.writer.feed(self.x, self.y, self.drillz)
-                self.writer.feed(self.x, self.y, self.r)
+            if self.height_offset and (self.z != None):
+                self.drilling_clearance_height = self.z
+                    
+            if self.drill:
+                self.drilling = True
+            
+            if self.drill_off:
+                self.drilling = False
 
-            elif(self.height_offset):
-                self.writer.rapid(self.x, self.y, self.z)
+            if self.drilling:
+                rapid_z = self.r
+                if self.drilling_uses_clearance and (self.drilling_clearance_height != None):
+                    rapid_z = self.drilling_clearance_height
+                if self.z != None: self.drillz = self.z
+                self.writer.rapid(self.x, self.y, rapid_z)
+                self.writer.feed(self.x, self.y, self.drillz)
+                self.writer.feed(self.x, self.y, rapid_z)
 
             else:
                 if (self.move and not self.no_move):
@@ -150,15 +155,6 @@ class Parser:
                                 c = p0 + (v * 0.5) + (n * d)
                                 i = c.x
                                 j = c.y
-                                global count
-                                
-                                if count == 0 and x > 47:
-                                    print 'x = ', x
-                                    print 'p0 = ', p0.x, ', ', p0.y, '   p1 = ', p1.x, ', ', p1.y
-                                    print 'c = ', c.x, ', ', c.y
-                                    print 'v = ', v.x, ', ', v.y
-                                    print 'n = ', n.x, ', ', n.y
-                                    count += 1
 
                             else:
                                 i = i + self.oldx
@@ -170,7 +166,6 @@ class Parser:
                     if self.x != None: self.oldx = self.x
                     if self.y != None: self.oldy = self.y
                     if self.z != None: self.oldz = self.z
-
             self.writer.end_ncblock()
 
         

@@ -12,9 +12,10 @@
 
 using namespace std;
 
-CTrsfNCCode::CTrsfNCCode():m_x(0),m_y(0)
+CTrsfNCCode::CTrsfNCCode()
+ : ObjList(ObjType), m_x(0), m_y(0)
 {
-	Add(new CNCCode(),NULL);
+	Add(new CNCCode());
 }
 
 CTrsfNCCode::~CTrsfNCCode()

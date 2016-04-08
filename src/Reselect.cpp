@@ -5,6 +5,7 @@
 #include "stdafx.h"
 #include "Reselect.h"
 #include "interface/ObjList.h"
+#include "SketchOp.h"
 
 static bool GetSketches(std::list<int>& sketches )
 {
@@ -28,17 +29,15 @@ static bool GetSketches(std::list<int>& sketches )
 void ReselectSketches::Run()
 {
 	std::list<int> sketches;
-    MarkingFilter filters[] = { SketchMarkingFilter };
+	MarkingFilter filters[] = { SketchMarkingFilter, CircleMarkingFilter, AreaMarkingFilter};
     std::set<MarkingFilter> filterset ( filters, filters + sizeof(filters) / sizeof(MarkingFilter));
 	heeksCAD->PickObjects(_("Select Sketches"), filterset);
 	if(GetSketches( sketches ))
 	{
-		heeksCAD->CreateUndoPoint();
-		m_sketches->clear();
-		*m_sketches = sketches;
-		((ObjList*)m_object)->Clear();
-		m_object->ReloadPointers();
-		heeksCAD->Changed();
+        m_sketches->clear();
+        *m_sketches = sketches;
+        m_object->ReloadPointers();
+        // to do, make undoable with properties
 	}
 	else
 	{
@@ -50,23 +49,48 @@ void ReselectSketches::Run()
 	heeksCAD->Mark(m_object);
 }
 
-static bool GetSolids(std::list<int>& solids )
+void ReselectSketch::Run()
 {
-	// check for at least one sketch selected
+    std::list<int> sketches;
+    MarkingFilter filters[] = { SketchMarkingFilter, CircleMarkingFilter, AreaMarkingFilter};
+    std::set<MarkingFilter> filterset ( filters, filters + sizeof(filters) / sizeof(MarkingFilter));
+    heeksCAD->PickObjects(_("Select Sketch"), filterset);
+    if(GetSketches( sketches ))
+    {
+        if(sketches.size() > 0)m_sketch = sketches.front();
+        else m_sketch = 0;
+        HeeksObj* new_copy = m_object->MakeACopy();
+        ((CSketchOp*)new_copy)->m_sketch = m_sketch;
+        heeksCAD->CopyUndoably(m_object, new_copy);
+    }
+    else
+    {
+        wxMessageBox(_("Select cancelled. No sketches were selected!"));
+    }
 
-	const std::list<HeeksObj*>& list = heeksCAD->GetMarkedList();
-	for(std::list<HeeksObj*>::const_iterator It = list.begin(); It != list.end(); It++)
-	{
-		HeeksObj* object = *It;
-		if(object->GetType() == SolidType || object->GetType() == StlSolidType)
-		{
-			solids.push_back(object->GetID());
-		}
-	}
+    // get back to the operation's properties
+    heeksCAD->ClearMarkedList();
+    heeksCAD->Mark(m_object);
+}
 
-	if(solids.size() == 0)return false;
+//static
+bool ReselectSolids::GetSolids(std::list<int>& solids )
+{
+    // check for at least one sketch selected
 
-	return true;
+    const std::list<HeeksObj*>& list = heeksCAD->GetMarkedList();
+    for(std::list<HeeksObj*>::const_iterator It = list.begin(); It != list.end(); It++)
+    {
+        HeeksObj* object = *It;
+        if(object->GetType() == SolidType || object->GetType() == StlSolidType)
+        {
+            solids.push_back(object->GetID());
+        }
+    }
+
+    if(solids.size() == 0)return false;
+
+    return true;
 }
 
 void ReselectSolids::Run()
@@ -77,12 +101,11 @@ void ReselectSolids::Run()
 	heeksCAD->PickObjects(_("Select Solids"), filterset );
 	if(GetSolids( solids ))
 	{
-		heeksCAD->CreateUndoPoint();
 		m_solids->clear();
 		*m_solids = solids;
 		((ObjList*)m_object)->Clear();
 		m_object->ReloadPointers();
-		heeksCAD->Changed();
+		// to do, make undoable, with properties
 	}
 	else
 	{
@@ -112,67 +135,10 @@ wxString GetIntListString(const std::list<int> &list)
 	return str;
 }
 
-#ifdef OP_SKETCHES_AS_CHILDREN
-void AddSolidsProperties(std::list<Property *> *list, HeeksObj* object)
-{
-	std::list<int> solids;
-	for(HeeksObj* child = object->GetFirstChild(); child; child = object->GetNextChild())
-	{
-		if(child->GetIDGroupType() == SolidType)solids.push_back(child->GetID());
-	}
-#else
 void AddSolidsProperties(std::list<Property *> *list, const std::list<int> &solids)
 {
-#endif
-
-    Property * prop;
-	if(solids.size() == 0)
-	{
-	    prop = new PropertyString(_("solids"), _("Solids"), NULL);
-	    ((PropertyString *)prop)->SetValue ( _("None") );
-	}
-	else if(solids.size() == 1)
-	{
-	    prop = new PropertyInt(_("solids"), _("Solids"), NULL);
-	    ((PropertyInt *)prop)->SetValue ( solids.front() );
-	}
-	else
-	{
-	    prop = new PropertyString(_("solids"), _("Solids"), NULL);
-	    ((PropertyString *)prop)->SetValue ( GetIntListString(solids) );
-	}
-	list->push_back(prop);
-}
-
-#ifdef OP_SKETCHES_AS_CHILDREN
-void AddSketchesProperties(std::list<Property *> *list, HeeksObj* object)
-{
-	std::list<int> sketches;
-	for(HeeksObj* child = object->GetFirstChild(); child; child = object->GetNextChild())
-	{
-		if(child->GetIDGroupType() == SketchType)sketches.push_back(child->GetID());
-	}
-#else
-void AddSketchesProperties(std::list<Property *> *list, const std::list<int> &sketches)
-{
-#endif
-    Property * prop;
-
-	if(sketches.size() == 0)
-    {
-	    prop = new PropertyString(_("sketches"), _("Sketches"), NULL);
-	    ((PropertyString *)prop)->SetValue ( _("None") );
-    }
-	else if(sketches.size() == 1)
-    {
-	    prop = new PropertyInt(_("sketches"), _("Sketches"), NULL);
-        ((PropertyInt *)prop)->SetValue ( sketches.front() );
-    }
-    else
-    {
-        prop = new PropertyString(_("sketches"), _("Sketches"), NULL);
-        ((PropertyString *)prop)->SetValue ( GetIntListString(sketches) );
-    }
-    list->push_back(prop);
+//    if(solids.size() == 0)list->push_back(new PropertyString(_("solids"), _("None"), NULL));
+//    else if(solids.size() == 1)list->push_back(new PropertyInt(_("solid id"), solids.front(), NULL));
+//    else list->push_back(new PropertyString(_("solids"), GetIntListString(solids), NULL));
 }
 

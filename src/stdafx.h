@@ -33,7 +33,6 @@ extern "C" {
 #include "HeeksCNC.h"
 #include "interface/strconv.h"
 #include "interface/HeeksObj.h"
-#include "interface/ObjectCanvas.h"
 
 #include "Geom_Plane.hxx"
 #include "GeomAPI_IntSS.hxx"

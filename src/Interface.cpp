@@ -18,10 +18,10 @@ void OnNewOrOpen(int open, int res)
 	theApp.OnNewOrOpen(open != 0, res);
 }
 
-void GetOptions(void(*callbackfunc)(Property*))
+void GetProperties(void(*callbackfunc)(Property*))
 {
 	std::list<Property*> list;
-	theApp.GetOptions(&list);
+	theApp.GetProperties(&list);
 	for(std::list<Property*>::iterator It = list.begin(); It != list.end(); It++){
 		Property* p = *It;
 		(*callbackfunc)(p);

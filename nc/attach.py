@@ -61,6 +61,7 @@ class Creator(recreator.Redirector):
             
        # get the points on the surface
         self.pdcf.setPath(self.path)
+        
         self.pdcf.run()
         plist = self.pdcf.getCLPoints()
         
@@ -80,11 +81,11 @@ class Creator(recreator.Redirector):
             
         self.path = ocl.Path()
 
-    def feed(self, x=None, y=None, z=None):
+    def feed(self, x=None, y=None, z=None, a=None, b=None, c=None):
         px = self.x
         py = self.y
         pz = self.z
-        recreator.Redirector.feed(self, x, y, z)
+        recreator.Redirector.feed(self, x, y, z, a, b, c)
         if self.x == None or self.y == None or self.z == None:
             return
         if px == self.x and py == self.y:
@@ -103,6 +104,9 @@ class Creator(recreator.Redirector):
         # add an arc to the path
         if self.path == None: self.path = ocl.Path()
         self.path.append(ocl.Arc(ocl.Point(px, py, pz), ocl.Point(self.x, self.y, self.z), ocl.Point(i, j, pz), ccw))
+        
+    def set_ocl_cutter(self, cutter):
+        self.cutter = cutter
 
 ################################################################################
 

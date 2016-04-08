@@ -29,16 +29,16 @@ SurfaceDlg::SurfaceDlg(wxWindow *parent, HeeksObj* object, const wxString& title
 
 void SurfaceDlg::GetDataRaw(HeeksObj* object)
 {
-	((CSurface*)object)->m_tolerance = m_lgthTolerance->GetValue();
-	((CSurface*)object)->m_material_allowance = m_lgthMaterialAllowance->GetValue();
+	((CSurface*)object)->m_tolerance = m_lgthTolerance->GetValueAsDouble();
+	((CSurface*)object)->m_material_allowance = m_lgthMaterialAllowance->GetValueAsDouble();
 	((CSurface*)object)->m_same_for_each_pattern_position = m_chkSameForEachPosition->GetValue();
 	SolidsDlg::GetDataRaw(object);
 }
 
 void SurfaceDlg::SetFromDataRaw(HeeksObj* object)
 {
-	m_lgthTolerance->SetValue(((CSurface*)object)->m_tolerance);
-	m_lgthMaterialAllowance->SetValue(((CSurface*)object)->m_material_allowance);
+	m_lgthTolerance->SetValueFromDouble(((CSurface*)object)->m_tolerance);
+	m_lgthMaterialAllowance->SetValueFromDouble(((CSurface*)object)->m_material_allowance);
 	m_chkSameForEachPosition->SetValue(((CSurface*)object)->m_same_for_each_pattern_position != 0);
 	SolidsDlg::SetFromDataRaw(object);
 }

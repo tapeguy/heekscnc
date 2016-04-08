@@ -26,6 +26,7 @@
 #include <BRepAlgoAPI_Cut.hxx>
 #include <Standard_Failure.hxx>
 #include <StdFail_NotDone.hxx>
+#include "tinyxml/tinyxml.h"
 
 #include <wx/progdlg.h>
 
@@ -33,6 +34,10 @@
 #include <sstream>
 
 int CNCCode::s_arc_interpolation_count = 20;
+
+
+wxFont format_font(10, wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_NORMAL, false, _T("Lucida Console"), wxFONTENCODING_SYSTEM);
+
 
 void ColouredText::WriteXML(TiXmlNode *root)
 {
@@ -53,7 +58,10 @@ void ColouredText::ReadFromXMLElement(TiXmlElement* element)
 
 	// get the text
 	const char* text = element->GetText();
-	if(text)m_str = wxString(Ctt(text));
+	if(text)
+	    m_str = wxString(Ctt(text));
+	else
+	    m_str = _(" ");     // Assume a single space that xml trimmed.
 }
 
 // static
@@ -523,7 +531,8 @@ HeeksObj* CNCCodeBlock::ReadFromXMLElement(TiXmlElement* element)
 
 void CNCCodeBlock::AppendText(wxString& str)
 {
-	if(m_text.size() == 0)return;
+	if(m_text.size() == 0)
+	    return;
 
 	for(std::list<ColouredText>::iterator It = m_text.begin(); It != m_text.end(); It++)
 	{
@@ -533,22 +542,16 @@ void CNCCodeBlock::AppendText(wxString& str)
 	str.append(_T("\n"));
 }
 
-void CNCCodeBlock::FormatText(wxTextCtrl *textCtrl)
+void CNCCodeBlock::FormatText(COutputTextCtrl *textCtrl)
 {
-	if (m_formatted) return;
-	int i = m_from_pos;
+	if (m_formatted)
+	    return;
+
+	textCtrl->StartStyling(m_from_pos, wxSTC_STYLE_DEFAULT - 1);
 	for(std::list<ColouredText>::iterator It = m_text.begin(); It != m_text.end(); It++)
 	{
 		ColouredText &text = *It;
-		HeeksColor &col = CNCCode::Color(text.m_color_type);
-		wxColour c(col.red, col.green, col.blue);
-		int len = text.m_str.size();
-
-		wxFont font(10, wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_NORMAL, false, _T("Lucida Console"), wxFONTENCODING_SYSTEM);
-		wxTextAttr ta(c);
-		ta.SetFont(font);
-		textCtrl->SetStyle(i, i+len, ta);
-		i += len;
+		textCtrl->SetStyling((int)text.m_str.size(), (int)text.m_color_type);
 	}
 	m_formatted = true;
 }
@@ -559,13 +562,36 @@ PathObject* CNCCode::prev_po = NULL;
 
 std::map<std::string,ColorEnum> CNCCode::m_colors_s_i;
 std::map<ColorEnum,std::string> CNCCode::m_colors_i_s;
-std::vector<HeeksColor> CNCCode::m_colors;
+std::vector<PropertyColor> CNCCode::m_colors;
 
 const wxBitmap &CNCCode::GetIcon()
 {
 	static wxBitmap* icon = NULL;
 	if(icon == NULL)icon = new wxBitmap(wxImage(theApp.GetResFolder() + _T("/icons/nccode.png")));
 	return *icon;
+}
+
+void CNCCode::InitializeColorProperties(PropertyList * owner)
+{
+    // Don't set the owner on the local copy
+    m_colors.push_back ( PropertyColor ( _("default_color"), _("default color"), NULL ) );
+    m_colors.push_back ( PropertyColor ( _("block_color"), _("block color"), NULL ) );
+    m_colors.push_back ( PropertyColor ( _("misc_color"), _("misc color"), NULL ) );
+    m_colors.push_back ( PropertyColor ( _("program_color"), _("program color"), NULL ) );
+    m_colors.push_back ( PropertyColor ( _("tool_color"), _("tool color"), NULL ) );
+    m_colors.push_back ( PropertyColor ( _("comment_color"), _("comment color"), NULL ) );
+    m_colors.push_back ( PropertyColor ( _("variable_color"), _("variable color"), NULL ) );
+    m_colors.push_back ( PropertyColor ( _("prep_color"), _("prep color"), NULL ) );
+    m_colors.push_back ( PropertyColor ( _("axis_color"), _("axis color"), NULL ) );
+    m_colors.push_back ( PropertyColor ( _("rapid_color"), _("rapid color"), NULL ) );
+    m_colors.push_back ( PropertyColor ( _("feed_color"), _("feed color"), NULL ) );
+
+    std::vector<PropertyColor>::iterator it;
+    for (it = m_colors.begin(); it != m_colors.end(); it++)
+    {
+        PropertyColor& prop = *it;
+        owner->AddProperty(&prop);
+    }
 }
 
 void CNCCode::ClearColors(void)
@@ -575,46 +601,72 @@ void CNCCode::ClearColors(void)
 	CNCCode::m_colors.clear();
 }
 
-void CNCCode::AddColor(const char* name, const HeeksColor& col)
+void CNCCode::AddColor(const char* name, const PropertyColor& prop, long col, PropertyList * owner)
 {
 	ColorEnum i = (ColorEnum)ColorCount();
 	m_colors_s_i.insert(std::pair<std::string,ColorEnum>(std::string(name), i));
 	m_colors_i_s.insert(std::pair<ColorEnum,std::string>(i, std::string(name)));
-	m_colors.push_back(col);
+	m_colors.push_back(prop);
+	m_colors.back() = col;
+	m_colors.back().SetOwner(owner);
 }
 
 ColorEnum CNCCode::GetColor(const char* name, ColorEnum def)
 {
-	if (name == NULL) return def;
+	if (name == NULL)
+	    return def;
 	std::map<std::string,ColorEnum>::iterator it = m_colors_s_i.find(std::string(name));
-	if (it != m_colors_s_i.end()) return it->second;
+	if (it != m_colors_s_i.end())
+	    return it->second;
 	else return def;
 }
 
 const char* CNCCode::GetColor(ColorEnum i, const char* def)
 {
 	std::map<ColorEnum,std::string>::iterator it = m_colors_i_s.find(i);
-	if (it != m_colors_i_s.end()) return it->second.c_str();
+	if (it != m_colors_i_s.end())
+	    return it->second.c_str();
 	else return def;
 }
 
 // static
-void CNCCode::ReadColorsFromConfig()
+void CNCCode::ReadColorsFromConfig(PropertyList * owner)
 {
 	CNCConfig config(ConfigScope());
 	long col;
 	ClearColors();
-	config.Read(_T("ColorDefaultType"),		&col, HeeksColor(0, 0, 0).COLORREF_color()); AddColor("default", HeeksColor((long)col));
-	config.Read(_T("ColorBlockType"),		&col, HeeksColor(0, 0, 222).COLORREF_color()); AddColor("blocknum", HeeksColor((long)col));
-	config.Read(_T("ColorMiscType"),		&col, HeeksColor(0, 200, 0).COLORREF_color()); AddColor("misc", HeeksColor((long)col));
-	config.Read(_T("ColorProgramType"),		&col, HeeksColor(255, 128, 0).COLORREF_color()); AddColor("program", HeeksColor((long)col));
-	config.Read(_T("ColorToolType"),		&col, HeeksColor(200, 200, 0).COLORREF_color()); AddColor("tool", HeeksColor((long)col));
-	config.Read(_T("ColorCommentType"),		&col, HeeksColor(0, 200, 200).COLORREF_color()); AddColor("comment", HeeksColor((long)col));
-	config.Read(_T("ColorVariableType"),	&col, HeeksColor(164, 88, 188).COLORREF_color()); AddColor("variable", HeeksColor((long)col));
-	config.Read(_T("ColorPrepType"),		&col, HeeksColor(255, 0, 175).COLORREF_color()); AddColor("prep", HeeksColor((long)col));
-	config.Read(_T("ColorAxisType"),		&col, HeeksColor(128, 0, 255).COLORREF_color()); AddColor("axis", HeeksColor((long)col));
-	config.Read(_T("ColorRapidType"),		&col, HeeksColor(222, 0, 0).COLORREF_color()); AddColor("rapid", HeeksColor((long)col));
-	config.Read(_T("ColorFeedType"),		&col, HeeksColor(0, 179, 0).COLORREF_color()); AddColor("feed", HeeksColor((long)col));
+	config.Read(_T("ColorDefaultType"),		&col, HeeksColor(0, 0, 0).COLORREF_color());
+	AddColor("default", PropertyColor ( _("default_color"), _("default color"), NULL ), col, owner );
+
+	config.Read(_T("ColorBlockType"),		&col, HeeksColor(0, 0, 222).COLORREF_color());
+	AddColor("blocknum", PropertyColor ( _("block_color"), _("block color"), NULL ), col, owner );
+
+	config.Read(_T("ColorMiscType"),		&col, HeeksColor(0, 200, 0).COLORREF_color());
+	AddColor("misc", PropertyColor ( _("misc_color"), _("misc color"), NULL ), col, owner );
+
+	config.Read(_T("ColorProgramType"),		&col, HeeksColor(255, 128, 0).COLORREF_color());
+	AddColor("program", PropertyColor ( _("program_color"), _("program color"), NULL ), col, owner );
+
+	config.Read(_T("ColorToolType"),		&col, HeeksColor(200, 200, 0).COLORREF_color());
+	AddColor("tool", PropertyColor ( _("tool_color"), _("tool color"), NULL ), col, owner );
+
+	config.Read(_T("ColorCommentType"),		&col, HeeksColor(0, 200, 200).COLORREF_color());
+	AddColor("comment", PropertyColor ( _("comment_color"), _("comment color"), NULL ), col, owner );
+
+	config.Read(_T("ColorVariableType"),	&col, HeeksColor(164, 88, 188).COLORREF_color());
+	AddColor("variable", PropertyColor ( _("variable_color"), _("variable color"), NULL ), col, owner );
+
+	config.Read(_T("ColorPrepType"),		&col, HeeksColor(255, 0, 175).COLORREF_color());
+	AddColor("prep", PropertyColor ( _("prep_color"), _("prep color"), NULL ), col, owner );
+
+	config.Read(_T("ColorAxisType"),		&col, HeeksColor(128, 0, 255).COLORREF_color());
+	AddColor("axis", PropertyColor ( _("axis_color"), _("axis color"), NULL ), col, owner );
+
+	config.Read(_T("ColorRapidType"),		&col, HeeksColor(222, 0, 0).COLORREF_color());
+	AddColor("rapid", PropertyColor ( _("rapid_color"), _("rapid color"), NULL ), col, owner );
+
+	config.Read(_T("ColorFeedType"),		&col, HeeksColor(0, 179, 0).COLORREF_color());
+	AddColor("feed", PropertyColor ( _("feed_color"), _("feed color"), NULL ), col, owner );
 }
 
 // static
@@ -635,41 +687,8 @@ void CNCCode::WriteColorsToConfig()
 	config.Write(_T("ColorFeedType"),		CNCCode::m_colors[ColorFeedType	].COLORREF_color());
 }
 
-void on_set_default_color	(HeeksColor value, HeeksObj* object)	{CNCCode::Color(ColorDefaultType    ) = value;}
-void on_set_block_color		(HeeksColor value, HeeksObj* object)	{CNCCode::Color(ColorBlockType		) = value;}
-void on_set_misc_color		(HeeksColor value, HeeksObj* object)	{CNCCode::Color(ColorMiscType		) = value;}
-void on_set_program_color	(HeeksColor value, HeeksObj* object)	{CNCCode::Color(ColorProgramType	) = value;}
-void on_set_tool_color		(HeeksColor value, HeeksObj* object)	{CNCCode::Color(ColorToolType		) = value;}
-void on_set_comment_color	(HeeksColor value, HeeksObj* object)	{CNCCode::Color(ColorCommentType	) = value;}
-void on_set_variable_color	(HeeksColor value, HeeksObj* object)	{CNCCode::Color(ColorVariableType	) = value;}
-void on_set_prep_color		(HeeksColor value, HeeksObj* object)	{CNCCode::Color(ColorPrepType		) = value;}
-void on_set_axis_color		(HeeksColor value, HeeksObj* object)	{CNCCode::Color(ColorAxisType		) = value;}
-void on_set_rapid_color		(HeeksColor value, HeeksObj* object)	{CNCCode::Color(ColorRapidType		) = value;}
-void on_set_feed_color		(HeeksColor value, HeeksObj* object)	{CNCCode::Color(ColorFeedType		) = value;}
-/*
-// static
-void CNCCode::GetOptions(std::list<Property *> *list)
-{
-	PropertyList* nc_options = new PropertyList(_("nc options"));
-
-	PropertyList* text_colors = new PropertyList(_("text colors"));
-	text_colors->m_list.push_back ( new PropertyColor ( _("default color"),		CNCCode::Color(ColorDefaultType		), NULL, on_set_default_color	 ) );
-	text_colors->m_list.push_back ( new PropertyColor ( _("block color"),		CNCCode::Color(ColorBlockType		), NULL, on_set_block_color		 ) );
-	text_colors->m_list.push_back ( new PropertyColor ( _("misc color"),		CNCCode::Color(ColorMiscType		), NULL, on_set_misc_color		 ) );
-	text_colors->m_list.push_back ( new PropertyColor ( _("program color	"),	CNCCode::Color(ColorProgramType		), NULL, on_set_program_color	 ) );
-	text_colors->m_list.push_back ( new PropertyColor ( _("tool color"),		CNCCode::Color(ColorToolType		), NULL, on_set_tool_color		 ) );
-	text_colors->m_list.push_back ( new PropertyColor ( _("comment color	"),	CNCCode::Color(ColorCommentType		), NULL, on_set_comment_color	 ) );
-	text_colors->m_list.push_back ( new PropertyColor ( _("variable color"),	CNCCode::Color(ColorVariableType	), NULL, on_set_variable_color	 ) );
-	text_colors->m_list.push_back ( new PropertyColor ( _("prep color"),		CNCCode::Color(ColorPrepType		), NULL, on_set_prep_color		 ) );
-	text_colors->m_list.push_back ( new PropertyColor ( _("axis color"),		CNCCode::Color(ColorAxisType		), NULL, on_set_axis_color		 ) );
-	text_colors->m_list.push_back ( new PropertyColor ( _("rapid color"),		CNCCode::Color(ColorRapidType		), NULL, on_set_rapid_color		 ) );
-	text_colors->m_list.push_back ( new PropertyColor ( _("feed color"),		CNCCode::Color(ColorFeedType		), NULL, on_set_feed_color		 ) );
-	nc_options->m_list.push_back(text_colors);
-
-	list->push_back(nc_options);
-}
-*/
-CNCCode::CNCCode():m_gl_list(0), m_highlighted_block(NULL), m_user_edited(false)
+CNCCode::CNCCode()
+ : HeeksObj(ObjType), m_gl_list(0), m_highlighted_block(NULL), m_user_edited(false)
 {
 	CNCConfig config(ConfigScope());
 	config.Read(_T("CNCCode_ArcInterpolationCount"), &CNCCode::s_arc_interpolation_count, 20);
@@ -782,8 +801,11 @@ class ApplyNCCode: public Tool{
 
 			for(HeeksObj* object = heeksCAD->GetFirstObject(); object; object = heeksCAD->GetNextObject())
 			{
-				if (object->GetType() == SolidType) solids.insert(std::make_pair(object->GetID(), object));
-				if (object->GetShape() != NULL) shapes.push_back( std::make_pair(object->GetID(), TopoDS_Shape( *(object->GetShape()) ) ) );
+				if (object->GetType() == SolidType)
+				    solids.insert(std::make_pair(object->GetID(), object));
+				if (! object->GetShape().IsNull())
+				    shapes.push_back( std::make_pair(object->GetID(), TopoDS_Shape( object->GetShape() ) ) );
+
 			} // End for
 
 			std::map<int, TopoDS_Shape> tools;
@@ -889,7 +911,7 @@ class ApplyNCCode: public Tool{
 				std::ostringstream l_ossTitle;
 #endif
 				HeeksObj * solid = solids[ l_itShape->first ];
-				l_ossTitle << "Machined " << solid->GetShortString();
+				l_ossTitle << "Machined " << solid->GetTitle();
 				HeeksObj *pNewSolid = heeksCAD->NewSolid( *((TopoDS_Solid *) &(l_itShape->second)), l_ossTitle.str().c_str(), HeeksColor(234, 123, 89) );
 				if (pNewSolid != NULL)
 				{
@@ -990,7 +1012,7 @@ HeeksObj* CNCCode::ReadFromXMLElement(TiXmlElement* element)
 	PathObject::m_current_x[0] = PathObject::m_current_x[1] = PathObject::m_current_x[2]  = 0.0;
 
 	// loop through all the objects
-	for(TiXmlElement* pElem = heeksCAD->FirstXMLChildElement( element ) ; pElem;	pElem = pElem->NextSiblingElement())
+	for(TiXmlElement* pElem = heeksCAD->FirstXMLChildElement( element ); pElem; pElem = pElem->NextSiblingElement())
 	{
 		std::string name(pElem->Value());
 		if(name == "ncblock")
@@ -1021,17 +1043,24 @@ void CNCCode::DestroyGLLists(void)
 	}
 }
 
-void CNCCode::SetTextCtrl(wxTextCtrl *textCtrl)
+void CNCCode::SetTextCtrlStyles(COutputTextCtrl *textCtrl)
+{
+    textCtrl->StyleSetFontAttr(wxSTC_STYLE_DEFAULT, 10, _T("Lucida Console"), 0, 0, 0);
+    textCtrl->StyleClearAll();
+    for (int i = 0; i < m_colors.size(); i++)
+    {
+        const HeeksColor &col = m_colors[i];
+        wxColour c(col.red, col.green, col.blue);
+        textCtrl->StyleSetForeground(i, c);
+    }
+}
+
+void CNCCode::SetTextCtrl(COutputTextCtrl *textCtrl)
 {
 	textCtrl->Clear();
 
 	textCtrl->Freeze();
-
-	wxFont font(10, wxFONTFAMILY_DEFAULT, wxFONTSTYLE_NORMAL, wxFONTWEIGHT_NORMAL, false, _T("Lucida Console"), wxFONTENCODING_SYSTEM);
-	wxTextAttr ta;
-	ta.SetFont(font);
-	textCtrl->SetDefaultStyle(ta);
-
+	SetTextCtrlStyles(textCtrl);
 	wxString str;
 	for(std::list<CNCCodeBlock*>::iterator It = m_blocks.begin(); It != m_blocks.end(); It++)
 	{
@@ -1040,21 +1069,19 @@ void CNCCode::SetTextCtrl(wxTextCtrl *textCtrl)
 	}
 	textCtrl->SetValue(str);
 
-#ifndef WIN32
-	// for Windows, this is done in COutputTextCtrl::OnPaint
 	for(std::list<CNCCodeBlock*>::iterator It = m_blocks.begin(); It != m_blocks.end(); It++)
 	{
 		CNCCodeBlock* block = *It;
 		block->FormatText(textCtrl);
 	}
-#endif
 
 	textCtrl->Thaw();
 }
 
-void CNCCode::FormatBlocks(wxTextCtrl *textCtrl, int i0, int i1)
+void CNCCode::FormatBlocks(COutputTextCtrl *textCtrl, int i0, int i1)
 {
 	textCtrl->Freeze();
+	SetTextCtrlStyles(textCtrl);
 	for(std::list<CNCCodeBlock*>::iterator It = m_blocks.begin(); It != m_blocks.end(); It++)
 	{
 		CNCCodeBlock* block = *It;

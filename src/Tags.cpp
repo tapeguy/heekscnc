@@ -8,6 +8,12 @@
 #include "tinyxml/tinyxml.h"
 #include "interface/Tool.h"
 
+
+CTags::CTags( const CTags & rhs )
+ : ObjList(rhs)
+{
+}
+
 bool CTags::CanAdd(HeeksObj* object)
 {
 	return ((object != NULL) && (object->GetType() == TagType));
@@ -21,10 +27,6 @@ CTags & CTags::operator= ( const CTags & rhs )
 	}
 
 	return(*this);
-}
-
-CTags::CTags( const CTags & rhs ) : ObjList(rhs)
-{
 }
 
 const wxBitmap &CTags::GetIcon()
@@ -45,10 +47,10 @@ public:
 	void Run()
 	{
       if (object_for_tools) { // jcoffland: object_for_tools can be NULL
-		heeksCAD->CreateUndoPoint();
+		heeksCAD->StartHistory();
 		CTag* new_object = new CTag();
-		object_for_tools->Add(new_object, NULL);
-		heeksCAD->Changed();
+		object_for_tools->Add(new_object);
+		heeksCAD->EndHistory();
 		heeksCAD->ClearMarkedList();
 		heeksCAD->Mark(new_object);
       }
@@ -63,14 +65,6 @@ void CTags::GetTools(std::list<Tool*>* t_list, const wxPoint* p)
 {
 	object_for_tools = this;
 	t_list->push_back(&add_tag_tool);
-}
-
-void CTags::WriteXML(TiXmlNode *root)
-{
-	TiXmlElement * element;
-	element = heeksCAD->NewXMLElement( "Tags" );
-	heeksCAD->LinkXMLEndChild( root,  element );
-	WriteBaseXML(element);
 }
 
 //static

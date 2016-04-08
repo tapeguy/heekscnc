@@ -7,27 +7,31 @@
 
 #pragma once
 
-class COperations: public ObjList {
+class COperations: public ObjList
+{
 public:
-	COperations() { }
+
+    static const int ObjType = OperationsType;
+
+
+	COperations() : ObjList(ObjType) { }
+
+    COperations( const COperations & rhs );
 	COperations & operator= ( const COperations & rhs );
-	COperations( const COperations & rhs );
 
 	bool operator==( const COperations & rhs ) const { return(ObjList::operator==(rhs)); }
 	bool operator!=( const COperations & rhs ) const { return(! (*this == rhs)); }
 	bool IsDifferent(HeeksObj *other) { return(*this != (*(COperations *)other)); }
 
 	// HeeksObj's virtual functions
+	const wxChar* GetTypeString(void)const{return _("Operations");}
 	void CopyFrom(const HeeksObj *object);
 	bool OneOfAKind(){return true;}
-	int GetType()const{return OperationsType;}
-	const wxChar* GetTypeString(void)const{return _("Operations");}
 	HeeksObj *MakeACopy(void)const{ return new COperations(*this);}
 	const wxBitmap &GetIcon();
 	bool CanAddTo(HeeksObj* owner){return owner->GetType() == ProgramType;}
 	bool CanAdd(HeeksObj* object);
 	bool CanBeRemoved(){return false;}
-	void WriteXML(TiXmlNode *root);
 	bool AutoExpand(){return true;}
 	void GetTools(std::list<Tool*>* t_list, const wxPoint* p);
 	bool UsesID() { return(false); }

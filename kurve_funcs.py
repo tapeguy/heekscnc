@@ -2,6 +2,23 @@ import math
 from nc.nc import *
 import area
 
+def set_good_start_point( curve, rev ):
+    if curve.IsClosed():
+        # find the longest span and use the middle as the new start point
+        longest_length = None
+        mid_point = None
+        spans = curve.GetSpans()
+        if rev:
+            spans = reversed(spans)
+
+        for span in spans:
+            length = span.Length()
+            if longest_length == None or length > longest_length:
+                longest_length = length
+                mid_point = span.MidParam(0.5)
+        if mid_point != None:
+            make_smaller(curve, mid_point)
+
 def make_smaller( curve, start = None, finish = None, end_beyond = False ):
     if start != None:
         curve.ChangeStart(curve.NearestPoint(start))
@@ -140,7 +157,7 @@ def add_roll_on(curve, roll_on_curve, direction, roll_radius, offset_extra, roll
             off_v = area.Point(v.y, -v.x)
         else:
             off_v = area.Point(-v.y, v.x)
-        rollstart = first_span.p + off_v * roll_radius - v * roll_radius
+        rollstart = first_span.p + off_v * roll_radius
     else:
         rollstart = roll_on       
 
@@ -173,7 +190,7 @@ def add_roll_off(curve, roll_off_curve, direction, roll_radius, offset_extra, ro
         else:
             off_v = area.Point(-v.y, v.x)
 
-        rollend = last_span.v.p + off_v * roll_radius + v * roll_radius;
+        rollend = last_span.v.p + off_v * roll_radius;
     else:
         rollend =  roll_off  
              
@@ -221,17 +238,16 @@ def add_CRC_end_line(curve,roll_on_curve,roll_off_curve,radius,direction,crc_end
     crc_end_point.x = crc_end.x 
     crc_end_point.y = crc_end.y 
 
+using_area_for_offset = False
 
-    
 # profile command,
 # direction should be 'left' or 'right' or 'on'
-def profile(curve, direction = "on", radius = 1.0, offset_extra = 0.0, roll_radius = 2.0, roll_on = None, roll_off = None, rapid_safety_space = None, clearance = None, start_depth = None, stepdown = None, final_depth = None, extend_at_start = 0.0, extend_at_end = 0.0, lead_in_line_len=0.0,lead_out_line_len= 0.0):
+def profile(curve, direction = "on", radius = 1.0, offset_extra = 0.0, roll_radius = 2.0, roll_on = None, roll_off = None, depthparams = None, extend_at_start = 0.0, extend_at_end = 0.0, lead_in_line_len=0.0,lead_out_line_len= 0.0):
     global tags
 
     offset_curve = area.Curve(curve)
     if direction == "on":
         use_CRC() == False 
-        
         
     if direction != "on":
         if direction != "left" and direction != "right":
@@ -240,11 +256,28 @@ def profile(curve, direction = "on", radius = 1.0, offset_extra = 0.0, roll_radi
         # get tool diameter
         offset = radius + offset_extra
         if use_CRC() == False or (use_CRC()==True and CRC_nominal_path()==True):
-            if direction == "right":
-                offset = -offset
-            offset_success = offset_curve.Offset(offset)
-            if offset_success == False:
-                raise Exception, "couldn't offset kurve " + str(offset_curve)
+            if math.fabs(offset) > 0.00005:
+                if direction == "right":
+                    offset = -offset
+                offset_success = offset_curve.Offset(offset)
+                if offset_success == False:
+                    global using_area_for_offset
+                    if curve.IsClosed() and (using_area_for_offset == False):
+                        cw = curve.IsClockwise()
+                        using_area_for_offset = True
+                        a = area.Area()
+                        a.append(curve)
+                        a.Offset(-offset)
+                        for curve in a.getCurves():
+                            curve_cw = curve.IsClockwise()
+                            if cw != curve_cw:
+                                curve.Reverse()
+                            set_good_start_point(curve, False)
+                            profile(curve, direction, 0.0, 0.0, roll_radius, roll_on, roll_off, depthparams, extend_at_start, extend_at_end, lead_in_line_len, lead_out_line_len)
+                        using_area_for_offset = False
+                        return                    
+                    else:
+                        raise Exception, "couldn't offset kurve " + str(offset_curve)
             
     # extend curve
     if extend_at_start > 0.0:
@@ -272,26 +305,24 @@ def profile(curve, direction = "on", radius = 1.0, offset_extra = 0.0, roll_radi
         raise "sketch has no spans!"
 
     # do multiple depths
-    layer_count = int((start_depth - final_depth) / stepdown)
-    if layer_count * stepdown + 0.00001 < start_depth - final_depth:
-        layer_count += 1
-    current_start_depth = start_depth
+    depths = depthparams.get_depths()
+
+    current_start_depth = depthparams.start_depth
 
     # tags
     if len(tags) > 0:
         # make a copy to restore to after each level
         copy_of_offset_curve = area.Curve(offset_curve)
     
-    prev_depth = start_depth
-    for i in range(1, layer_count+1):
-        if i == layer_count:
-            depth = final_depth
-        else:
-            depth = start_depth - i * stepdown
+    prev_depth = depthparams.start_depth
+    
+    endpoint = None
+    
+    for depth in depths:
         mat_depth = prev_depth
         
         if len(tags) > 0:
-            split_for_tags(offset_curve, radius, start_depth, depth, final_depth)
+            split_for_tags(offset_curve, radius, depthparams.start_depth, depth, depthparams.final_depth)
 
         # make the roll on and roll off kurves
         roll_on_curve = area.Curve()
@@ -303,21 +334,22 @@ def profile(curve, direction = "on", radius = 1.0, offset_extra = 0.0, roll_radi
             add_CRC_start_line(offset_curve,roll_on_curve,roll_off_curve,radius,direction,crc_start_point,lead_in_line_len)
         
         # get the tag depth at the start
-        start_z = get_tag_z_for_span(0, offset_curve, radius, start_depth, depth, final_depth)
+        start_z = get_tag_z_for_span(0, offset_curve, radius, depthparams.start_depth, depth, depthparams.final_depth)
         if start_z > mat_depth: mat_depth = start_z
 
         # rapid across to the start
         s = roll_on_curve.FirstVertex().p
         
         # start point 
-        if use_CRC():
-            rapid(crc_start_point.x,crc_start_point.y)
-        else:
-            rapid(s.x, s.y)
+        if (endpoint == None) or (endpoint != s):
+            if use_CRC():
+                rapid(crc_start_point.x,crc_start_point.y)
+            else:
+                rapid(s.x, s.y)
         
-        # rapid down to just above the material
-        rapid(z = mat_depth + rapid_safety_space)
-        
+            # rapid down to just above the material
+            rapid(z = mat_depth + depthparams.rapid_safety_space)
+
         # feed down to depth
         mat_depth = depth
         if start_z > mat_depth: mat_depth = start_z
@@ -327,7 +359,6 @@ def profile(curve, direction = "on", radius = 1.0, offset_extra = 0.0, roll_radi
             start_CRC(direction == "left", radius)
             # move to the startpoint
             feed(s.x, s.y)
-            
         
         # cut the roll on arc
         cut_curve(roll_on_curve)
@@ -338,7 +369,7 @@ def profile(curve, direction = "on", radius = 1.0, offset_extra = 0.0, roll_radi
         for span in offset_curve.GetSpans():
             # height for tags
             current_perim += span.Length()
-            ez = get_tag_z_for_span(current_perim, offset_curve, radius, start_depth, depth, final_depth)
+            ez = get_tag_z_for_span(current_perim, offset_curve, radius, depthparams.start_depth, depth, depthparams.final_depth)
             
             if span.v.type == 0:#line
                 feed(span.v.p.x, span.v.p.y, ez)
@@ -352,12 +383,16 @@ def profile(curve, direction = "on", radius = 1.0, offset_extra = 0.0, roll_radi
         # cut the roll off arc
         cut_curve(roll_off_curve)
 
+        endpoint = offset_curve.LastVertex().p
+        if roll_off_curve.getNumVertices() > 0:
+            endpoint = roll_off_curve.LastVertex().p
+        
         #add CRC end_line
         if use_CRC():
             crc_end_point = area.Point()
             add_CRC_end_line(offset_curve,roll_on_curve,roll_off_curve,radius,direction,crc_end_point,lead_out_line_len)
             if direction == "on":
-                rapid(z = clearance)
+                rapid(z = depthparams.clearance_height)
             else:
                 feed(crc_end_point.x, crc_end_point.y)
             
@@ -367,10 +402,12 @@ def profile(curve, direction = "on", radius = 1.0, offset_extra = 0.0, roll_radi
             offset_curve = area.Curve(copy_of_offset_curve)
         if use_CRC():
             end_CRC()            
-        # rapid up to the clearance height
-        rapid(z = clearance)
         
+        if endpoint != s:
+            # rapid up to the clearance height
+            rapid(z = depthparams.clearance_height)        
 
+    rapid(z = depthparams.clearance_height)        
 
     del offset_curve
                 

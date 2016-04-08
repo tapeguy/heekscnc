@@ -40,23 +40,23 @@ void PatternDlg::GetDataRaw(HeeksObj* object)
 	long i = 0;
 	m_txtCopies1->GetValue().ToLong(&i);
 	((CPattern*)object)->m_copies1 = i;
-	((CPattern*)object)->m_x_shift1 = m_lgthXShift1->GetValue();
-	((CPattern*)object)->m_y_shift1 = m_lgthYShift1->GetValue();
+	((CPattern*)object)->m_x_shift1 = m_lgthXShift1->GetValueAsDouble();
+	((CPattern*)object)->m_y_shift1 = m_lgthYShift1->GetValueAsDouble();
 	m_txtCopies2->GetValue().ToLong(&i);
 	((CPattern*)object)->m_copies2 = i;
-	((CPattern*)object)->m_x_shift2 = m_lgthXShift2->GetValue();
-	((CPattern*)object)->m_y_shift2 = m_lgthYShift2->GetValue();
+	((CPattern*)object)->m_x_shift2 = m_lgthXShift2->GetValueAsDouble();
+	((CPattern*)object)->m_y_shift2 = m_lgthYShift2->GetValueAsDouble();
 }
 
 void PatternDlg::SetFromDataRaw(HeeksObj* object)
 {
     CPattern* pattern = (CPattern*)object;
 	m_txtCopies1->SetValue(wxString::Format(_T("%d"), (int)pattern->m_copies1));
-	m_lgthXShift1->SetValue(pattern->m_x_shift1);
-	m_lgthYShift1->SetValue(pattern->m_y_shift1);
+	m_lgthXShift1->SetValueFromDouble(pattern->m_x_shift1);
+	m_lgthYShift1->SetValueFromDouble(pattern->m_y_shift1);
 	m_txtCopies2->SetValue(wxString::Format(_T("%d"), (int)pattern->m_copies2));
-	m_lgthXShift2->SetValue(pattern->m_x_shift2);
-	m_lgthYShift2->SetValue(pattern->m_y_shift2);
+	m_lgthXShift2->SetValueFromDouble(pattern->m_x_shift2);
+	m_lgthYShift2->SetValueFromDouble(pattern->m_y_shift2);
 }
 
 void PatternDlg::SetPicture(const wxString& name)
@@ -81,10 +81,10 @@ void PatternDlg::RedrawBitmap(wxBitmap &bitmap)
 	m_txtCopies1->GetValue().ToLong(&numA);
 	m_txtCopies2->GetValue().ToLong(&numB);
 
-	double xshiftA = m_lgthXShift1->GetValue();
-	double yshiftA = m_lgthYShift1->GetValue();
-	double xshiftB = m_lgthXShift2->GetValue();
-	double yshiftB = m_lgthYShift2->GetValue();
+	double xshiftA = m_lgthXShift1->GetValueAsDouble();
+	double yshiftA = m_lgthYShift1->GetValueAsDouble();
+	double xshiftB = m_lgthXShift2->GetValueAsDouble();
+	double yshiftB = m_lgthYShift2->GetValueAsDouble();
 
 	RedrawBitmap(bitmap, numA, numB, xshiftA, yshiftA, xshiftB, yshiftB);
 }

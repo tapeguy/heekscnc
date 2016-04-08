@@ -5,6 +5,10 @@ class HxmlWriter:
         self.file_out = open(tempfile.gettempdir()+'/backplot.xml', 'w')
         self.file_out.write('<?xml version="1.0" ?>\n')
         self.file_out.write('<nccode>\n')
+        self.t = None
+        self.oldx = None
+        self.oldy = None
+        self.oldz = None
 
     def __del__(self):
         self.file_out.write('</nccode>\n')
@@ -49,14 +53,14 @@ class HxmlWriter:
     def end_path(self):
         self.file_out.write('\t\t</path>\n')
         
-    def rapid(self, x=None, y=None, z=None, a=None, b=None, c=None, machine_coordinates=None):
+    def rapid(self, x=None, y=None, z=None, a=None, b=None, c=None):
         self.begin_path("rapid")
         self.add_line(x, y, z, a, b, c)
         self.end_path()
         
-    def feed(self, x=None, y=None, z=None):
+    def feed(self, x=None, y=None, z=None, a=None, b=None, c=None):
         self.begin_path("feed")
-        self.add_line(x, y, z)
+        self.add_line(x, y, z, a, b, c)
         self.end_path()
 
     def arc_cw(self, x=None, y=None, z=None, i=None, j=None, k=None, r=None):
@@ -74,6 +78,10 @@ class HxmlWriter:
         if (id != None) : 
             self.file_out.write(' number="'+str(id)+'"')
             self.file_out.write(' />\n')
+        self.t = id
+            
+    def current_tool(self):
+        return self.t
             
     def spindle(self, s, clockwise):
         pass
@@ -105,9 +113,15 @@ class HxmlWriter:
             self.file_out.write(' y="%.6f"' % y)
         if (z != None) :
             self.file_out.write(' z="%.6f"' % z)
-        if (i != None) : self.file_out.write(' i="%.6f"' % (i - self.oldx))
-        if (j != None) : self.file_out.write(' j="%.6f"' % (j - self.oldy))
-        if (k != None) : self.file_out.write(' k="%.6f"' % (k - self.oldz))
+        if (i != None):
+            if self.oldx == None: print 'arc move "i" without x set!'
+            else: self.file_out.write(' i="%.6f"' % (i - self.oldx))
+        if (j != None):
+            if self.oldy == None: print 'arc move "j" without y set!'
+            else: self.file_out.write(' j="%.6f"' % (j - self.oldy))
+        if (k != None):
+            if self.oldz == None: print 'arc move "k" without z set!'
+            else: self.file_out.write(' k="%.6f"' % (k - self.oldz))
         if (r != None) : self.file_out.write(' r="%.6f"' % r)
         if (d != None) : self.file_out.write(' d="%i"' % d)
         self.file_out.write(' />\n')

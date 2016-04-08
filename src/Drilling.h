@@ -9,7 +9,7 @@
  * details.
  */
 
-#include "SpeedOp.h"
+#include "DepthOp.h"
 #include "HeeksCNCTypes.h"
 #include <list>
 #include <vector>
@@ -21,22 +21,19 @@ class CDrillingParams : public DomainObject {
 
 private:
 	CDrilling * parent;
-	PropertyLength m_clearance_height;		// The tool moves to this height between drill locations and then rapidly moves down to the m_standoff height.
-	PropertyString m_clearance_height_string;
 
 public:
-	PropertyLength m_standoff;			// This is the height above the staring Z position that forms the Z retract height (R word)
-	PropertyDouble m_dwell;				// If dwell_bottom is non-zero then we're using the G82 drill cycle rather than G83 peck drill cycle.  This is the 'P' word
-	PropertyLength m_depth;				// Incremental length down from 'z' value at which the bottom of the hole can be found
-	PropertyLength m_peck_depth;			// This is the 'Q' word in the G83 cycle.  How deep to peck each time.
-	PropertyChoice m_sort_drilling_locations;	// Perform a location-based sort before generating GCode?
-	PropertyChoice m_retract_mode;			// boring - 0 - rapid retract, 1 - feed retract
-	PropertyChoice m_spindle_mode;			// boring - if true, stop spindle at bottom
+	PropertyLength m_standoff;                  // This is the height above the staring Z position that forms the Z retract height (R word)
+	PropertyDouble m_dwell;                     // If dwell_bottom is non-zero then we're using the G82 drill cycle rather than G83 peck drill cycle.  This is the 'P' word
+	PropertyLength m_depth;                     // Incremental length down from 'z' value at which the bottom of the hole can be found
+	PropertyLength m_peck_depth;                // This is the 'Q' word in the G83 cycle.  How deep to peck each time.
+	PropertyChoice m_sort_drilling_locations;   // Perform a location-based sort before generating GCode?
+	PropertyChoice m_retract_mode;              // boring - 0 - rapid retract, 1 - feed retract
+	PropertyChoice m_spindle_mode;              // boring - if true, stop spindle at bottom
+	PropertyCheck  m_internal_coolant_on;
+	PropertyCheck  m_rapid_to_clearance;
 
 	CDrillingParams(CDrilling * parent);
-
-	double ClearanceHeight() const;
-	void   ClearanceHeight(const double value) { m_clearance_height = value; }
 
 	// The following line is the prototype setup in the Python routines for the drill sequence.
 	// depending on parameter combinations the backend should emit proper bore cycles (EMC2:  G85, G86, G89)
@@ -47,9 +44,6 @@ public:
 	void InitializeProperties();
 	void set_initial_values( const double depth, const int tool_number );
 	void write_values_to_config();
-	void GetProperties(std::list<Property *> *list);
-	void WriteXMLAttributes(TiXmlNode* pElem);
-	void ReadParametersFromXMLElement(TiXmlElement* pElem);
 
 	const wxString ConfigScope(void)const{return _T("Drilling");}
 
@@ -57,23 +51,8 @@ public:
 	bool operator!= ( const CDrillingParams & rhs ) const { return(! (*this == rhs)); }
 };
 
-/**
-	The CDrilling class stores a list of symbols (by type/id pairs) of elements that represent the starting point
-	of a drilling cycle.  In the first instance, we use PointType objects as starting points.  Rather than copy
-	the PointType elements into this class, we just refer to them by ID.  In the case of PointType objects,
-	the class assumes that the drilling will occur in the negative Z direction.
 
-	It also accepts references to circle objects.  For this special case, the circle may not intersect any of
-	the other objects.  If this is the case then the circle's centre will be used as a hole location.
-
-	Finally the code tries to intersect all selected objects and places holes (Drilling Cycles) at all
-	intersection points.
-
-	One day, when I get clever, I intend supporting the reference of line elements whose length defines the
-	drill's depth and whose orientation describes the drill's orientation at machining time (i.e. rotate A, B and/or C axes)
- */
-
-class CDrilling: public CSpeedOp {
+class CDrilling: public CDepthOp {
 public:
 	/**
 		The following two methods are just to draw pretty lines on the screen to represent drilling
@@ -83,33 +62,13 @@ public:
 	std::list< CNCPoint > DrillBitVertices( const CNCPoint & origin, const double radius, const double length ) const;
 
 public:
-	/**
-		Define some data structures to hold references to CAD elements.  We store both the type and id because
-			a) the ID values are only relevant within the context of a type.
-			b) we don't want to limit this class to PointType elements alone.  We use these
-			   symbols to identify pairs of intersecting elements and place a drilling cycle
-			   at their intersection.
- 	 */
-	typedef int SymbolType_t;
-	typedef unsigned int SymbolId_t;
-	typedef std::pair< SymbolType_t, SymbolId_t > Symbol_t;
-	typedef std::list< Symbol_t > Symbols_t;
 
-public:
-	//	These are references to the CAD elements whose position indicate where the Drilling Cycle begins.
-	//	If the m_params.m_sort_drilling_locations is false then the order of symbols in this list should
-	//	be respected when generating GCode.  We will, eventually, allow a user to sort the sub-elements
-	//	visually from within the main user interface.  When this occurs, the change in order should be
-	//	reflected in the ordering of symbols in the m_symbols list.
-
-	Symbols_t m_symbols;
+	std::list<int> m_points;
 	CDrillingParams m_params;
 
 	//	Constructors.
 	CDrilling();
-	CDrilling(	const Symbols_t &symbols,
-			const int tool_number,
-			const double depth );
+	CDrilling(const std::list<int> &points, const int tool_number, const double depth );
 
 	CDrilling( const CDrilling & rhs );
 	CDrilling & operator= ( const CDrilling & rhs );
@@ -120,26 +79,21 @@ public:
 	void glCommands(bool select, bool marked, bool no_color);
 
 	const wxBitmap &GetIcon();
-	void GetProperties(std::list<Property *> *list);
 	HeeksObj *MakeACopy(void)const;
 	void CopyFrom(const HeeksObj* object);
 	void WriteXML(TiXmlNode *root);
 	bool CanAddTo(HeeksObj* owner);
 	bool CanAdd(HeeksObj* object);
 	void GetTools(std::list<Tool*>* t_list, const wxPoint* p);
-	void ReloadPointers();
+	void GetOnEdit(bool(**callback)(HeeksObj*));
 
 	// This is the method that gets called when the operator hits the 'Python' button.  It generates a Python
 	// program whose job is to generate RS-274 GCode.
-	Python AppendTextToProgram( CMachineState *pMachineState );
+	Python AppendTextToProgram();
+
+	void AddPoint(int i){m_points.push_back(i);}
 
 	static HeeksObj* ReadFromXMLElement(TiXmlElement* pElem);
-
-	void AddSymbol( const SymbolType_t type, const SymbolId_t id ) { m_symbols.push_back( Symbol_t( type, id ) ); }
-	static std::vector<CNCPoint> FindAllLocations( ObjList *parent, const CNCPoint starting_location = CNCPoint(0.0, 0.0, 0.0),  const bool sort_locations = false, std::list<int> *pToolNumbersReferenced = NULL );
-
-	std::list<wxString> DesignRulesAdjustment(const bool apply_changes);
-	static bool ValidType( const int object_type );
 
 	bool operator==( const CDrilling & rhs ) const;
 	bool operator!=( const CDrilling & rhs ) const { return(! (*this == rhs)); }

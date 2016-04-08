@@ -20,6 +20,7 @@ private:
     CSpeedOp * parent;
 
 public:
+    PropertyLength m_slot_feed_rate;
     PropertyLength m_horizontal_feed_rate;
     PropertyLength m_vertical_feed_rate;
     PropertyDouble m_spindle_speed;
@@ -29,10 +30,6 @@ public:
 	bool operator!= ( const CSpeedOpParams & rhs ) const { return(! (*this == rhs)); }
 
 	void InitializeProperties();
-	void WriteXMLAttributes(TiXmlNode* pElem);
-	void ReadFromXMLElement(TiXmlElement* pElem);
-	void ResetSpeeds(const int tool_number);
-	void ResetFeeds(const int tool_number);
 };
 
 class CSpeedOp : public COp
@@ -42,8 +39,8 @@ public:
 
 	static PropertyCheck m_auto_set_speeds_feeds;
 
-	CSpeedOp(const wxString& title, const int tool_number = -1, const int operation_type = UnknownType )
-     : COp(title, tool_number, operation_type), m_speed_op_params(this)
+	CSpeedOp(const int tool_number = -1, const int operation_type = UnknownType )
+     : COp(tool_number, operation_type), m_speed_op_params(this)
     {
         ReadDefaultValues();
     }
@@ -51,15 +48,10 @@ public:
 	CSpeedOp & operator= ( const CSpeedOp & rhs );
 	CSpeedOp( const CSpeedOp & rhs );
 
-	// HeeksObj's virtual functions
-	void GetProperties(std::list<Property *> *list);
-	void WriteBaseXML(TiXmlElement *element);
-	void ReadBaseXML(TiXmlElement* element);
-
 	// COp's virtual functions
 	void WriteDefaultValues();
 	void ReadDefaultValues();
-	Python AppendTextToProgram(CMachineState *pMachineState);
+	Python AppendTextToProgram();
 
 	static void GetOptions(std::list<Property *> *list);
 	static void ReadFromConfig();

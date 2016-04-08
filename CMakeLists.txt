@@ -11,7 +11,7 @@ set( BUILD_STARTED_IN_RIGHT_DIR "true" )  #used in src/CMakeLists.txt to print a
 
 add_definitions ( -Wall -DOP_SKETCHES_AS_CHILDREN  )
 
-find_package( wxWidgets REQUIRED COMPONENTS base core gl aui )
+find_package( wxWidgets REQUIRED COMPONENTS base core gl aui stc )
 find_package( PythonInterp REQUIRED )
 
 #find OCE or OpenCASCADE

@@ -58,7 +58,7 @@ void DrillingDlg::GetDataRaw(HeeksObj* object)
 	((CDrilling*)object)->m_points.clear();
 	m_idsPoints->GetIDList(((CDrilling*)object)->m_points);
 
-	((CDrilling*)object)->m_params.m_dwell = m_dblDwell->GetValue();
+	((CDrilling*)object)->m_params.m_dwell = m_dblDwell->GetValueAsDouble();
 	((CDrilling*)object)->m_params.m_retract_mode = m_chkFeedRetract->GetValue();
 	((CDrilling*)object)->m_params.m_spindle_mode = m_chkStopSpindleAtBottom->GetValue();
 	((CDrilling*)object)->m_params.m_internal_coolant_on = m_chkInternalCoolantOn->GetValue();
@@ -70,7 +70,7 @@ void DrillingDlg::GetDataRaw(HeeksObj* object)
 void DrillingDlg::SetFromDataRaw(HeeksObj* object)
 {
 	m_idsPoints->SetFromIDList(((CDrilling*)object)->m_points);
-	m_dblDwell->SetValue(((CDrilling*)object)->m_params.m_dwell);
+	m_dblDwell->SetValueFromDouble(((CDrilling*)object)->m_params.m_dwell);
 	m_chkFeedRetract->SetValue(((CDrilling*)object)->m_params.m_retract_mode != 0);
 	m_chkStopSpindleAtBottom->SetValue(((CDrilling*)object)->m_params.m_spindle_mode != 0);
 	m_chkInternalCoolantOn->SetValue(((CDrilling*)object)->m_params.m_internal_coolant_on != 0);

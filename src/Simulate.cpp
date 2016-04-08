@@ -7,7 +7,7 @@
 
 
 #include "stdafx.h"
-			#ifdef WIN32
+
 #include "interface/Box.h"
 #include "interface/HeeksObj.h"
 #include "interface/HeeksColor.h"
@@ -45,7 +45,7 @@ static void	WriteSolids(std::wofstream &ofs)
 		{
 			CBox box;
 			object->GetBox(box);
-			ofs<<"voxelcut.set_current_color("<<object->GetColor()->COLORREF_color()<<")\n";
+			ofs<<"voxelcut.set_current_color("<<HeeksColor(100, 100, 100).COLORREF_color()<<")\n";
 			double c[3];
 			box.Centre(c);
 			ofs<<"toolpath.coords.add_block("<<c[0]<<", "<<c[1]<<", "<<box.MinZ()<<", "<<box.Width()<<", "<<box.Height()<<", "<<box.Depth()<<")\n";
@@ -88,7 +88,7 @@ const wchar_t* GetOutputFileNameForPython(const wchar_t* in)
 void RunVoxelcutSimulation()
 {
 	// write initial.py
-	wxStandardPaths standard_paths;
+    wxStandardPaths& standard_paths = wxStandardPaths::Get();
 	wxString initial_py( standard_paths.GetTempDir() + _T("/initial.py"));
 
 	{
@@ -97,11 +97,10 @@ void RunVoxelcutSimulation()
 		WriteSolids(ofs);
 		WriteTools(ofs);
 		ofs<<"toolpath.load('"<<GetOutputFileNameForPython(theApp.m_program->GetOutputFileName().c_str())<<"')\n";
-	}	
+	}
 
 	// Set the working directory to the area that contains the DLL so that
 	// the system can find the voxelcut.bat file correctly.
 	::wxSetWorkingDirectory(theApp.GetDllFolder());
 	wxExecute(wxString(_T("\"")) + theApp.GetDllFolder() + _T("\\VoxelCut.bat\""));
 }
-#endif

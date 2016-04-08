@@ -9,8 +9,9 @@
 #include "CNCConfig.h"
 
 CTag::CTag ( )
-        : m_width ( 10.0 ), m_angle ( 45.0 ), m_height ( 4.0 )
+ : HeeksObj (ObjType), m_width ( 10.0 ), m_angle ( 45.0 ), m_height ( 4.0 )
 {
+    InitializeProperties ( );
     m_pos.SetX ( 0.0 );
     m_pos.SetY ( 0.0 );
     ReadDefaultValues ( );
@@ -19,6 +20,7 @@ CTag::CTag ( )
 CTag::CTag ( const CTag & rhs )
  : HeeksObj ( rhs )
 {
+    InitializeProperties ( );
     m_pos = rhs.m_pos;
     m_width = rhs.m_width;
     m_angle = rhs.m_angle;
@@ -49,9 +51,10 @@ void CTag::InitializeProperties()
     m_height.Initialize(_("height"), this);
 }
 
-void CTag::OnPropertyEdit(Property *prop)
+void CTag::OnPropertySet(Property& prop)
 {
     this->WriteDefaultValues();
+    HeeksObj::OnPropertySet(prop);
 }
 
 
@@ -84,21 +87,21 @@ void CTag::glCommands(bool select, bool marked, bool no_color)
 
 static CTag* object_for_tools = NULL;
 
-class PickPos: public Tool{
+class PickTagPos: public Tool{
 	// Tool's virtual functions
 	const wxChar* GetTitle(){return _("Pick position");}
 	void Run(){
-		heeksCAD->CreateUndoPoint();
+		heeksCAD->StartHistory();
 		double pos[3];
 		heeksCAD->PickPosition(_("Pick position"), pos);
 		object_for_tools->m_pos.SetX(pos[0]);
 		object_for_tools->m_pos.SetY(pos[1]);
-		heeksCAD->Changed();
+		heeksCAD->EndHistory();
 	}
 	wxString BitmapPath(){ return theApp.GetResFolder() + _T("/bitmaps/tagpos.png"); }
 };
 
-static PickPos pick_pos;
+static PickTagPos pick_pos;
 
 void CTag::GetTools(std::list<Tool*>* t_list, const wxPoint* p)
 {
@@ -107,35 +110,11 @@ void CTag::GetTools(std::list<Tool*>* t_list, const wxPoint* p)
 
 }
 
-void CTag::WriteXML(TiXmlNode *root)
-{
-	TiXmlElement * element;
-	element = heeksCAD->NewXMLElement( "Tag" );
-	heeksCAD->LinkXMLEndChild( root,  element );
-	element->SetDoubleAttribute( "x", m_pos.X());
-	element->SetDoubleAttribute( "y", m_pos.Y());
-	element->SetDoubleAttribute( "width", m_width);
-	element->SetDoubleAttribute( "angle", m_angle);
-	element->SetDoubleAttribute( "height", m_height);
-	WriteBaseXML(element);
-}
-
 //static
 HeeksObj* CTag::ReadFromXMLElement(TiXmlElement* pElem)
 {
-    double d;
 	CTag* new_object = new CTag;
 	new_object->ReadBaseXML(pElem);
-	pElem->Attribute("x", &d);
-    new_object->m_pos.SetX(d);
-    pElem->Attribute("y", &d);
-    new_object->m_pos.SetY(d);
-	pElem->Attribute("width", &d);
-	new_object->m_width = d;
-	pElem->Attribute("angle", &d);
-	new_object->m_angle = d;
-	pElem->Attribute("height", &d);
-	new_object->m_height = d;
 	return new_object;
 }
 

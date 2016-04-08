@@ -8,53 +8,44 @@
 #ifndef OP_HEADER
 #define OP_HEADER
 
-#include "interface/ObjList.h"
+#include "interface/IdNamedObjList.h"
 #include "PythonStuff.h"
 
-// #define OP_SKETCHES_AS_CHILDREN
 
 class CFixture;	// Forward declaration.
 class CMachineState;
 
-class COp : public ObjList
+class COp : public IdNamedObjList
 {
 public:
 	PropertyString m_comment;
-	PropertyCheck m_active; 		// don't make NC code, if this is not active
+	PropertyCheck m_active;               // don't make NC code, if this is not active
 	PropertyChoice m_tool_number_choice;
-	int m_tool_number;			// joins the m_tool_number in one of the CTool objects in the tools list.
-	int m_operation_type; 			// Type of operation (because GetType() overloading does not allow this class to call the parent's method)
+	int m_tool_number;                    // joins the m_tool_number in one of the CTool objects in the tools list.
+	int m_operation_type;                 // Type of operation (because GetType() overloading does not allow this class to call the parent's method)
+    PropertyInt m_pattern;
+    PropertyInt m_surface;                // use OpenCamLib to drop the cutter on to this surface
 
-	COp(const wxString& title, const int tool_number = 0, const int operation_type = UnknownType )
-            :m_active(true), m_tool_number(tool_number),
-            m_operation_type(operation_type)
-    {
-	    SetTitle ( title );
-        ReadDefaultValues();
-    }
-
+	COp ( int obj_type, const int tool_number = 0, const int operation_type = UnknownType );
+    COp ( const COp & rhs );
 	COp & operator= ( const COp & rhs );
-	COp( const COp & rhs );
 
 	// HeeksObj's virtual functions
 	void InitializeProperties();
-	void OnPropertyEdit(Property& prop);
-	void GetProperties(std::list<Property *> *list);
-	void WriteBaseXML(TiXmlElement *element);
+	void OnPropertySet(Property& prop);
 	void ReadBaseXML(TiXmlElement* element);
+	void GetProperties(std::list<Property *> *list);
 	const wxBitmap& GetInactiveIcon();
-	const wxChar* GetShortString(void)const { return GetTitle(); }
 	bool CanEditString(void)const{return true;}
 	void GetTools(std::list<Tool*>* t_list, const wxPoint* p);
 	void glCommands(bool select, bool marked, bool no_color);
 
 	virtual void WriteDefaultValues();
 	virtual void ReadDefaultValues();
-	virtual Python AppendTextToProgram( CMachineState *pMachineState );
-#ifndef STABLE_OPS_ONLY
-	virtual std::list<CFixture> PrivateFixtures();
-	virtual unsigned int MaxNumberOfPrivateFixtures() const { return(1); }
-#endif
+//	HeeksObj* PreferredPasteTarget();
+
+	virtual Python AppendTextToProgram();
+
 	virtual bool UsesTool(){return true;} // some operations don't use the tool number
 
 	void ReloadPointers() { ObjList::ReloadPointers(); }

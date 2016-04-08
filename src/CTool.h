@@ -24,78 +24,72 @@ private:
 
 public:
 
-	typedef enum {
-		eDrill = 0,
-		eCentreDrill,
-		eEndmill,
-		eSlotCutter,
-		eBallEndMill,
-		eChamfer,
-		eTurningTool,
-		eTouchProbe,
-		eToolLengthSwitch,
-		eExtrusion,
-		eTapTool,
-		eEngravingTool,
-		eUndefinedToolType
-	} eToolType;
+    typedef enum {
+        eDrill = 0,
+        eCentreDrill,
+        eEndmill,
+        eSlotCutter,
+        eBallEndMill,
+        eChamfer,
+        eTurningTool,
+        eTouchProbe,
+        eToolLengthSwitch,
+        eExtrusion,
+        eTapTool,
+        eEngravingTool,
+        eUndefinedToolType
+    } eToolType;
 
-	typedef std::pair< eToolType, wxString > ToolTypeDescription_t;
-	typedef std::vector<ToolTypeDescription_t > ToolTypesList_t;
+    typedef std::pair< eToolType, wxString > ToolTypeDescription_t;
+    typedef std::vector<ToolTypeDescription_t > ToolTypesList_t;
 
-	static ToolTypesList_t GetToolTypesList()
-	{
-		ToolTypesList_t types_list;
+    static ToolTypesList_t GetToolTypesList()
+    {
+        ToolTypesList_t types_list;
 
-		types_list.push_back( ToolTypeDescription_t( eDrill, wxString(_("Drill Bit")) ));
-		types_list.push_back( ToolTypeDescription_t( eCentreDrill, wxString(_("Centre Drill Bit")) ));
-		types_list.push_back( ToolTypeDescription_t( eEndmill, wxString(_("End Mill")) ));
-		types_list.push_back( ToolTypeDescription_t( eSlotCutter, wxString(_("Slot Cutter")) ));
-		types_list.push_back( ToolTypeDescription_t( eBallEndMill, wxString(_("Ball End Mill")) ));
-		types_list.push_back( ToolTypeDescription_t( eChamfer, wxString(_("Chamfer")) ));
+        types_list.push_back( ToolTypeDescription_t( eDrill, wxString(_("Drill Bit")) ));
+        types_list.push_back( ToolTypeDescription_t( eCentreDrill, wxString(_("Centre Drill Bit")) ));
+        types_list.push_back( ToolTypeDescription_t( eEndmill, wxString(_("End Mill")) ));
+        types_list.push_back( ToolTypeDescription_t( eSlotCutter, wxString(_("Slot Cutter")) ));
+        types_list.push_back( ToolTypeDescription_t( eBallEndMill, wxString(_("Ball End Mill")) ));
+        types_list.push_back( ToolTypeDescription_t( eChamfer, wxString(_("Chamfer")) ));
 #ifndef STABLE_OPS_ONLY
-		types_list.push_back( ToolTypeDescription_t( eTurningTool, wxString(_("Turning Tool")) ));
+        types_list.push_back( ToolTypeDescription_t( eTurningTool, wxString(_("Turning Tool")) ));
 #endif
-		types_list.push_back( ToolTypeDescription_t( eTouchProbe, wxString(_("Touch Probe")) ));
-		types_list.push_back( ToolTypeDescription_t( eToolLengthSwitch, wxString(_("Tool Length Switch")) ));
+        types_list.push_back( ToolTypeDescription_t( eTouchProbe, wxString(_("Touch Probe")) ));
+        types_list.push_back( ToolTypeDescription_t( eToolLengthSwitch, wxString(_("Tool Length Switch")) ));
 #ifndef STABLE_OPS_ONLY
-		types_list.push_back( ToolTypeDescription_t( eExtrusion, wxString(_("Extrusion")) ));
+        types_list.push_back( ToolTypeDescription_t( eExtrusion, wxString(_("Extrusion")) ));
 #endif
 #ifndef STABLE_OPS_ONLY
-		types_list.push_back( ToolTypeDescription_t( eTapTool, wxString(_("Tapping Tool")) ));
+        types_list.push_back( ToolTypeDescription_t( eTapTool, wxString(_("Tapping Tool")) ));
 #endif
-		types_list.push_back( ToolTypeDescription_t( eEngravingTool, wxString(_("Engraving Tool")) ));
-		return(types_list);
-	} // End GetToolTypesList() method
+        types_list.push_back( ToolTypeDescription_t( eEngravingTool, wxString(_("Engraving Tool")) ));
+        return(types_list);
+    } // End GetToolTypesList() method
 
 
+    typedef enum {
+        eHighSpeedSteel = 0,
+        eCarbide,
+        eUndefinedMaterialType
+    } eMaterial_t;
 
-	typedef enum {
-		eHighSpeedSteel = 0,
-		eCarbide,
-		eUndefinedMaterialType
-	} eMaterial_t;
+    typedef std::pair< eMaterial_t, wxString > MaterialDescription_t;
+    typedef std::vector<MaterialDescription_t > MaterialsList_t;
 
+    static MaterialsList_t GetMaterialsList()
+    {
+        MaterialsList_t materials_list;
 
+        materials_list.push_back( MaterialDescription_t( eHighSpeedSteel, wxString(_("High Speed Steel")) ));
+        materials_list.push_back( MaterialDescription_t( eCarbide, wxString(_("Carbide")) ));
 
-	typedef std::pair< eMaterial_t, wxString > MaterialDescription_t;
-	typedef std::vector<MaterialDescription_t > MaterialsList_t;
+        return(materials_list);
+    } // End Get() method
 
-	static MaterialsList_t GetMaterialsList()
-	{
-		MaterialsList_t materials_list;
-
-		materials_list.push_back( MaterialDescription_t( eHighSpeedSteel, wxString(_("High Speed Steel")) ));
-		materials_list.push_back( MaterialDescription_t( eCarbide, wxString(_("Carbide")) ));
-
-		return(materials_list);
-	} // End Get() method
-
-	// The G10 command can be used (within EMC2) to add a tool to the tool
-	// table from within a program.
-	// G10 L1 P[tool number] R[radius] X[offset] Z[offset] Q[orientation]
-
-	PropertyChoice m_type;
+	PropertyChoice m_type_choice;
+	PropertyInt    m_type;
 	PropertyChoice m_material;	// eMaterial_t - describes the cutting surface type.
 
 	PropertyLength m_diameter;
@@ -215,9 +209,8 @@ public:
 	void InitializeProperties();
 	void set_initial_values();
 	void write_values_to_config();
-	void GetProperties(std::list<Property *> *list);
-	void WriteXMLAttributes(TiXmlNode* pElem);
-	void ReadParametersFromXMLElement(TiXmlElement* pElem);
+//	void WriteXMLAttributes(TiXmlNode* pElem);
+//	void ReadParametersFromXMLElement(TiXmlElement* pElem);
 
 	const wxString ConfigScope(void)const{return _T("ToolParam_");}
 	double ReasonableGradient( const eToolType type ) const;
@@ -226,8 +219,17 @@ public:
 	bool operator!= ( const CToolParams & rhs ) const { return(! (*this == rhs)); }
 };
 
-class CTool: public HeeksObj {
+class CTool: public HeeksObj
+{
+private:
+
+    mutable TopoDS_Shape m_tool_shape;
+
 public:
+
+    static const int ObjType = ToolType;
+
+
 	//	These are references to the CAD elements whose position indicate where the Tool Cycle begins.
 	CToolParams m_params;
 
@@ -236,20 +238,17 @@ public:
 	HeeksObj *m_pToolSolid;
 
 	//	Constructors.
-	CTool(const wxChar *title, CToolParams::eToolType type, const int tool_number) : m_params(this), m_tool_number(tool_number), m_pToolSolid(NULL)
+	CTool(const wxChar *title, CToolParams::eToolType type, const int tool_number)
+	 : HeeksObj(ObjType), m_params(this), m_tool_number(tool_number), m_pToolSolid(NULL)
 	{
 		m_params.set_initial_values();
 		m_params.m_type = type;
-		if (title != NULL)
-		{
+		if (title != NULL) {
 		    SetTitle ( title );
-		} // End if - then
-		else
-		{
-		    SetTitle ( GenerateMeaningfulName() );
-		} // End if - else
-
-		ResetParametersToReasonableValues();
+		}
+		else {
+		    SetTitle ( GetMeaningfulName(heeksCAD->GetViewUnits()) );
+		}
 	} // End constructor
 
 	CTool( const CTool & rhs );
@@ -257,75 +256,62 @@ public:
 
 	~CTool();
 
-	void InitializeProperties();
-
 	bool operator== ( const CTool & rhs ) const;
 	bool operator!= ( const CTool & rhs ) const { return(! (*this == rhs)); }
 
 	bool IsDifferent( HeeksObj *other ) { return(*this != (*(CTool *)other)); }
 
 	 // HeeksObj's virtual functions
-        int GetType()const{return ToolType;}
 	const wxChar* GetTypeString(void) const{ return _T("Tool"); }
-        HeeksObj *MakeACopy(void)const;
+    void InitializeProperties();
+    HeeksObj *MakeACopy(void)const;
 
-        void WriteXML(TiXmlNode *root);
-        static HeeksObj* ReadFromXMLElement(TiXmlElement* pElem);
+    void WriteXML(TiXmlNode *root);
+    static HeeksObj* ReadFromXMLElement(TiXmlElement* pElem);
 
-	// program whose job is to generate RS-274 GCode.
-	Python AppendTextToProgram();
-	Python OCLDefinition(CAttachOp* attach_op)const;
+    // program whose job is to generate RS-274 GCode.
+    Python AppendTextToProgram();
+    Python OCLDefinition(CSurface* surface)const;
 
-	void GetProperties(std::list<Property *> *list);
-	void CopyFrom(const HeeksObj* object);
-	bool CanAddTo(HeeksObj* owner);
-	const wxBitmap &GetIcon();
-	void glCommands(bool select, bool marked, bool no_color);
-	void KillGLLists(void);
-	void GetTools(std::list<Tool*>* t_list, const wxPoint* p);
-
-        bool CanEditString(void)const{return true;}
-        void OnEditString(const wxChar* str);
+    void GetProperties(std::list<Property *> *list);
+    void CopyFrom(const HeeksObj* object);
+    bool CanAddTo(HeeksObj* owner);
+    const wxBitmap &GetIcon();
+    void glCommands(bool select, bool marked, bool no_color);
+    void KillGLLists(void);
+    bool CanEditString(void)const{return true;}
+    void OnEditString(const wxChar* str);
+    void WriteDefaultValues();
+    void ReadDefaultValues();
+    HeeksObj* PreferredPasteTarget();
 
 	static CTool *Find( const int tool_number );
 	static int FindTool( const int tool_number );
+    static CToolParams::eToolType FindToolType( const int tool_number );
+    static std::vector< std::pair< int, wxString > > FindAllTools();
+    static bool IsMillingToolType( CToolParams::eToolType type );
 	static ToolNumber_t FindFirstByType( const CToolParams::eToolType type );
-	static std::vector< std::pair< int, wxString > > FindAllTools();
-	wxString GenerateMeaningfulName() const;
+	wxString GetMeaningfulName(EnumUnitType units) const;
 	wxString ResetTitle();
 	static wxString FractionalRepresentation( const double original_value, const int max_denominator = 64 );
-	static wxString GaugeNumberRepresentation( const double size, const double units );
 
-	TopoDS_Shape GetShape() const;
+	const TopoDS_Shape& GetShape() const;
 	TopoDS_Face  GetSideProfile() const;
 
 	double CuttingRadius(const bool express_in_drawing_units = false, const double depth = -1) const;
 	static CToolParams::eToolType CutterType( const int tool_number );
 	static CToolParams::eMaterial_t CutterMaterial( const int tool_number );
 
-	void OnPropertyEdit(Property *prop);
-	void SetAngleAndRadius();
-	void ResetParametersToReasonableValues();
-	void ImportProbeCalibrationData( const wxString & probed_points_xml_file_name );
-	double Gradient() const { return(m_params.m_gradient); }
+	void OnPropertySet(Property& prop);
 
-	Python OpenCamLibDefinition(const unsigned int indent = 0);
+	void SetAngleAndRadius();
+	Python OpenCamLibDefinition(const unsigned int indent = 0)const;
+	Python VoxelcutDefinition()const;
 
 	void GetOnEdit(bool(**callback)(HeeksObj*));
+	void OnChangeViewUnits(const EnumUnitType units);
 
 private:
 	void DeleteSolid();
-
-public:
-    typedef struct
-    {
-        wxString description;
-        double  diameter;
-        double  pitch;
-    } tap_sizes_t;
-
-    void SelectTapFromStandardSizes(const tap_sizes_t *tap_sizes);
-    std::list<wxString> DesignRulesAdjustment(const bool apply_changes);
-
 }; // End CTool class definition.
 

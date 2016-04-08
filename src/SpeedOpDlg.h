@@ -18,6 +18,7 @@ protected:
 		ID_SPEEDOP_ENUM_MAX = ID_OP_ENUM_MAX,
 	};
 
+	CLengthCtrl *m_lgthSlotFeed;
 	CLengthCtrl *m_lgthHFeed;
 	CLengthCtrl *m_lgthVFeed;
 	CDoubleCtrl *m_dblSpindleSpeed;

@@ -14,15 +14,15 @@ class CScriptOp: public CDepthOp {
 
 
 public:
-	wxString m_str;
-	PropertyCheck  m_emit_depthop_params;
+    wxString m_str;
+    bool m_user_icon;
+    wxString m_user_icon_name;
 
-	CScriptOp():CDepthOp(GetTypeString(), 0, ScriptOpType) {}
+	CScriptOp():CDepthOp(0, ScriptOpType), m_user_icon(false) {}
 
 	CScriptOp( const CScriptOp & rhs );
 	CScriptOp & operator= ( const CScriptOp & rhs );
 
-	void InitializeProperties();
 	bool operator==( const CScriptOp & rhs ) const;
 	bool operator!=( const CScriptOp & rhs ) const { return(! (*this == rhs)); }
 
@@ -33,19 +33,14 @@ public:
 	int GetType()const{return ScriptOpType;}
 	const wxChar* GetTypeString(void)const{return _T("ScriptOp");}
 	const wxBitmap &GetIcon();
-	ObjectCanvas* GetDialog(wxWindow* parent);
 	HeeksObj *MakeACopy(void)const;
 	void CopyFrom(const HeeksObj* object);
 	void WriteXML(TiXmlNode *root);
 	bool CanAddTo(HeeksObj* owner);
+	void GetOnEdit(bool(**callback)(HeeksObj*));
 
 	// COp's virtual functions
-	Python AppendTextToProgram(CMachineState *pMachineState);
-	virtual unsigned int MaxNumberOfPrivateFixtures() const { return(0); }
+	Python AppendTextToProgram();
 
 	static HeeksObj* ReadFromXMLElement(TiXmlElement* pElem);
-
-	static Python OpenCamLibDefinition(std::list<HeeksObj *> objects, Python object_title);
-	static Python OpenCamLibDefinition(TopoDS_Edge edge, Python prefix, Python suffix);
-	static Python MiscDefs(std::list<HeeksObj *> objects, Python object_title);
 };

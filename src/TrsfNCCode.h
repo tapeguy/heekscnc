@@ -8,9 +8,13 @@
 #include "HeeksCNCTypes.h"
 #include "HeeksCNC.h"
 
-class CTrsfNCCode:public ObjList
+class CTrsfNCCode : public ObjList
 {
 public:
+
+    static const int ObjType = TrsfNCCodeType;
+
+
 	double m_x;
 	double m_y;
 
@@ -20,7 +24,6 @@ public:
 	void WriteCode(wxTextFile &f);
 
 	// HeeksObj's virtual functions
-	int GetType()const{return TrsfNCCodeType;}
 	int GetMarkingFilter()const{return UnknownMarkingFilter;}
 	const wxChar* GetTypeString(void)const{return _T("Transformable NC Code");}
 	const wxBitmap &GetIcon();

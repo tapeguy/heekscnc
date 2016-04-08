@@ -72,14 +72,14 @@ void ProfileDlg::GetDataRaw(HeeksObj* object)
 
 	((CProfile*)object)->m_profile_params.m_cut_mode = (m_cmbCutMode->GetValue().CmpNoCase(_("climb")) == 0) ? CProfileParams::eClimb : CProfileParams::eConventional;
 
-	((CProfile*)object)->m_profile_params.m_auto_roll_radius = m_lgthRollRadius->GetValue();
-	((CProfile*)object)->m_profile_params.m_offset_extra = m_lgthOffsetExtra->GetValue();
+	((CProfile*)object)->m_profile_params.m_auto_roll_radius = m_lgthRollRadius->GetValueAsDouble();
+	((CProfile*)object)->m_profile_params.m_offset_extra = m_lgthOffsetExtra->GetValueAsDouble();
 	((CProfile*)object)->m_profile_params.m_do_finishing_pass = m_chkDoFinishingPass->GetValue();
 
 	((CProfile*)object)->m_profile_params.m_only_finishing_pass = m_chkOnlyFinishingPass->GetValue();
-	((CProfile*)object)->m_profile_params.m_finishing_h_feed_rate = m_lgthFinishingFeedrate->GetValue();
+	((CProfile*)object)->m_profile_params.m_finishing_h_feed_rate = m_lgthFinishingFeedrate->GetValueAsDouble();
 	((CProfile*)object)->m_profile_params.m_finishing_cut_mode = (m_cmbFinishingCutMode->GetValue().CmpNoCase(_("climb")) == 0) ? CProfileParams::eClimb : CProfileParams::eConventional;
-	((CProfile*)object)->m_profile_params.m_finishing_step_down = m_lgthFinishStepDown->GetValue();
+	((CProfile*)object)->m_profile_params.m_finishing_step_down = m_lgthFinishStepDown->GetValueAsDouble();
 
 	SketchOpDlg::GetDataRaw(object);
 }
@@ -106,15 +106,15 @@ void ProfileDlg::SetFromDataRaw(HeeksObj* object)
 
 	m_cmbCutMode->SetValue((((CProfile*)object)->m_profile_params.m_cut_mode == CProfileParams::eClimb) ? _("Climb") : _("Conventional"));
 
-	m_lgthRollRadius->SetValue(((CProfile*)object)->m_profile_params.m_auto_roll_radius);
-	m_lgthOffsetExtra->SetValue(((CProfile*)object)->m_profile_params.m_offset_extra);
+	m_lgthRollRadius->SetValueFromDouble(((CProfile*)object)->m_profile_params.m_auto_roll_radius);
+	m_lgthOffsetExtra->SetValueFromDouble(((CProfile*)object)->m_profile_params.m_offset_extra);
 
 	m_chkDoFinishingPass->SetValue(((CProfile*)object)->m_profile_params.m_do_finishing_pass);
 
 	m_chkOnlyFinishingPass->SetValue(((CProfile*)object)->m_profile_params.m_only_finishing_pass);
-	m_lgthFinishingFeedrate->SetValue(((CProfile*)object)->m_profile_params.m_finishing_h_feed_rate);
+	m_lgthFinishingFeedrate->SetValueFromDouble(((CProfile*)object)->m_profile_params.m_finishing_h_feed_rate);
 	m_cmbFinishingCutMode->SetValue((((CProfile*)object)->m_profile_params.m_finishing_cut_mode == CProfileParams::eClimb) ? _("Climb") : _("Conventional"));
-	m_lgthFinishStepDown->SetValue(((CProfile*)object)->m_profile_params.m_finishing_step_down);
+	m_lgthFinishStepDown->SetValueFromDouble(((CProfile*)object)->m_profile_params.m_finishing_step_down);
 
 	EnableControls();
 

@@ -8,7 +8,7 @@ set ( CMAKE_BUILD_TYPE Debug )
 add_definitions ( -Wall -DHEEKSPLUGIN -DHEEKSCNC -DUNICODE -DTIXML_USE_STL
                   -DOPEN_SOURCE_GEOMETRY -DWXUSINGDLL )
 find_package( OpenGL REQUIRED )
-find_package( wxWidgets REQUIRED COMPONENTS core gl aui )
+find_package( wxWidgets REQUIRED COMPONENTS core gl aui stc )
 
 #find OCE or OpenCASCADE
 set( CASCADE_LIBS "TKernel;TKBRep;TKTopAlgo;TKMath;TKV3d;TKGeomBase;TKGeomAlgo;TKShHealing;TKBO;TKBool;TKOffset;TKLCAF;TKMath;TKService" )
@@ -40,109 +40,108 @@ else( UNIX )
 endif( UNIX )
 
 set( heekscnc_HDRS
-    AttachOp.h
-    BOM.h
     CNCConfig.h
     CNCPoint.h
     CTool.h
     CToolDlg.h
-    Chamfer.h
-    Contour.h
-    CounterBore.h
-    CuttingRate.h
     DepthOp.h
+    DepthOpDlg.h
     Drilling.h
+    DrillingDlg.h
     DropCutter.h
     Excellon.h
-    Fixture.h
-    Fixtures.h
     GTri.h
     HeeksCNC.h
     HeeksCNCInterface.h
     HeeksCNCTypes.h
-    Inlay.h
     Interface.h
-    MachineState.h
     NCCode.h
     Op.h
+    OpDlg.h
     Operations.h
     OutputCanvas.h
+    Pattern.h
+    PatternDlg.h
     Pocket.h
     PocketDlg.h
-    Positioning.h
-    Probing.h
     Profile.h
+    ProfileDlg.h
     Program.h
     ProgramCanvas.h
+    ProgramDlg.h
     PythonString.h
     PythonStuff.h
-    RawMaterial.h
     Reselect.h
     ScriptOp.h
+    ScriptOpDlg.h
     Simulate.h
+    SketchOp.h
+    SketchOpDlg.h
+    SolidsDlg.h
     SpeedOp.h
-    SpeedReference.h
-    SpeedReferences.h
+    SpeedOpDlg.h
+    Stock.h
+    StockDlg.h
+    Stocks.h
+    Surface.h
+    SurfaceDlg.h
+    Surfaces.h
     Tag.h
     Tags.h
-    Tapping.h
     Tools.h
     TrsfNCCode.h
-    TurnRough.h
-    Waterline.h
-    ZigZag.h
     stdafx.h
     )
 
 set( heekscnc_SRCS
-    AttachOp.cpp
-    BOM.cpp
     CNCPoint.cpp
     CTool.cpp
     CToolDlg.cpp
-    Chamfer.cpp
-    Contour.cpp
-    CounterBore.cpp
-    CuttingRate.cpp
     DepthOp.cpp
+    DepthOpDlg.cpp
     Drilling.cpp
+    DrillingDlg.cpp
     DropCutter.cpp
     Excellon.cpp
-    Fixture.cpp
-    Fixtures.cpp
     HeeksCNC.cpp
     HeeksCNCInterface.cpp
-    Inlay.cpp
     Interface.cpp
-    MachineState.cpp
     NCCode.cpp
     Op.cpp
+    OpDlg.cpp
     Operations.cpp
     OutputCanvas.cpp
+    Pattern.cpp
+    PatternDlg.cpp
+    Patterns.cpp
     Pocket.cpp
     PocketDlg.cpp
-    Positioning.cpp
-    Probing.cpp
     Profile.cpp
+    ProfileDlg.cpp
     Program.cpp
     ProgramCanvas.cpp
+    ProgramDlg.cpp
     PythonString.cpp
     PythonStuff.cpp
-    RawMaterial.cpp
     Reselect.cpp
     ScriptOp.cpp
+    ScriptOpDlg.cpp
     Simulate.cpp
+    SketchOp.cpp
+    SketchOpDlg.cpp
+    SolidsDlg.cpp
     SpeedOp.cpp
-    SpeedReference.cpp
-    SpeedReferences.cpp
+    SpeedOpDlg.cpp
+    Stock.cpp
+    StockDlg.cpp
+    Stocks.cpp
+    Surface.cpp
+    SurfaceDlg.cpp
+    Surfaces.cpp
     Tag.cpp
     Tags.cpp
-    Tapping.cpp
     Tools.cpp
     TrsfNCCode.cpp
-    TurnRough.cpp
-    Waterline.cpp
-    ZigZag.cpp
    )
 
 

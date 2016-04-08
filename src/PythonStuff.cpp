@@ -154,7 +154,7 @@ public:
 	{
 		if(m_busy_cursor == NULL)m_busy_cursor = new wxBusyCursor();
 
-		if (m_program->m_machine.file_name == _T("not found"))
+		if (m_program->m_machine.reader == _T("not found"))
 		{
 			wxMessageBox(_T("Machine name (defined in Program Properties) not found"));
 		} // End if - then
@@ -173,7 +173,7 @@ public:
 					#endif
 				#endif
 
-				Execute(wxString(_T("python \"")) + path + wxString(_T("backplot.py\" \"")) + m_program->m_machine.file_name + wxString(_T("\" \"")) + m_filename + wxString(_T("\"")) );
+				Execute(wxString(_T("python \"")) + path + wxString(_T("backplot.py\" \"")) + m_program->m_machine.reader + wxString(_T("\" \"")) + m_filename + wxString(_T("\"")) );
 			#endif
 		} // End if - else
 	}
@@ -370,22 +370,17 @@ static void on_set_to_machine_command(const wxChar *value, HeeksObj* object)
 }
 
 // static
-void CSendToMachine::GetOptions(std::list<Property *> *list)
+void CSendToMachine::ReadFromConfig()
 {
-	list->push_back(&m_command);
+    CNCConfig config(CSendToMachine::ConfigScope());
+    config.Read(_T("SendToMachineCommand"), m_command, _T("axis-remote"));
 }
 
 // static
-void CSendToMachine::ReadFromConfig()
-{
-        CNCConfig config(CSendToMachine::ConfigScope());
-        config.Read(_T("SendToMachineCommand"), m_command , _T("axis-remote"));
-}
-// static
 void CSendToMachine::WriteToConfig()
 {
-        CNCConfig config(CSendToMachine::ConfigScope());
-        config.Write(_T("SendToMachineCommand"), (const wxChar *)m_command);
+    CNCConfig config(CSendToMachine::ConfigScope());
+    config.Write(_T("SendToMachineCommand"), (const wxChar *)m_command);
 }
 
 

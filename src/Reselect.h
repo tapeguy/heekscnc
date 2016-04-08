@@ -16,6 +16,18 @@ public:
 	wxString BitmapPath(){ return theApp.GetResFolder() + _T("/bitmaps/selsketch.png"); }
 };
 
+class ReselectSketch: public Tool{
+public:
+        int m_sketch;
+        HeeksObj* m_object;
+        ReselectSketch(): m_sketch(0), m_object(NULL){}
+
+        // Tool's virtual functions
+        const wxChar* GetTitle(){return _("Re-select sketch");}
+        void Run();
+        wxString BitmapPath(){ return theApp.GetResFolder() + _T("/bitmaps/selsketch.png");}
+};
+
 class ReselectSolids : public Tool
 {
 public:
@@ -23,16 +35,12 @@ public:
 	HeeksObj* m_object;
 	ReselectSolids(): m_solids(NULL), m_object(NULL){}
 
+	static bool GetSolids(std::list<int>& solids );
+
 	// Tool's virtual functions
 	const wxChar* GetTitle(){return _("Re-select solids");}
 	void Run();
 	wxString BitmapPath(){ return theApp.GetResFolder() + _T("/bitmaps/selsolid.png"); }
 };
 
-#ifdef OP_SKETCHES_AS_CHILDREN
-void AddSolidsProperties(std::list<Property *> *list, HeeksObj* object);
-void AddSketchesProperties(std::list<Property *> *list, HeeksObj* object);
-#else
 void AddSolidsProperties(std::list<Property *> *list, const std::list<int> &sketches);
-void AddSketchesProperties(std::list<Property *> *list, const std::list<int> &sketches);
-#endif

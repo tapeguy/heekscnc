@@ -10,6 +10,10 @@
 class CTools: public ObjList
 {
 public:
+
+    static const int ObjType = ToolsType;
+
+
     typedef enum {
         eGaugeReplacesSize = 0,
         eIncludeGaugeAndSize
@@ -21,7 +25,6 @@ public:
 
 	// HeeksObj's virtual functions
 	bool OneOfAKind(){return true;}
-	int GetType()const{return ToolsType;}
 	const wxChar* GetTypeString(void)const{return _("Tools");}
 	HeeksObj *MakeACopy(void)const;
 
@@ -30,19 +33,17 @@ public:
 	CTools & operator= ( const CTools & rhs );
 
 	void InitializeProperties();
-	void OnPropertyEdit(Property * prop);
+	void OnPropertySet(Property& prop);
 
 	bool operator==( const CTools & rhs ) const { return(ObjList::operator==(rhs)); }
 	bool operator!=( const CTools & rhs ) const { return(! (*this == rhs)); }
 
 	bool IsDifferent(HeeksObj *other) { return(*this != (*(CTools *)other)); }
 
-
 	const wxBitmap &GetIcon();
 	bool CanAddTo(HeeksObj* owner){return owner->GetType() == ProgramType;}
 	bool CanAdd(HeeksObj* object);
 	bool CanBeRemoved(){return false;}
-	void WriteXML(TiXmlNode *root);
 	bool UsesID() { return(false); }
 	void CopyFrom(const HeeksObj* object);
 
@@ -52,6 +53,4 @@ public:
 	void OnChangeUnits(const double units);
 
 	static wxString ConfigScope() { return(_("Tools")); }
-
 };
-

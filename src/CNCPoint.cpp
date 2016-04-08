@@ -34,31 +34,27 @@ double CNCPoint::Tolerance() const
 	return(heeksCAD->GetTolerance());
 }
 
-double CNCPoint::Units() const
+double CNCPoint::UnitsConversion() const
 {
-#ifdef HEEKSCNC
-	return(theApp.m_program->m_units);
-#else
-	return(heeksCNC->GetProgram()->m_units);
-#endif
+	return Length::Conversion(theApp.m_program->m_units, UnitTypeMillimeter);
 }
 
 double CNCPoint::X(const bool in_drawing_units /* = false */) const
 {
     if (in_drawing_units == false) return(gp_Pnt::X());
-    else return(gp_Pnt::X() / Units());
+    else return(gp_Pnt::X() / UnitsConversion());
 }
 
 double CNCPoint::Y(const bool in_drawing_units /* = false */) const
 {
     if (in_drawing_units == false) return(gp_Pnt::Y());
-    else return(gp_Pnt::Y() / Units());
+    else return(gp_Pnt::Y() / UnitsConversion());
 }
 
 double CNCPoint::Z(const bool in_drawing_units /* = false */) const
 {
     if (in_drawing_units == false) return(gp_Pnt::Z());
-    else return(gp_Pnt::Z() / Units());
+    else return(gp_Pnt::Z() / UnitsConversion());
 }
 
 CNCPoint & CNCPoint::operator+= ( const CNCPoint & rhs )
