@@ -13,7 +13,7 @@ def cut_curve(curve, raise_cutter, first, prev_p, rapid_safety_space, current_st
     slot_ratio = 1.0 if first else 0.0
 
     for vertex in curve.getVertices():
-        if first:
+        if first or raise_cutter:
             if raise_cutter:
                 rapid(z = clearance_height)
                 rapid(vertex.p.x, vertex.p.y)
@@ -26,6 +26,7 @@ def cut_curve(curve, raise_cutter, first, prev_p, rapid_safety_space, current_st
              #feed down
             feed(z = final_depth)
             first = False
+            raise_cutter = False
 
         if vertex.type == 1:
             arc_ccw(slot_ratio, vertex.p.x, vertex.p.y, i = vertex.c.x, j = vertex.c.y)
@@ -114,7 +115,7 @@ def pocket(a, tool_radius, extra_offset, stepover, depthparams, from_center, pos
     tool_radius_for_pocket = tool_radius
 
     area_for_feed_possible = area.Area(a)
-    area_for_feed_possible.Offset(extra_offset - 0.01)
+    area_for_feed_possible.Offset(extra_offset - 0.05)
 
     a_offset = area.Area(a)
     current_offset = tool_radius + extra_offset

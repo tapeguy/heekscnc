@@ -207,12 +207,12 @@ def add_roll_off(curve, roll_off_curve, direction, roll_radius, offset_extra, ro
 def cut_curve(curve):
     for span in curve.GetSpans():
         if span.v.type == 0:#line
-            feed(span.v.p.x, span.v.p.y)
+            feed(0.0, span.v.p.x, span.v.p.y)
         else:
             if span.v.type == 1:# anti-clockwise arc
-                arc_ccw(span.v.p.x, span.v.p.y, i = span.v.c.x, j = span.v.c.y)
+                arc_ccw(0.0, span.v.p.x, span.v.p.y, i = span.v.c.x, j = span.v.c.y)
             else:
-                arc_cw(span.v.p.x, span.v.p.y, i = span.v.c.x, j = span.v.c.y)
+                arc_cw(0.0, span.v.p.x, span.v.p.y, i = span.v.c.x, j = span.v.c.y)
     
 def add_CRC_start_line(curve,roll_on_curve,roll_off_curve,radius,direction,crc_start_point,lead_in_line_len):
     first_span = curve.GetFirstSpan()
@@ -358,7 +358,7 @@ def profile(curve, direction = "on", radius = 1.0, offset_extra = 0.0, roll_radi
         if use_CRC():
             start_CRC(direction == "left", radius)
             # move to the startpoint
-            feed(s.x, s.y)
+            feed(0.0, s.x, s.y)
         
         # cut the roll on arc
         cut_curve(roll_on_curve)
@@ -372,12 +372,12 @@ def profile(curve, direction = "on", radius = 1.0, offset_extra = 0.0, roll_radi
             ez = get_tag_z_for_span(current_perim, offset_curve, radius, depthparams.start_depth, depth, depthparams.final_depth)
             
             if span.v.type == 0:#line
-                feed(span.v.p.x, span.v.p.y, ez)
+                feed(0.0, span.v.p.x, span.v.p.y, ez)
             else:
                 if span.v.type == 1:# anti-clockwise arc
-                    arc_ccw(span.v.p.x, span.v.p.y, ez, i = span.v.c.x, j = span.v.c.y)
+                    arc_ccw(0.0, span.v.p.x, span.v.p.y, ez, i = span.v.c.x, j = span.v.c.y)
                 else:
-                    arc_cw(span.v.p.x, span.v.p.y, ez, i = span.v.c.x, j = span.v.c.y)
+                    arc_cw(0.0, span.v.p.x, span.v.p.y, ez, i = span.v.c.x, j = span.v.c.y)
                     
     
         # cut the roll off arc
@@ -394,7 +394,7 @@ def profile(curve, direction = "on", radius = 1.0, offset_extra = 0.0, roll_radi
             if direction == "on":
                 rapid(z = depthparams.clearance_height)
             else:
-                feed(crc_end_point.x, crc_end_point.y)
+                feed(0.0, crc_end_point.x, crc_end_point.y)
             
               
         # restore the unsplit kurve
